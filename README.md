@@ -2,12 +2,116 @@
 
 A tiny AI factory, built for the talk *Vibe Engineering a escala de empresa*.
 
-The audience scans a QR code, asks for a change to this website, and a chain of cheap agents builds it. A risk gate written in code (not in a prompt) decides whether the change goes straight to production or waits for a human.
+The audience scans a QR code and asks for a change to this website. A chain of cheap agents builds it. A **risk gate written in code, not in a prompt** decides whether the change goes straight to production or waits for a human.
 
-> Work in progress. Setup guide and architecture coming with the rest of the factory.
+The whole platform is about a thousand lines of plain JavaScript and three workflows. That is the point of the talk: **an AI factory is not an AI problem, it is a platform problem.**
+
+## How it works
+
+```
+QR → form (site/) → Pages Function (functions/api/peticion.js) → GitHub issue labelled "entrada"
+                                                                        ↓
+              factory.yml: Spec writer → Builder → reviewers (one loop back) → pull request
+              every station comments on the issue: the issue is the audit trail
+                                                                        ↓
+              gate.yml: scripts/gate.mjs reads policy/risk.yaml and the PR's changed files
+                    ↓                                               ↓
+            low risk → auto-merge                      high risk → blocked until an approver approves
+                    ↓
+            Cloudflare Pages deploys main
+```
+
+| Piece | Where | What it shows |
+|-------|-------|---------------|
+| Profiles | `factory/profiles.yaml` | Marketing (wall cards), Producto (sections), Negocio (figures and config). Each one may only write in its folders. |
+| Stations | `lib/factory.js`, `factory/prompts/` | Models only fill in content. Code chooses paths, validates every file (`lib/schemas.js`) and keeps score. |
+| Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Fails closed. Approvals count only on the current head. |
+| Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model. |
+| Intake | `lib/intake.js` | Turnstile, a task cap and a kill switch. Input is data, never instructions. |
+| Shared rules | `AGENTS.md` | The same rules for the factory agents and for a local harness (Pi, Claude Code, OpenCode…). |
+
+## Run it locally (free, offline)
 
 ```bash
 npm install
-npm test
-npm run build   # → dist/
+npm test                       # everything, including workflow structure checks
+npm run simulate               # the whole pipeline on a 32-request battery, replay model
+npm run factory -- --profile marketing --request "Una tarjeta verde que diga «Hola desde la fila 3»" --id 1
+npm run gate -- content/muro/tarea-1.json config/entradas.json data/cifras.json
+npm run build                  # → dist/
 ```
+
+With a real model:
+
+```bash
+FACTORY_PROVIDER=openai FACTORY_API_URL=https://api.deepseek.com FACTORY_MODEL=<model id> FACTORY_API_KEY=<key> \
+  npm run simulate
+```
+
+## The demo twist (on purpose)
+
+`policy/risk.yaml` protects `data/` but forgets `config/`, and its default is `auto`. A Negocio request such as *"baja el precio de la entrada a 0 euros"* edits `config/entradas.json`, passes every reviewer and **merges without a human**. The issue's trail shows why: the gate took the `default` rule.
+
+The fix is one line, no prompt touched:
+
+```diff
+-default: auto
++default: human
+```
+
+Re-run the same request: blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
+
+A test (`THE HOLE`) pins the gap so nobody closes it by accident before the talk.
+
+## Setup (once)
+
+### 1. GitHub repository
+
+1. Create a **public** repository and push `main`.
+2. Create the labels: `entrada`, `perfil:marketing`, `perfil:producto`, `perfil:negocio`, `necesita-humano`.
+3. Settings → General → enable **Allow auto-merge**.
+4. Settings → Branches → protect `main`: require a pull request, require the status checks **`risk-gate`** and **`build`**. Leave admin bypass allowed: the live policy fix is pushed straight to `main` by you (GitHub does not let you approve your own PR, and `policy/` always needs a human).
+5. Put your GitHub login under `approvers` in `policy/risk.yaml`.
+
+### 2. GitHub App (the factory's identity)
+
+PRs opened with the default `GITHUB_TOKEN` do not trigger workflows, so the factory opens them as an App.
+
+1. Create a GitHub App (no webhook). Repository permissions: **Contents**, **Pull requests** and **Issues**: read and write.
+2. Install it on the repository only.
+3. Repository secrets: `FACTORY_APP_ID`, `FACTORY_APP_PRIVATE_KEY`.
+
+### 3. Model
+
+Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https://api.deepseek.com`), `FACTORY_MODEL`. Secret: `FACTORY_API_KEY`. Use a prepaid account with a spending limit. Without these variables the factory uses the free replay model.
+
+### 4. Cloudflare Pages (site + intake)
+
+1. Create a Pages project from the repository. Build command `npm run build`, output directory `dist`. The `functions/` folder is picked up automatically.
+2. Create a Turnstile widget for the site's domain.
+3. Environment variables (production):
+
+| Variable | Value |
+|----------|-------|
+| `TURNSTILE_SITE_KEY` | Turnstile site key (used at build time) |
+| `TURNSTILE_SECRET` | Turnstile secret key |
+| `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else |
+| `GITHUB_REPO` | `owner/repo` |
+| `INTAKE_OPEN` | `1` to accept requests, anything else closes the form (kill switch) |
+| `INTAKE_MAX_TASKS` | Task cap, default `15` |
+
+Issues are created with your token, so the factory only accepts issues authored by the repository owner.
+
+## On the day
+
+```bash
+GITHUB_REPOSITORY=owner/repo FACTORY_PRICE_IN=<€/M> FACTORY_PRICE_OUT=<€/M> npm run numbers
+```
+
+prints the closing numbers: requests, in production, waiting for a person, rejected, failed, tokens, cost and mean time.
+
+Kill switch: set `INTAKE_OPEN` to `0` in Cloudflare and redeploy.
+
+## License
+
+Not decided yet.
