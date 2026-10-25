@@ -1,0 +1,27 @@
+# Who can ask for what. The factory enforces this in code before anything reaches a pull request.
+#   folders:  the only places this profile's agents may write
+#   newFile:  true = each request creates exactly one new file (path chosen by the factory, not the model)
+#   reviewers: stations that must approve the build, in order
+# Note: this file limits what a profile can touch. The risk gate (policy/risk.yaml) decides
+# separately, by what the diff touches, whether a human must approve.
+
+marketing:
+  label: Marketing
+  description: Una tarjeta en el muro de la web.
+  folders: ["content/muro/"]
+  newFile: true
+  reviewers: [moderacion]
+
+producto:
+  label: Producto
+  description: Una sección nueva en la web.
+  folders: ["content/secciones/"]
+  newFile: true
+  reviewers: [moderacion, calidad]
+
+negocio:
+  label: Negocio
+  description: Cifras y datos de la charla (asistentes, precio de la entrada, aforo...).
+  folders: ["data/", "config/"]
+  newFile: false
+  reviewers: [moderacion]
