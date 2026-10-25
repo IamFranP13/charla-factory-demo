@@ -33,7 +33,8 @@ export function parseIssueBody(body) {
 
 // Model-derived text is untrusted: inside a text fence, Markdown, links and @mentions do not render.
 export function fence(text) {
-  return `\`\`\`text\n${String(text).replaceAll('```', "'''")}\n\`\`\``
+  // "<!--" is neutralised too, so model text can never forge the factory:result marker.
+  return `\`\`\`text\n${String(text).replaceAll('```', "'''").replaceAll('<!--', '< !--')}\n\`\`\``
 }
 
 async function main() {
