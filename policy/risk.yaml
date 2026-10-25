@@ -1,0 +1,39 @@
+# Risk gate policy.
+#
+# The gate looks at the files a change touches, never at who asked for it.
+#   auto  = low risk: the change merges by itself.
+#   human = blocked until one of the approvers approves the pull request.
+# Each file takes the route of the first rule that matches it, or the default.
+# The strictest route among all touched files wins.
+
+default: auto
+
+approvers:
+  - IamFranP13
+
+rules:
+  # The platform itself: only humans change the factory.
+  - paths:
+      - "policy/**"
+      - "factory/**"
+      - "scripts/**"
+      - "lib/**"
+      - "functions/**"
+      - "site/**"
+      - ".github/**"
+      - "AGENTS.md"
+      - "package.json"
+      - "package-lock.json"
+    route: human
+
+  # Marketing: wall cards.
+  - paths: ["content/muro/**"]
+    route: auto
+
+  # Producto: new sections.
+  - paths: ["content/secciones/**"]
+    route: auto
+
+  # Negocio: figures shown on the page.
+  - paths: ["data/**"]
+    route: human
