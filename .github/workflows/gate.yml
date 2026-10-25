@@ -1,0 +1,67 @@
+name: Risk gate
+
+# SECURITY: pull_request_target runs with write permissions and secrets, so this
+# workflow must never run code from the pull request. It checks out the BASE
+# branch only and judges the PR through the GitHub API (list of changed files,
+# reviews). `pull_request_review` runs with the PR's code by default, so the
+# checkout below names the base branch explicitly for every event.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+# contents: write + pull-requests: write is enough to label, comment and squash-merge.
+# NOTE: a merge done with GITHUB_TOKEN does NOT trigger the push workflow, so
+# deploying main must come from Cloudflare Pages' own Git integration, never
+# from a GitHub workflow.
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Stable job name: "risk-gate" is the required status check on main.
+  risk-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Installs the dependencies of the BASE checkout (just `yaml`).
+      - run: npm ci
+
+      # The gate exits 1 when it blocks (waiting for a human). That must fail the
+      # job, but the label/comment steps below still need to run, so this step
+      # is allowed to fail and the last step re-raises its outcome.
+      - id: gate
+        continue-on-error: true
+        run: node scripts/gate.mjs --pr "$PR"
+
+      - if: steps.gate.outputs.merge == 'true'
+        run: gh pr merge "$PR" --auto --squash
+
+      - if: steps.gate.outputs.route == 'human'
+        run: |
+          gh label create necesita-humano --force >/dev/null
+          gh pr edit "$PR" --add-label necesita-humano
+          gh pr comment "$PR" --body "Este cambio toca algo sensible: necesita la aprobación de una persona antes de entrar en main."
+
+      - if: always() && steps.gate.outcome != 'success'
+        run: |
+          echo "Risk gate did not pass (see the gate step above)."
+          exit 1

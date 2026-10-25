@@ -1,0 +1,103 @@
+name: Factory
+
+# A request from the audience arrives as an issue labelled "entrada".
+# The factory turns it into files, and those files into a pull request.
+# The risk gate (gate.yml) then decides whether that PR merges by itself.
+on:
+  issues:
+    types: [opened, labeled]
+
+# Least privilege for GITHUB_TOKEN: comment on and close issues, read the code.
+# Pushing the branch and opening the PR use the GitHub App token instead.
+permissions:
+  contents: read
+  issues: write
+
+# One run per issue. `opened` and `labeled` both fire when the intake creates a
+# labelled issue; the second run waits and then stops at the guard step.
+concurrency:
+  group: factory-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  factory:
+    # Only issues carrying the "entrada" label. On `labeled`, only when that very label was just added.
+    if: >-
+      contains(github.event.issue.labels.*.name, 'entrada') &&
+      (github.event.action == 'opened' || github.event.label.name == 'entrada')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ISSUE: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # PRs opened with GITHUB_TOKEN do not trigger workflows (no gate, no CI),
+      # so branch and PR are created with a GitHub App installation token.
+      - id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      # Idempotency: skip if the issue is already closed or its branch already exists.
+      - id: guard
+        run: |
+          state=$(gh issue view "$ISSUE" --json state --jq .state)
+          if [ "$state" != "OPEN" ] || git ls-remote --exit-code --heads origin "tarea/$ISSUE" >/dev/null; then
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.proceed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - if: steps.guard.outputs.proceed == 'true'
+        run: npm ci
+
+      - id: factory
+        if: steps.guard.outputs.proceed == 'true'
+        run: node scripts/factory.mjs --issue "$ISSUE"
+        env:
+          FACTORY_PROVIDER: ${{ vars.FACTORY_PROVIDER }}
+          FACTORY_API_URL: ${{ vars.FACTORY_API_URL }}
+          FACTORY_MODEL: ${{ vars.FACTORY_MODEL }}
+          FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+
+      - id: pr
+        if: steps.guard.outputs.proceed == 'true' && steps.factory.outputs.status == 'ok'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PROFILE: ${{ steps.factory.outputs.profile }}
+          FILES: ${{ steps.factory.outputs.files }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          git config user.name "factory[bot]"
+          git config user.email "factory[bot]@users.noreply.github.com"
+          git switch -c "tarea/$ISSUE"
+          IFS=',' read -ra files <<< "$FILES"
+          # Commit only what the factory reported, nothing else in the working tree.
+          git add -- "${files[@]}"
+          git commit -m "Tarea #$ISSUE ($PROFILE)"
+          git push origin "tarea/$ISSUE"
+          gh label create "perfil:$PROFILE" --force >/dev/null
+          gh pr create --base "$BASE" --head "tarea/$ISSUE" \
+            --title "Tarea #$ISSUE · $PROFILE" \
+            --body "Closes #$ISSUE" \
+            --label "perfil:$PROFILE"
+
+      # Rejected, failed or errored: say so and close. "ignored" (not our author)
+      # is left untouched.
+      - if: steps.guard.outputs.proceed == 'true' && steps.factory.outputs.status != 'ok' && steps.factory.outputs.status != 'ignored'
+        env:
+          STATUS: ${{ steps.factory.outputs.status }}
+        run: |
+          gh issue close "$ISSUE" --reason "not planned" \
+            --comment "La factory no ha podido convertir esta petición en un cambio (resultado: $STATUS). Cierro la tarea."
