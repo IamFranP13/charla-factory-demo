@@ -1,0 +1,21 @@
+{
+  "name": "charla-factory-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A tiny AI factory: the audience asks, cheap agents build, a risk gate written in code decides.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "gate": "node scripts/gate.mjs",
+    "factory": "node scripts/factory.mjs",
+    "simulate": "node scripts/simulate.mjs",
+    "numbers": "node scripts/numbers.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  }
+}
