@@ -1,0 +1,50 @@
+:root {
+  --ink: #111;
+  --paper: #f6f3ec;
+  --accent: #e4572e;
+  --muted: #666;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0 auto; max-width: 980px; padding: 2rem 1.25rem 4rem; line-height: 1.5; }
+
+header { margin-bottom: 2.5rem; }
+.kicker { text-transform: uppercase; letter-spacing: .12em; color: var(--accent); font-weight: 700; margin: 0; }
+h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.05; margin: .3rem 0 .8rem; }
+.tesis { font-size: 1.2rem; color: var(--muted); margin: 0 0 1rem; }
+.entradas { font-size: 1.05rem; }
+
+.cifras { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1rem 0 0; }
+.cifras div { background: #fff; border: 2px solid var(--ink); padding: .5rem .9rem; }
+.cifras dt { font-size: .75rem; text-transform: uppercase; color: var(--muted); }
+.cifras dd { margin: 0; font-size: 1.4rem; font-weight: 800; }
+
+section { margin: 2.5rem 0; }
+h2 { font-size: 1.6rem; margin: 0 0 .6rem; }
+
+.pide { background: #fff; border: 3px solid var(--ink); padding: 1.25rem; box-shadow: 6px 6px 0 var(--ink); }
+form { display: grid; gap: .75rem; }
+.perfiles { border: 0; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.perfiles legend { font-weight: 700; margin-bottom: .3rem; }
+.perfiles label { display: flex; gap: .5rem; align-items: baseline; }
+.perfiles span { color: var(--muted); font-size: .9rem; }
+textarea { font: inherit; min-height: 5rem; padding: .6rem; border: 2px solid var(--ink); }
+button { font: inherit; font-weight: 800; padding: .7rem 1rem; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+button[disabled] { opacity: .5; cursor: wait; }
+#estado { margin: 0; min-height: 1.5em; }
+
+.muro { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.card { padding: 1rem; border: 2px solid var(--ink); min-height: 120px; display: flex; flex-direction: column; gap: .4rem; }
+.card p { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.card footer { margin-top: auto; color: #333; font-size: .9rem; }
+.card .emoji { font-size: 1.8rem; }
+.card.amarillo { background: #ffe873; }
+.card.verde { background: #a8e6a1; }
+.card.azul { background: #9fd3ff; }
+.card.rosa { background: #ffb3d1; }
+.card.naranja { background: #ffc285; }
+.card.nueva { animation: pop .6s ease-out; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
