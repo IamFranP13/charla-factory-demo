@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync, chmodSync, readFileSync, cpSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseIssueBody } from '../scripts/factory.mjs'
+import { parseIssueBody, fence } from '../scripts/factory.mjs'
 
 const repo = new URL('..', import.meta.url).pathname
 
@@ -60,7 +60,7 @@ function fakeGh(issue) {
 echo "$*" >> "${dir}/calls"
 case "$*" in
   "api repos/o/r/issues/5") cat "${dir}/issue.json" ;;
-  "issue comment"*) cat > /dev/null ;;
+  "issue comment"*) cat >> "${dir}/bodies"; printf '\\n=====\\n' >> "${dir}/bodies" ;;
   *) echo "unexpected gh call: $*" >&2; exit 1 ;;
 esac
 `)
@@ -103,4 +103,28 @@ test('issue mode: an issue without a request block is ignored', () => {
   const gh = fakeGh(issue({ body: 'hola' }))
   run(root, ['--issue', '5'], gh.env)
   assert.match(readFileSync(gh.env.GITHUB_OUTPUT, 'utf8'), /status=ignored/)
+})
+
+test('issue mode: model-derived text goes inside a ```text fence, so Markdown and mentions do not render', () => {
+  const root = scratch()
+  const request = 'Una tarjeta rosa que diga «hola» @someone [x](http://e) ``` ![i](http://e/i.png)'
+  const gh = fakeGh(issue({ body: `\`\`\`json\n${JSON.stringify({ perfil: 'marketing', peticion: request })}\n\`\`\`` }))
+  const r = run(root, ['--issue', '5'], gh.env)
+  assert.equal(r.status, 0, r.stderr)
+  const bodies = readFileSync(join(gh.dir, 'bodies'), 'utf8')
+  const spec = bodies.split('\n=====\n').find((b) => b.includes('**spec**'))
+  assert.match(spec, /\n\n```text\n[^]*@someone[^]*\n```$/)
+  const inside = spec.split('```text\n')[1]
+  assert.equal(inside.split('```').length, 2, 'only the closing fence may appear inside')
+})
+
+test('fence: neutralizes backtick fences and keeps links as plain text', () => {
+  const out = fence('@someone [x](http://e) ``` ![i](http://e/i.png)')
+  assert.match(out, /^```text\n@someone \[x\]\(http:\/\/e\) ''' !\[i\]\(http:\/\/e\/i\.png\)\n```$/)
+})
+
+test('parseIssueBody measures code points, like the intake', () => {
+  const body = (peticion) => `\`\`\`json\n${JSON.stringify({ perfil: 'marketing', peticion })}\n\`\`\``
+  assert.notEqual(parseIssueBody(body('😀'.repeat(280))), null)
+  assert.equal(parseIssueBody(body('😀'.repeat(281))), null)
 })

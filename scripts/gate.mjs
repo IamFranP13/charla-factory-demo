@@ -9,8 +9,8 @@
 // Exit codes: 0 pass · 1 blocked (waiting for a human) · 2 the gate itself failed (fails closed).
 
 import { readFileSync, appendFileSync } from 'node:fs'
-import { parsePolicy, routeFor, verdict } from '../lib/policy.js'
-import { pullRequestFiles, pullRequestHead, pullRequestReviews, approvalsAtHead } from '../lib/github.js'
+import { parsePolicy, routeFor, verdict, originAllowsAuto } from '../lib/policy.js'
+import { pullRequest, pullRequestFiles, pullRequestReviews, approvalsAtHead, repoSlug } from '../lib/github.js'
 
 const args = process.argv.slice(2)
 const take = (flag) => {
@@ -42,13 +42,21 @@ function explain(policy, files) {
 }
 
 function judgePullRequest(policy, number) {
-  const result = routeFor(policy, pullRequestFiles(number))
-  const approvals = result.route === 'human' ? approvalsAtHead(pullRequestReviews(number), pullRequestHead(number)) : []
+  // One read of the PR: the head judged here is the head that gets merged (--match-head-commit).
+  const pr = pullRequest(number)
+  const head = pr.head?.sha
+  if (!head) throw new Error('the pull request has no head sha')
+  const files = routeFor(policy, pullRequestFiles(number, pr.changed_files))
+  const origin = originAllowsAuto(policy, { author: pr.user?.login, headRepo: pr.head?.repo?.full_name, repo: repoSlug() })
+  // Origin can only make a change stricter, never looser.
+  const result = files.route === 'auto' && !origin.ok ? { ...files, route: 'human' } : files
+  const approvals = result.route === 'human' ? approvalsAtHead(pullRequestReviews(number), head) : []
   const decision = verdict({ route: result.route, approvals, approvers: policy.approvers })
 
-  const report = `${table(result)}\n\n${decision.pass ? 'PASS' : 'BLOCKED'}: ${decision.reason}`
+  const why = files.route === 'auto' && !origin.ok ? `\nOrigin: ${origin.reason}` : ''
+  const report = `${table(result)}${why}\n\n${decision.pass ? 'PASS' : 'BLOCKED'}: ${decision.reason}`
   console.log(report)
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `route=${result.route}\nmerge=${decision.merge}\npass=${decision.pass}\n`)
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `route=${result.route}\nmerge=${decision.merge}\npass=${decision.pass}\nhead=${head}\n`)
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Risk gate\n\n\`\`\`\n${report}\n\`\`\`\n`)
   process.exit(decision.pass ? 0 : 1)
 }

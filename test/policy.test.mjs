@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { parsePolicy, routeFor, verdict, matchesGlob } from '../lib/policy.js'
+import { parsePolicy, routeFor, verdict, matchesGlob, originAllowsAuto } from '../lib/policy.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const policy = parsePolicy(readFileSync(`${repo}policy/risk.yaml`, 'utf8'))
@@ -90,4 +90,32 @@ test('verdict: approver names are compared case-insensitively', () => {
 
 test('verdict: with no approvers configured nothing high-risk can pass', () => {
   assert.equal(verdict({ route: 'human', approvals: ['ana'], approvers: [] }).pass, false)
+})
+
+test('parsePolicy: "factory" must be a string when present', () => {
+  assert.equal(parsePolicy('default: auto\nfactory: app[bot]\n').factory, 'app[bot]')
+  assert.equal(parsePolicy('default: auto\n').factory, '')
+  assert.throws(() => parsePolicy('default: auto\nfactory: [a]\n'), /factory/)
+})
+
+test('the shipped policy names the factory bot', () => {
+  assert.match(parsePolicy(readFileSync(`${repo}policy/risk.yaml`, 'utf8')).factory, /\[bot\]$/)
+})
+
+test('originAllowsAuto: only the factory bot, from this repository, may auto-merge', () => {
+  const p = { factory: 'charla-factory[bot]' }
+  const ok = originAllowsAuto(p, { author: 'Charla-Factory[bot]', headRepo: 'O/R', repo: 'o/r' })
+  assert.equal(ok.ok, true)
+  const stranger = originAllowsAuto(p, { author: 'mallory', headRepo: 'o/r', repo: 'o/r' })
+  assert.equal(stranger.ok, false)
+  assert.match(stranger.reason, /not opened by the factory from this repository/)
+  assert.equal(originAllowsAuto(p, { author: 'charla-factory[bot]', headRepo: 'mallory/r', repo: 'o/r' }).ok, false)
+  assert.equal(originAllowsAuto(p, { author: 'charla-factory[bot]', headRepo: null, repo: 'o/r' }).ok, false)
+})
+
+test('originAllowsAuto: a missing factory login fails closed', () => {
+  for (const factory of ['', undefined]) {
+    assert.equal(originAllowsAuto({ factory }, { author: '', headRepo: 'o/r', repo: 'o/r' }).ok, false)
+    assert.equal(originAllowsAuto({ factory }, { author: undefined, headRepo: 'o/r', repo: 'o/r' }).ok, false)
+  }
 })

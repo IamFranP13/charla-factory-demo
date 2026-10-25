@@ -59,3 +59,11 @@ test('an empty site still builds', () => {
   const result = buildSite(fixture({}))
   assert.deepEqual(result, { ok: true, errors: [], cards: 0, sections: 0 })
 })
+
+test('content with replacement patterns ($\' and $`) cannot inject into the template', () => {
+  const root = fixture({ 'content/secciones/x.json': { titulo: "a $' b $` c", cuerpo: 'c' } })
+  assert.equal(buildSite(root).ok, true)
+  const html = readFileSync(join(root, 'dist/index.html'), 'utf8')
+  assert.equal(html.match(/<form id="peticion"/g).length, 1)
+  assert.ok(html.includes('a $&#39; b $` c'))
+})

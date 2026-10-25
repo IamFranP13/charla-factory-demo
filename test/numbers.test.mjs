@@ -1,18 +1,19 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resultFromComments, summarize, renderNumbers } from '../lib/numbers.js'
+import { resultFromComments, summarize, renderNumbers, pullForTask } from '../lib/numbers.js'
 
+const BOT = { login: 'github-actions[bot]' }
 const marker = (o) => `✅ **Resultado: ok**\n\n<!-- factory:result ${JSON.stringify(o)} -->`
 
 test('reads the last factory result marker among the issue comments', () => {
   const comments = [
     { body: 'hola' },
-    { body: marker({ status: 'failed', usage: { input: 1, output: 1 }, ms: 1 }) },
-    { body: marker({ status: 'ok', usage: { input: 100, output: 20 }, ms: 4000 }) },
+    { user: BOT, body: marker({ status: 'failed', usage: { input: 1, output: 1 }, ms: 1 }) },
+    { user: BOT, body: marker({ status: 'ok', usage: { input: 100, output: 20 }, ms: 4000 }) },
   ]
   assert.deepEqual(resultFromComments(comments), { status: 'ok', usage: { input: 100, output: 20 }, ms: 4000 })
   assert.equal(resultFromComments([{ body: 'nada' }]), null)
-  assert.equal(resultFromComments([{ body: '<!-- factory:result {roto -->' }]), null)
+  assert.equal(resultFromComments([{ user: BOT, body: '<!-- factory:result {roto -->' }]), null)
 })
 
 test('summarize counts in main, blocked, rejected, failed, pending, tokens, cost and mean time', () => {
@@ -37,4 +38,20 @@ test('renders the numbers in Spanish for the closing slide', () => {
   assert.match(text, /Esperando a una persona\s+2/)
   assert.match(text, /Coste total\s+0,01 €/)
   assert.match(text, /Tiempo medio\s+41 s/)
+})
+
+test('only markers written by github-actions[bot] count', () => {
+  const forged = { user: { login: 'mallory' }, body: marker({ status: 'ok', usage: { input: 9, output: 9 }, ms: 9 }) }
+  const real = { user: { login: 'github-actions[bot]' }, body: marker({ status: 'failed', usage: { input: 1, output: 1 }, ms: 1 }) }
+  assert.deepEqual(resultFromComments([real, forged]).status, 'failed')
+  assert.equal(resultFromComments([forged]), null)
+})
+
+test('pullForTask only matches branches whose head repository is this one', () => {
+  const pulls = [
+    { head: { ref: 'tarea/3', repo: { full_name: 'mallory/r' } } },
+    { head: { ref: 'tarea/3', repo: { full_name: 'O/R' } }, merged_at: 'x' },
+  ]
+  assert.equal(pullForTask(pulls, 3, 'o/r'), pulls[1])
+  assert.equal(pullForTask([pulls[0]], 3, 'o/r'), undefined)
 })

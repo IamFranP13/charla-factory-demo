@@ -72,6 +72,10 @@ A test (`THE HOLE`) pins the gap so nobody closes it by accident before the talk
 3. Settings → General → enable **Allow auto-merge**.
 4. Settings → Branches → protect `main`: require a pull request, require the status checks **`risk-gate`** and **`build`**. Leave admin bypass allowed: the live policy fix is pushed straight to `main` by you (GitHub does not let you approve your own PR, and `policy/` always needs a human).
 5. Put your GitHub login under `approvers` in `policy/risk.yaml`.
+6. Set `factory:` in `policy/risk.yaml` to the login of the App bot from step 2, `<app-slug>[bot]` (the file ships with the placeholder `charla-factory[bot]`: it **must match the real App slug**). The gate auto-merges only pull requests opened by that bot from a branch of this repository; anything else (a fork, another author) needs an approver. If `factory` is empty, nothing auto-merges.
+7. Settings → Actions → General → Fork pull request workflows: enable **Require approval for all external contributors**.
+
+After an approver approves a blocked PR, the gate re-runs on the review event (same-repository PRs only; fork PRs are not re-run) and passes, but it does not merge: a human merges. When the gate does merge (factory PRs on the auto route), it pins the commit it judged, so a later push cancels the merge.
 
 ### 2. GitHub App (the factory's identity)
 
@@ -98,7 +102,7 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 | `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else |
 | `GITHUB_REPO` | `owner/repo` |
 | `INTAKE_OPEN` | `1` to accept requests, anything else closes the form (kill switch) |
-| `INTAKE_MAX_TASKS` | Task cap, default `15` |
+| `INTAKE_MAX_TASKS` | Task cap, default `15`, **max `100`** (higher values are clamped; the check is not atomic, so a burst can overshoot slightly) |
 
 Issues are created with your token, so the factory only accepts issues authored by the repository owner.
 

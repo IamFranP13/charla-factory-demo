@@ -193,3 +193,25 @@ test('the Pages Function delegates to the intake with the environment', async ()
   const response = await onRequestPost({ request: post(valid), env: { ...ENV, INTAKE_OPEN: '0' } })
   await expectError(response, 403, 'La factory está cerrada')
 })
+
+test('rejects U+2028/U+2029: the factory cannot read them back', async () => {
+  for (const sep of ['\u2028', '\u2029']) {
+    const { fetchImpl } = network()
+    await expectError(await handleIntake(post({ ...valid, peticion: `hola${sep}mundo` }), ENV, fetchImpl), 400, 'La petición contiene caracteres no permitidos.')
+  }
+})
+
+test('every accepted request is readable by the factory (same length unit and limit)', async () => {
+  for (const peticion of ['hola mundo', '😀'.repeat(280)]) {
+    const { calls, fetchImpl } = network()
+    const response = await handleIntake(post({ ...valid, peticion }), ENV, fetchImpl)
+    assert.equal(response.status, 201)
+    const created = JSON.parse(calls.at(-1).init.body)
+    assert.deepEqual(parseIssueBody(created.body), { profile: 'marketing', request: peticion })
+  }
+})
+
+test('the task cap is clamped to 100: the issue list is not paginated', async () => {
+  const { fetchImpl } = network({ existing: 100 })
+  await expectError(await handleIntake(post(valid), { ...ENV, INTAKE_MAX_TASKS: '150' }, fetchImpl), 429, 'Hemos alcanzado el máximo de tareas de la charla.')
+})

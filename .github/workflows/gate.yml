@@ -26,6 +26,11 @@ concurrency:
 jobs:
   # Stable job name: "risk-gate" is the required status check on main.
   risk-gate:
+    # On review events GitHub runs the workflow definition from the PR merge ref, so a fork PR
+    # controls that run (and gets a read-only token). Only same-repository PRs are handled there.
+    # A forged "risk-gate" check cannot merge anything by itself: merging is enabled only by
+    # this gate (for factory PRs) or by a human.
+    if: github.event_name != 'pull_request_review' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -52,8 +57,11 @@ jobs:
         continue-on-error: true
         run: node scripts/gate.mjs --pr "$PR"
 
+      # Pin the commit the gate judged: a push after the verdict cancels the merge.
       - if: steps.gate.outputs.merge == 'true'
-        run: gh pr merge "$PR" --auto --squash
+        env:
+          HEAD: ${{ steps.gate.outputs.head }}
+        run: gh pr merge "$PR" --auto --squash --match-head-commit "$HEAD"
 
       - if: steps.gate.outputs.route == 'human'
         run: |

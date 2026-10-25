@@ -13,6 +13,7 @@ import { pathToFileURL } from 'node:url'
 import { runFactory, loadProfiles } from '../lib/factory.js'
 import { providersFromEnv } from '../lib/providers.js'
 import { gh, ghJson, repoSlug } from '../lib/github.js'
+import { MAX_LENGTH } from '../lib/intake.js'
 
 const root = new URL('..', import.meta.url).pathname
 const STATUS_ICON = { ok: '✅', rejected: '⛔', error: '⚠️', failed: '❌', ignored: '⏭️' }
@@ -23,11 +24,16 @@ export function parseIssueBody(body) {
   if (!match) return null
   try {
     const { perfil, peticion } = JSON.parse(match[1])
-    if (typeof perfil !== 'string' || typeof peticion !== 'string' || !peticion.trim() || peticion.length > 500) return null
+    if (typeof perfil !== 'string' || typeof peticion !== 'string' || !peticion.trim() || Array.from(peticion).length > MAX_LENGTH) return null
     return { profile: perfil, request: peticion }
   } catch {
     return null
   }
+}
+
+// Model-derived text is untrusted: inside a text fence, Markdown, links and @mentions do not render.
+export function fence(text) {
+  return `\`\`\`text\n${String(text).replaceAll('```', "'''")}\n\`\`\``
 }
 
 async function main() {
@@ -84,7 +90,7 @@ async function runIssue(number, providers) {
     trace: (e) => {
       console.log(`${e.station.padEnd(11)} ${e.status.padEnd(8)} ${e.detail}`)
       const tokens = e.usage ? ` · ${e.usage.input + e.usage.output} tokens` : ''
-      comment(number, `${STATUS_ICON[e.status] ?? '•'} **${e.station}** · ${e.status}${e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}${tokens}\n\n${e.detail}`)
+      comment(number, `${STATUS_ICON[e.status] ?? '•'} **${e.station}** · ${e.status}${e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}${tokens}\n\n${fence(e.detail)}`)
     },
   })
   writeFiles(result.files)

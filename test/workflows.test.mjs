@@ -54,7 +54,8 @@ test('gate.yml: triggers, stable job name and permissions', () => {
 
 test('gate.yml: never checks out or runs the pull request head', () => {
   const wf = load('gate')
-  const text = raw('gate')
+  // The job condition may read the head repo's name (to skip forks); nothing else may touch the head.
+  const text = raw('gate').replace('github.event.pull_request.head.repo.full_name == github.repository', '')
   assert.doesNotMatch(text, /pull_request\.head/)
   assert.doesNotMatch(text, /refs\/pull\//)
   assert.doesNotMatch(text, /github\.head_ref/)
@@ -79,7 +80,8 @@ test('gate.yml: judges the PR, merges on merge=true, labels the human route, and
   assert.match(gate.run, /node scripts\/gate\.mjs --pr "\$PR"/)
   assert.equal(gate['continue-on-error'], true)
   const merge = list.find((s) => s.run?.includes('gh pr merge'))
-  assert.match(merge.run, /--auto --squash/)
+  assert.match(merge.run, /--auto --squash --match-head-commit "\$HEAD"/)
+  assert.equal(merge.env.HEAD, '${{ steps.gate.outputs.head }}')
   assert.equal(merge.if, "steps.gate.outputs.merge == 'true'")
   const human = list.find((s) => s.run?.includes('necesita-humano'))
   assert.equal(human.if, "steps.gate.outputs.route == 'human'")
@@ -106,4 +108,9 @@ test('every action is pinned to a major version', () => {
       }
     }
   }
+})
+
+test('gate.yml: review events only run for same-repository pull requests', () => {
+  const job = load('gate').jobs['risk-gate']
+  assert.equal(job.if, "github.event_name != 'pull_request_review' || github.event.pull_request.head.repo.full_name == github.repository")
 })

@@ -8,6 +8,11 @@
 
 default: auto
 
+# GitHub login of the factory App (<app-slug>[bot]). Only pull requests opened by it,
+# from a branch of this repository, can auto-merge. Must match the real App slug.
+# Empty or missing: nothing is ever auto (fails closed).
+factory: charla-factory[bot]
+
 approvers:
   - IamFranP13
 
