@@ -23,3 +23,22 @@ export function sandboxTest(name, options, fn) {
     await assert.rejects(async () => fn(), REFUSAL)
   })
 }
+
+/**
+ * Checks a rule of the calculator without importing the domain in the test process (a pull request can change it, and
+ * CI has secrets in reach): `body` runs as a test INSIDE the sandbox, with `presupuestar`, `estado` and `assert` in scope,
+ * laid over `root` as a test file of its own. Resolves to the runSuite result; the output says what failed.
+ */
+export async function probeDomain(root, body) {
+  const { runSuite } = await import('../lib/sandbox.js')
+  const content = `import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { presupuestar } from './presupuesto.js'
+import { cargarEstado } from '../../__estado-node.js'
+const estado = cargarEstado(new URL('../../', import.meta.url).pathname)
+test('sonda del dominio', async () => {
+${body}
+})
+`
+  return runSuite(root, [{ path: 'src/domain/tarea-0-sonda.test.mjs', content }])
+}

@@ -1,12 +1,12 @@
 import { test } from 'node:test'
+import { needsSandbox } from './sandbox-node.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { validateFile } from '../lib/schemas.js'
-import { validateCatalog } from '../src/domain/catalogo.js'
-import { presupuestar } from '../src/domain/presupuesto.js'
+import { checkState } from '../lib/sandbox.js'
 import { cargarEstado } from '../lib/estado-node.js'
 import { rehearsalCopy } from '../lib/rehearsal.js'
 
@@ -51,8 +51,9 @@ test('seed campaign files are not named like audience files', () => {
   for (const path of jsonFiles('content/campanas', seed)) assert.doesNotMatch(path, /tarea-\d+\.json$/)
 })
 
-test('the live catalog is consistent', () => {
-  assert.deepEqual(validateCatalog(cargarEstado(root)), { ok: true, errors: [] })
+// The domain code is never run in this process (a pull request can change it): checkState runs it in the sandbox.
+needsSandbox('the live catalog is consistent', async () => {
+  assert.deepEqual((await checkState(root, cargarEstado(root))).catalogo, { ok: true, errors: [] })
 })
 
 test('in the seed, exactly one product has no price and every destination has transport', () => {
@@ -69,26 +70,26 @@ test('cargarEstado reads ids from file names', () => {
   assert.equal(cargarEstado(seed).descuentos.tramos.length, 3, 'the figures are the seed ones: the live ones are what the audience changes')
 })
 
-test('every sample order in factory/muestras.json matches its expectation, live and in the seed', () => {
+needsSandbox('every sample order in factory/muestras.json matches its expectation, live and in the seed', async () => {
   const muestras = JSON.parse(read('factory/muestras.json'))
   assert.ok(muestras.length >= 5 && muestras.length <= 8)
   for (const base of [root, seed]) {
-    const estado = cargarEstado(base)
-    for (const m of muestras) {
-      assert.ok(['ok', 'error'].includes(m.esperado), m.nombre)
-      const r = presupuestar(m.pedido, estado)
-      assert.equal(r.ok ? 'ok' : 'error', m.esperado, `${m.nombre}: ${r.errores.join('; ')}`)
-      if (r.ok) for (const n of [r.subtotal, r.transporte, r.total]) assert.ok(Number.isFinite(n) && n >= 0, m.nombre)
+    const { muestras: results } = await checkState(root, cargarEstado(base))
+    assert.equal(results.length, muestras.length)
+    for (const r of results) {
+      assert.ok(['ok', 'error'].includes(r.esperado), r.nombre)
+      assert.equal(r.ok ? 'ok' : 'error', r.esperado, `${r.nombre}: ${r.errores.join('; ')}`)
+      if (r.ok) for (const n of r.importes) assert.ok(Number.isFinite(n) && n >= 0, r.nombre)
     }
   }
 })
 
-test('in the seed, samples include a product without price and an order at the top discount', () => {
-  const muestras = JSON.parse(read('factory/muestras.json'))
+needsSandbox('in the seed, samples include a product without price and an order at the top discount', async () => {
   const estado = cargarEstado(seed)
-  assert.ok(muestras.some((m) => m.esperado === 'error' && presupuestar(m.pedido, estado).errores.some((e) => e.includes('no tiene precio'))))
+  const { muestras } = await checkState(root, estado)
+  assert.ok(muestras.some((m) => m.esperado === 'error' && m.errores.some((e) => e.includes('no tiene precio'))))
   const top = Math.max(...estado.descuentos.tramos.map((t) => t.porcentaje))
-  assert.ok(muestras.some((m) => presupuestar(m.pedido, estado).descuento.porcentaje === top))
+  assert.ok(muestras.some((m) => m.porcentaje === top))
 })
 
 test('every seed file exists and validates', () => {

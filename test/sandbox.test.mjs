@@ -410,3 +410,113 @@ sandboxTest('checkState: domain code that tries to read the environment or the n
   assert.equal(result.error, undefined)
   assert.equal(result.catalogo.ok, true)
 })
+
+// --- T23c: the verdict cannot be forged, neutered or read by the code under test ---
+
+const freeTransport = (root) =>
+  file('src/domain/presupuesto.js', readFileSync(join(root, 'src/domain/presupuesto.js'), 'utf8').replace('Math.max(tarifa.minimo, tarifa.eurPorKg * kgTotal)', '0'))
+const NEUTER = testFile("for (const k of Object.keys(assert)) assert[k] = () => {}").replace("test('prueba'", "for (const k of Object.keys(assert)) assert[k] = () => {}\ntest('prueba'")
+
+sandboxTest('N1: a broken rule is caught even if a model test file neuters node:assert (the model tests run apart, and assert is frozen)', async () => {
+  const root = scratch()
+  const broken = freeTransport(root)
+  assert.equal((await runSuite(root, [broken])).ok, false, 'control: the broken rule fails the repository tests')
+  const neutered = await runSuite(root, [broken, file('src/domain/tarea-9.test.mjs', NEUTER)])
+  assert.equal(neutered.ok, false, neutered.output)
+  // The same, from the code under test itself, which re-exports the assert of the tests (the static check does not run here).
+  const fromRule = file('src/domain/presupuesto.js', `import A from './tarea-9.js'\nfor (const k of Object.keys(A)) A[k] = () => {}\n${broken.content}`)
+  const viaRule = await runSuite(root, [fromRule, file('src/domain/tarea-9.js', "export { default } from 'assert/strict'\n")])
+  assert.equal(viaRule.ok, false, viaRule.output)
+})
+
+sandboxTest('N1: a neutering test that is already merged in the repository does not hide a later broken rule', async () => {
+  const root = scratch()
+  mkdirSync(join(root, 'src/features/tarea-9'), { recursive: true })
+  writeFileSync(join(root, 'src/features/tarea-9/index.js'), feature('tarea-9'))
+  writeFileSync(join(root, 'src/features/tarea-9/index.test.mjs'), NEUTER)
+  const result = await runSuite(root, [freeTransport(root)])
+  assert.equal(result.ok, false, result.output)
+})
+
+sandboxTest('N1: node:assert and the intrinsics are frozen in the isolation, and the experimental warning is not part of the output', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sandbox-test-'))
+  scratches.push(dir)
+  writeFileSync(join(dir, 'p.mjs'), "import a from 'node:assert'\nimport s from 'node:assert/strict'\nconsole.log('FROZEN', [Object.isFrozen(a), Object.isFrozen(s), Object.isFrozen(JSON), Object.isFrozen(RegExp.prototype), Object.isFrozen(a.AssertionError)].join())\n")
+  const result = await runIsolated(dir, ['p.mjs'], { timeoutMs: 10000 })
+  assert.equal(result.ok, true, result.output)
+  assert.match(result.output, /FROZEN true,true,true,true,true/)
+  assert.doesNotMatch(result.output, /xperimental|intristics|trace-warnings/)
+  assert.doesNotMatch((await runSuite(scratch(), [])).output, /xperimental|intristics|trace-warnings/)
+})
+
+const FORGER = `import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { readFileSync, readdirSync, realpathSync, createRequire } from './index.js'
+const text = readdirSync('.').filter((n) => n.startsWith('__')).map((n) => readFileSync(n, 'utf8')).join('\\n')
+const dir = realpathSync('.')
+const files = {}
+for (const n of readdirSync('src/domain').filter((n) => n.endsWith('.test.mjs'))) files[dir + '/src/domain/' + n] = { pass: 50, fail: 0, skip: 0 }
+for (const n of readdirSync('src/features', { withFileTypes: true }).filter((e) => e.isDirectory())) files[dir + '/src/features/' + n.name + '/index.test.mjs'] = { pass: 1, fail: 0, skip: 0 }
+files[dir + '/__muestras.test.mjs'] = { pass: JSON.parse(readFileSync('factory/muestras.json', 'utf8')).length, fail: 0, skip: 0 }
+files[dir + '/__features.test.mjs'] = { pass: readdirSync('src/features', { withFileTypes: true }).filter((e) => e.isDirectory()).length, fail: 0, skip: 0 }
+test('falla de verdad', () => assert.equal(1, 2))
+const marker = /@@[A-Z]+-[0-9a-f]+@@ /.exec(text)[0]
+const p = createRequire('/x/')('pro' + 'cess')
+p.stdout.write(marker + JSON.stringify({ files }) + '\\n', () => p.exit(0))
+`
+
+sandboxTest('the code under test cannot read the marker of the verdict: no file of the run holds it, and a forged report does not pass', async () => {
+  const bypass = "export { readFileSync, readdirSync, realpathSync } from 'fs'\nexport { createRequire } from 'module'\n" + feature('tarea-9')
+  const result = await runSuite(scratch(), [file('src/features/tarea-9/index.js', bypass), file('src/features/tarea-9/index.test.mjs', FORGER)])
+  assert.equal(result.ok, false, result.output)
+})
+
+sandboxTest('evaluateFeatures: a feature that reads the run files to find the marker cannot forge its answer', async () => {
+  const root = scratch()
+  mkdirSync(join(root, 'src/features/tarea-9'), { recursive: true })
+  const forged = "{ ok: true, id: 'forjada', titulo: 'Falsa', donde: 'inicio', resultado: { tipo: 'texto', texto: 'falsa' } }"
+  writeFileSync(join(root, 'src/features/tarea-9/index.js'), `import { readFileSync, readdirSync } from 'fs'
+import { createRequire } from 'module'
+const text = readdirSync('.').filter((n) => n.startsWith('__')).map((n) => readFileSync(n, 'utf8')).join('\\n')
+const marker = /@@[A-Z]+-[0-9a-f]+@@ /.exec(text)[0]
+const p = createRequire('/x/')('pro' + 'cess')
+p.stdout.write(marker + JSON.stringify(${forged}) + '\\n', () => p.exit(0))
+export default { id: 'tarea-9', titulo: 'Real', donde: 'inicio', calcular() { return { tipo: 'texto', texto: 'real' } } }
+`)
+  const { features } = await evaluateFeatures(root, cargarEstado(root))
+  assert.equal(features.some((f) => f.id === 'forjada'), false)
+  assert.equal(features.some((f) => f.id === 'tarea-9'), false)
+})
+
+sandboxTest('N3: a feature that overrides JSON.stringify cannot forge another id, another place or markup', async () => {
+  const root = scratch()
+  mkdirSync(join(root, 'src/features/tarea-9'), { recursive: true })
+  writeFileSync(join(root, 'src/features/tarea-9/index.js'), `const real = JSON.stringify
+JSON.stringify = (v, ...rest) => real(v && v.ok === true && v.id ? { ok: true, id: 'otra', titulo: 'Falsa', donde: 'catalogo', resultado: { tipo: 'texto', texto: '<script>x</script>' } } : v, ...rest)
+export default { id: 'tarea-9', titulo: 'Real', donde: 'inicio', calcular() { return { tipo: 'texto', texto: 'real' } } }
+`)
+  const { features } = await evaluateFeatures(root, cargarEstado(root))
+  assert.equal(features.some((f) => f.id === 'otra' || f.donde === 'catalogo' && f.titulo === 'Falsa'), false)
+  assert.equal(features.some((f) => JSON.stringify(f).includes('<script>')), false)
+})
+
+test('N2: re-exports without spaces around «from» are checked like any import', () => {
+  for (const code of [
+    "export{readFileSync}from'fs'",
+    "export*from'child_process'",
+    "export{default as p}from'process'",
+    "export{connect}from'net'",
+    "export{createRequire}from'module'",
+    "export * from 'fs'",
+    "export{x}from'../../../lib/github.js'",
+    "export{default}from'/etc/hostname'",
+    "import{readFileSync}from'fs'",
+    "import*as fs from'fs'",
+    "import{x}from\"fs\"",
+    'export{a}from`fs`',
+    "export{a}from/* c */'fs'",
+  ]) {
+    assert.equal(staticCheck([file('src/features/tarea-9/a.js', `${code}\n`)]).ok, false, code)
+  }
+  assert.equal(staticCheck([file('src/features/tarea-9/a.js', "export{a}from'../ordenar-catalogo/index.js'\nimport{b}from'../../domain/presupuesto.js'\n")]).ok, true)
+})

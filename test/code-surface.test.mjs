@@ -1,6 +1,6 @@
 // Code kinds (bug, feature, cambio) around the factory: policy, providers, task state, the planted bugs,
 // the feature registry and the reset. (The factory run itself is in factory-code.test.mjs, the isolation in sandbox.test.mjs.)
-import { needsSandbox } from './sandbox-node.mjs'
+import { hasSandbox, needsSandbox, probeDomain } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -15,7 +15,6 @@ import { rehearsalCopy } from '../lib/rehearsal.js'
 import { resetFiles } from '../scripts/reset-demo.mjs'
 import { buildFeatures } from '../scripts/build-features.mjs'
 import { paraPagina } from '../src/lib/features.js'
-import { cargarEstado } from '../lib/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const scratches = []
@@ -133,11 +132,11 @@ test('the planted bugs are in the seed, byte for byte (the reset puts them back)
 
 needsSandbox('with the bugs, the calculator shows no discount at exactly 1.000 kg and the list puts the dearest first', async () => {
   const root = scratch()
-  const estado = cargarEstado(root)
-  const { presupuestar } = await import(join(root, 'src/domain/presupuesto.js'))
-  const pedido = (kg) => presupuestar({ lineas: [{ productoId: 'limon-verna', kg }], destinoId: 'alemania-hamburgo' }, estado)
-  assert.equal(pedido(1000).descuento.porcentaje, 0)
-  assert.equal(pedido(1001).descuento.porcentaje, 3)
+  const probe = await probeDomain(root, `
+    const pedido = (kg) => presupuestar({ lineas: [{ productoId: 'limon-verna', kg }], destinoId: 'alemania-hamburgo' }, estado)
+    assert.equal(pedido(1000).descuento.porcentaje, 0)
+    assert.equal(pedido(1001).descuento.porcentaje, 3)`)
+  assert.equal(probe.ok, true, probe.output)
   const { features } = await buildFeatures(root)
   const prices = features.find((f) => f.id === 'ordenar-catalogo').resultado.items.map((i) => Number(i.valor.replace(',', '.').replace(' €/kg', '')))
   assert.deepEqual(prices, [...prices].sort((a, b) => b - a))
@@ -222,6 +221,13 @@ needsSandbox('build-features script: writes the generated registry as data, repo
   // The registry is a plain data module.
   const data = JSON.parse(generated.slice(generated.indexOf('export default ') + 'export default '.length).trim())
   assert.deepEqual(data.map((f) => f.id), ['ordenar-catalogo'])
+})
+
+test('build-features script on a Node without the network switch: one clean message in Spanish, exit 1, no stack trace', { skip: hasSandbox && 'this Node has the switch: run the suite on Node 24 to see the refusal' }, () => {
+  const run = spawnSync(process.execPath, [join(repo, 'scripts/build-features.mjs'), '--root', scratch()], { encoding: 'utf8' })
+  assert.equal(run.status, 1, run.stdout + run.stderr)
+  assert.match(run.stderr, /^No se pueden construir las features: El aislamiento se niega .*--allow-net/)
+  assert.doesNotMatch(run.stderr, /\n\s+at |node:internal|SandboxUnavailable/)
 })
 
 test('build-features script: with no features at all the registry is empty', () => {

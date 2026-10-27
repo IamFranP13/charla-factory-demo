@@ -11,7 +11,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { evaluateFeatures } from '../lib/sandbox.js'
+import { evaluateFeatures, SandboxUnavailable } from '../lib/sandbox.js'
 import { cargarEstado } from '../lib/estado-node.js'
 
 export async function buildFeatures(root, options = {}) {
@@ -24,7 +24,12 @@ export async function buildFeatures(root, options = {}) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const rootFlag = process.argv.indexOf('--root')
   const root = rootFlag === -1 ? fileURLToPath(new URL('..', import.meta.url)) : process.argv[rootFlag + 1]
-  const { features, omitidas } = await buildFeatures(root)
+  // A Node without the network switch refuses to run any feature: say so once, in plain words, and fail the build.
+  const { features, omitidas } = await buildFeatures(root).catch((error) => {
+    if (!(error instanceof SandboxUnavailable)) throw error
+    console.error(`No se pueden construir las features: ${error.message}`)
+    process.exit(1)
+  })
   for (const { id, motivo } of omitidas) console.log(`⚠ feature ${id} omitida: ${motivo}`)
   console.log(`Features: ${features.length} en la web${omitidas.length ? `, ${omitidas.length} omitida(s)` : ''}.`)
 }

@@ -1,4 +1,4 @@
-import { needsSandbox } from './sandbox-node.mjs'
+import { needsSandbox, probeDomain } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
@@ -155,12 +155,12 @@ needsSandbox('replay: the discount rule change touches the domain and adds its t
   assert.equal(event(events, 'spec', 'ok').tipo, 'cambio')
   assert.deepEqual(result.files.map((f) => f.path), ['src/domain/presupuesto.js', 'src/domain/tarea-41-descuento-extra.test.mjs'])
   apply(root, result.files)
-  const { presupuestar } = await import(join(root, 'src/domain/presupuesto.js'))
-  const estado = cargarEstado(root)
-  const order = (kg) => presupuestar({ lineas: [{ productoId: 'limon-verna', kg }], destinoId: 'alemania-hamburgo' }, estado)
-  assert.equal(order(49999).descuento.porcentaje, 10)
-  assert.equal(order(50000).descuento.porcentaje, 15)
-  assert.equal(order(100000).descuento.porcentaje, 15)
+  const probe = await probeDomain(root, `
+    const order = (kg) => presupuestar({ lineas: [{ productoId: 'limon-verna', kg }], destinoId: 'alemania-hamburgo' }, estado)
+    assert.equal(order(49999).descuento.porcentaje, 10)
+    assert.equal(order(50000).descuento.porcentaje, 15)
+    assert.equal(order(100000).descuento.porcentaje, 15)`)
+  assert.equal(probe.ok, true, probe.output)
 })
 
 needsSandbox('replay: asking for a fix that is already there ends as "unchanged", with no review and no files', async () => {

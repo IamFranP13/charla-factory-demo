@@ -176,6 +176,19 @@ test('no platform entry point reaches src/domain/ or src/features/ through its i
   }
 })
 
+// CI runs npm test with the repository's secrets in reach: a test file that imported the domain or a feature would run
+// whatever a pull request put there, in the test process. Tests reach that code only through the sandbox
+// (runSuite, checkState, evaluateFeatures) or read it as text.
+test('no test file reaches src/domain/ or src/features/ through its imports (only the sandbox runs that code)', () => {
+  for (const entry of walk('test')) {
+    const { files, problems, seen } = reach(entry)
+    assert.deepEqual(problems, [], entry)
+    // The feature contract is platform (humans only, no imports): the site's own helpers use it and their tests may too.
+    const bad = files.filter((f) => MODEL_CODE.some((dir) => f.startsWith(dir)) && f !== 'src/features/contrato.js')
+    assert.deepEqual(bad.map((f) => chain(seen, f).join(' → ')), [], `${entry} runs code a model can write, in the test process`)
+  }
+})
+
 test('the entry points that run with secrets exist (the walk is not vacuous)', () => {
   for (const entry of ENTRIES) assert.ok(existsSync(join(root, entry)), entry)
   assert.ok(reach('scripts/gate.mjs').files.includes('lib/github.js'))
