@@ -1,7 +1,7 @@
 {
   "alemania-hamburgo": {
-    "eurPorKg": 0.14,
-    "minimo": 180
+    "eurPorKg": 0,
+    "minimo": 0
   },
   "francia-rungis": {
     "eurPorKg": 0.1,
