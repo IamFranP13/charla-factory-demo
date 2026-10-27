@@ -5,13 +5,14 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync, cpSync, existsSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseIssueBody, fence } from '../scripts/factory.mjs'
+import { isAudienceFile } from '../lib/factory.js'
 
 const repo = new URL('..', import.meta.url).pathname
 
 // The CLI writes into the repository it runs from, so each test runs a scratch copy.
 function scratch() {
   const root = mkdtempSync(join(tmpdir(), 'factory-cli-'))
-  for (const dir of ['content', 'data', 'config', 'factory', 'lib', 'scripts', 'node_modules']) cpSync(join(repo, dir), join(root, dir), { recursive: true })
+  for (const dir of ['content', 'data', 'config', 'factory', 'lib', 'scripts', 'node_modules']) cpSync(join(repo, dir), join(root, dir), { recursive: true, filter: (src) => !isAudienceFile(src) })
   for (const file of ['AGENTS.md', 'package.json']) cpSync(join(repo, file), join(root, file))
   return root
 }
