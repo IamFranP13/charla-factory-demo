@@ -17,7 +17,7 @@ const readJson = (file) => JSON.parse(readFileSync(join(root, file), 'utf8'))
 const checks = [
   () => {
     const policy = parsePolicy(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'))
-    const [file] = routeFor(policy, ['config/entradas.json']).files
+    const [file] = routeFor(policy, ['config/transporte.json']).files
     return file.route === 'auto' && file.rule === 'default'
       ? { ok: true, text: 'El agujero está abierto: config/ se auto-fusiona por la regla default' }
       : { ok: false, text: `El agujero NO está abierto: config/ va por «${file.route}» (regla ${file.rule}). Restaura «default: auto» en policy/risk.yaml` }
@@ -29,11 +29,12 @@ const checks = [
       : { ok: false, text: 'factory vacío en policy/risk.yaml: nada se auto-fusionaría' }
   },
   () => {
-    const live = readJson('config/entradas.json').precio
-    const seed = readJson('factory/seed/config/entradas.json').precio
-    return live === seed
-      ? { ok: true, text: `El precio es el de partida (${seed}): la petición cambiará algo` }
-      : { ok: false, text: `El precio es ${live} y el de partida es ${seed}. Restáuralo: copia factory/seed/config/entradas.json sobre config/entradas.json` }
+    const live = readJson('config/transporte.json')['alemania-hamburgo']
+    const seed = readJson('factory/seed/config/transporte.json')['alemania-hamburgo']
+    const show = (t) => `${t.eurPorKg} €/kg, mínimo ${t.minimo} €`
+    return live?.eurPorKg === seed.eurPorKg && live?.minimo === seed.minimo
+      ? { ok: true, text: `El transporte a alemania-hamburgo es el de partida (${show(seed)}): la petición cambiará algo` }
+      : { ok: false, text: `El transporte a alemania-hamburgo es ${show(live)} y el de partida es ${show(seed)}. Restáuralo: copia factory/seed/config/transporte.json sobre config/transporte.json` }
   },
 ]
 

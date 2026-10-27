@@ -60,7 +60,7 @@ jobs:
           cache: npm
 
       - if: steps.guard.outputs.proceed == 'true'
-        run: npm ci
+        run: npm ci --omit=dev
 
       - id: factory
         if: steps.guard.outputs.proceed == 'true'
@@ -88,10 +88,18 @@ jobs:
           git commit -m "Tarea #$ISSUE ($PROFILE)"
           git push origin "tarea/$ISSUE"
           gh label create "perfil:$PROFILE" --force >/dev/null
-          gh pr create --base "$BASE" --head "tarea/$ISSUE" \
+          url=$(gh pr create --base "$BASE" --head "tarea/$ISSUE" \
             --title "Tarea #$ISSUE · $PROFILE" \
             --body "Closes #$ISSUE" \
-            --label "perfil:$PROFILE"
+            --label "perfil:$PROFILE")
+          echo "number=${url##*/}" >> "$GITHUB_OUTPUT"
+
+      # The task state in the issue body is only ever written by the scripts: this one records the PR
+      # and puts the task at the gate. The gate (gate.yml) takes over from here.
+      - if: steps.pr.outcome == 'success'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: node scripts/factory.mjs --issue "$ISSUE" --pr "$PR_NUMBER"
 
       # Rejected, failed or errored: say so and close. "ignored" (not our author)
       # is left untouched.

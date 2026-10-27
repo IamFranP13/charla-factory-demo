@@ -1,27 +1,26 @@
 # Who can ask for what. The factory enforces this in code before anything reaches a pull request.
-#   folders:  the only places this profile's agents may write
-#   newFile:  true = each request creates exactly one new file (path chosen by the factory, not the model)
-#   reviewers: stations that must approve the build, in order
-# Note: this file limits what a profile can touch. The risk gate (policy/risk.yaml) decides
-# separately, by what the diff touches, whether a human must approve.
+#   folders:  (newFile profiles) the only folders this profile may add a file to. The model picks the
+#             folder; the factory picks the name: tarea-<n>.json
+#   files:    (the others) the only existing files this profile may modify (at most 2 per request)
+#   newFile:  true = each request creates exactly one new file
+# Every request goes through the same stations (spec → build → seguridad · ux · ui · codigo → approver),
+# whatever the profile. This file limits what a profile can touch. The risk gate (policy/risk.yaml)
+# decides separately, by what the diff touches, whether a human must approve.
 
 marketing:
   label: Marketing
-  description: Una tarjeta en el muro de la web.
-  folders: ["content/muro/"]
+  description: Mensajes y banners de campaña de LIMONIA.
+  folders: ["content/campanas/"]
   newFile: true
-  reviewers: [moderacion]
 
 producto:
   label: Producto
-  description: Una sección nueva en la web.
-  folders: ["content/secciones/"]
+  description: Funcionalidades del catálogo de LIMONIA, un producto nuevo o un destino de exportación nuevo.
+  folders: ["catalogo/productos/", "catalogo/destinos/"]
   newFile: true
-  reviewers: [moderacion, calidad]
 
 negocio:
   label: Negocio
-  description: Cifras y datos de la charla (asistentes, precio de la entrada, aforo...).
-  folders: ["data/", "config/"]
+  description: Precios, descuentos por volumen y tarifas de transporte de LIMONIA.
+  files: ["data/precios.json", "data/descuentos.json", "config/transporte.json"]
   newFile: false
-  reviewers: [moderacion]

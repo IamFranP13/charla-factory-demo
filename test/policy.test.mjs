@@ -7,36 +7,38 @@ const repo = new URL('..', import.meta.url).pathname
 const policy = parsePolicy(readFileSync(`${repo}policy/risk.yaml`, 'utf8'))
 
 test('glob matching: ** crosses folders, * does not', () => {
-  assert.equal(matchesGlob('content/muro/a.json', 'content/muro/**'), true)
-  assert.equal(matchesGlob('content/muro/x/a.json', 'content/muro/**'), true)
-  assert.equal(matchesGlob('content/muro/x/a.json', 'content/muro/*'), false)
-  assert.equal(matchesGlob('content/muroX/a.json', 'content/muro/**'), false)
+  assert.equal(matchesGlob('content/campanas/a.json', 'content/campanas/**'), true)
+  assert.equal(matchesGlob('content/campanas/x/a.json', 'content/campanas/**'), true)
+  assert.equal(matchesGlob('content/campanas/x/a.json', 'content/campanas/*'), false)
+  assert.equal(matchesGlob('content/campanasX/a.json', 'content/campanas/**'), false)
   assert.equal(matchesGlob('AGENTS.md', 'AGENTS.md'), true)
   assert.equal(matchesGlob('a.md', '*.md'), true)
 })
 
-test('a wall card goes the short way', () => {
-  const r = routeFor(policy, ['content/muro/hola.json'])
+test('a campaign goes the short way', () => {
+  const r = routeFor(policy, ['content/campanas/hola.json'])
   assert.equal(r.route, 'auto')
-  assert.deepEqual(r.files, [{ file: 'content/muro/hola.json', route: 'auto', rule: 'content/muro/**' }])
+  assert.deepEqual(r.files, [{ file: 'content/campanas/hola.json', route: 'auto', rule: 'content/campanas/**' }])
 })
 
-test('a new section goes the short way', () => {
-  assert.equal(routeFor(policy, ['content/secciones/faq.json']).route, 'auto')
+test('a new product or destination goes the short way', () => {
+  assert.equal(routeFor(policy, ['catalogo/productos/tarea-3.json']).route, 'auto')
+  assert.equal(routeFor(policy, ['catalogo/destinos/tarea-4.json']).route, 'auto')
+  assert.deepEqual(routeFor(policy, ['catalogo/productos/tarea-3.json']).files[0].rule, 'catalogo/**')
 })
 
-test('data changes always need a human', () => {
-  assert.equal(routeFor(policy, ['data/cifras.json']).route, 'human')
+test('prices and discounts always need a human', () => {
+  assert.equal(routeFor(policy, ['data/precios.json']).route, 'human')
+  assert.equal(routeFor(policy, ['data/descuentos.json']).route, 'human')
 })
 
 test('platform files need a human', () => {
-  for (const file of ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'site/index.html', 'factory/profiles.yaml', 'AGENTS.md', 'package.json']) {
-    assert.equal(routeFor(policy, [file]).route, 'human', file)
-  }
+  const files = ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'factory/profiles.yaml', 'brain/marca.md', 'src/domain/presupuesto.js', 'src/pages/index.astro', 'public/favicon.svg', 'astro.config.mjs', 'AGENTS.md', 'package.json', 'package-lock.json']
+  for (const file of files) assert.equal(routeFor(policy, [file]).route, 'human', file)
 })
 
-test('the strictest route wins: a card plus a data change needs a human', () => {
-  const r = routeFor(policy, ['content/muro/hola.json', 'data/cifras.json'])
+test('the strictest route wins: a campaign plus a price change needs a human', () => {
+  const r = routeFor(policy, ['content/campanas/hola.json', 'data/precios.json'])
   assert.equal(r.route, 'human')
   assert.equal(r.files.length, 2)
 })
@@ -45,17 +47,18 @@ const withDefault = (route) => parsePolicy(readFileSync(`${repo}policy/risk.yaml
 
 test('config/ is not covered by any rule, so it falls to whatever the default says', () => {
   for (const route of ['auto', 'human']) {
-    const r = routeFor(withDefault(route), ['config/entradas.json'])
+    const r = routeFor(withDefault(route), ['config/transporte.json'])
     assert.equal(r.route, route)
-    assert.deepEqual(r.files, [{ file: 'config/entradas.json', route, rule: 'default' }])
+    assert.deepEqual(r.files, [{ file: 'config/transporte.json', route, rule: 'default' }])
   }
-  assert.deepEqual(routeFor(policy, ['config/entradas.json']).files.map((f) => f.rule), ['default'])
+  assert.deepEqual(routeFor(policy, ['config/transporte.json']).files.map((f) => f.rule), ['default'])
 })
 
 test('the one-line fix closes the hole', () => {
   const fixed = withDefault('human')
-  assert.equal(routeFor(fixed, ['config/entradas.json']).route, 'human')
-  assert.equal(routeFor(fixed, ['content/muro/hola.json']).route, 'auto')
+  assert.equal(routeFor(fixed, ['config/transporte.json']).route, 'human')
+  assert.equal(routeFor(fixed, ['content/campanas/hola.json']).route, 'auto')
+  assert.equal(routeFor(fixed, ['catalogo/productos/tarea-1.json']).route, 'auto')
 })
 
 test('an empty change is not allowed through', () => {

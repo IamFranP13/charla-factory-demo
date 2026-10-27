@@ -46,16 +46,16 @@ test('factory.yml: runs the factory with provider vars and the API key secret', 
 test('gate.yml: triggers, stable job name and permissions', () => {
   const wf = load('gate')
   assert.deepEqual(Object.keys(wf.on).sort(), ['pull_request_review', 'pull_request_target'])
-  assert.deepEqual(wf.on.pull_request_target.types, ['opened', 'synchronize', 'reopened'])
+  assert.deepEqual(wf.on.pull_request_target.types, ['opened', 'synchronize', 'reopened', 'closed'])
   assert.deepEqual(wf.on.pull_request_review.types, ['submitted', 'dismissed'])
-  assert.deepEqual(Object.keys(wf.jobs), ['risk-gate', 'rerun-gate'])
+  assert.deepEqual(Object.keys(wf.jobs), ['risk-gate', 'rerun-gate', 'mark-closed'])
   assert.deepEqual(wf.permissions, { contents: 'write', 'pull-requests': 'write' })
 })
 
 test('gate.yml: never checks out or runs the pull request head', () => {
   const wf = load('gate')
   // The job condition may read the head repo's name (to skip forks); nothing else may touch the head.
-  const text = raw('gate').replace('github.event.pull_request.head.repo.full_name == github.repository', '')
+  const text = raw('gate').replaceAll('github.event.pull_request.head.repo.full_name == github.repository', '')
   assert.doesNotMatch(text, /pull_request\.head/)
   assert.doesNotMatch(text, /refs\/pull\//)
   assert.doesNotMatch(text, /github\.head_ref/)
@@ -124,8 +124,8 @@ test('every action is pinned to a major version', () => {
   }
 })
 
-test('gate.yml: the required check "risk-gate" is only produced by the pull request event', () => {
-  assert.equal(load('gate').jobs['risk-gate'].if, "github.event_name == 'pull_request_target'")
+test('gate.yml: the required check "risk-gate" is only produced by a judging pull request event, never by closing', () => {
+  assert.equal(load('gate').jobs['risk-gate'].if, "github.event_name == 'pull_request_target' && github.event.action != 'closed'")
 })
 
 test('gate.yml: an approval re-runs the original risk-gate run instead of adding a second check with the same name', () => {
@@ -136,5 +136,52 @@ test('gate.yml: an approval re-runs the original risk-gate run instead of adding
   const script = job.steps.map((s) => s.run ?? '').join('\n')
   assert.match(script, /--event pull_request_target/)
   assert.match(script, /gh run rerun "\$id"/)
+  assert.equal(job.env.PR, '${{ github.event.pull_request.number }}')
+})
+
+// --- the task state in the issue body ---
+
+test('factory.yml: the pull request number reaches the issue state only through the script', () => {
+  const list = steps(load('factory'), 'factory')
+  const pr = list.find((s) => s.id === 'pr')
+  assert.match(pr.run, /number=/, 'the PR step exposes the number it created')
+  const mark = list.find((s) => s.run?.includes('--pr'))
+  assert.match(mark.run, /node scripts\/factory\.mjs --issue "\$ISSUE" --pr "\$PR_NUMBER"/)
+  assert.equal(mark.env.PR_NUMBER, '${{ steps.pr.outputs.number }}')
+  assert.match(mark.if, /steps\.pr\.outcome == 'success'|steps\.pr\.outputs\.number/)
+  assert.ok(list.indexOf(mark) > list.indexOf(pr))
+  for (const s of list) assert.doesNotMatch(s.run ?? '', /factory:state|gh api.*PATCH/, 'no workflow edits the state by hand')
+})
+
+test('factory.yml: still no expression in the mark step run script and the GitHub token is the default one', () => {
+  const mark = steps(load('factory'), 'factory').find((s) => s.run?.includes('--pr'))
+  assert.doesNotMatch(mark.run, /\$\{\{/)
+  assert.equal(mark.env?.GH_TOKEN ?? '${{ github.token }}', '${{ github.token }}')
+})
+
+test('gate.yml: the judging job may write issues (to update the task state) and nothing else changed', () => {
+  const job = load('gate').jobs['risk-gate']
+  assert.deepEqual(job.permissions, { contents: 'write', 'pull-requests': 'write', issues: 'write' })
+  const gate = steps(load('gate'), 'risk-gate').find((s) => s.id === 'gate')
+  assert.match(gate.run, /node scripts\/gate\.mjs --pr "\$PR"/)
+})
+
+test('gate.yml: closing a PR does not cancel or share a run with the judgement', () => {
+  const group = load('gate').concurrency.group
+  assert.match(group, /github\.event\.action == 'closed'/)
+})
+
+test('gate.yml: mark-closed runs only on closed PRs of this repository, with the base commit, and merges nothing', () => {
+  const wf = load('gate')
+  const job = wf.jobs['mark-closed']
+  assert.equal(job.if, "github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository")
+  assert.deepEqual(job.permissions, { contents: 'read', issues: 'write', 'pull-requests': 'read' })
+  const checkout = job.steps.find((s) => s.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkout.with.ref, '${{ github.event.pull_request.base.sha }}')
+  assert.equal(checkout.with['persist-credentials'], false)
+  const run = job.steps.map((s) => s.run ?? '').join('\n')
+  assert.match(run, /node scripts\/gate\.mjs --closed "\$PR"/)
+  assert.doesNotMatch(run, /gh pr merge/)
+  assert.equal(job.steps.some((s) => s.uses?.startsWith('actions/create-github-app-token@')), false, 'no App key')
   assert.equal(job.env.PR, '${{ github.event.pull_request.number }}')
 })

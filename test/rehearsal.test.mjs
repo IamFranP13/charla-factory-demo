@@ -12,11 +12,14 @@ function liveRepo() {
   const root = mkdtempSync(join(tmpdir(), 'live-'))
   cpSync(join(repo, 'factory'), join(root, 'factory'), { recursive: true })
   for (const [path, value] of Object.entries({
-    'content/muro/bienvenida.json': { texto: 'semilla' },
-    'content/muro/tarea-7.json': { texto: 'del público' },
-    'content/secciones/tarea-8.json': { titulo: 'del público', cuerpo: 'x' },
-    'config/entradas.json': { precio: 0, aforo: 200 },
-    'data/cifras.json': { asistentes: 999 },
+    'content/campanas/bienvenida.json': { titulo: 'semilla', texto: 'x', color: 'oliva' },
+    'content/campanas/tarea-7.json': { titulo: 'del público', texto: 'x', color: 'oliva' },
+    'catalogo/productos/limon-verna.json': { nombre: 'Limón' },
+    'catalogo/productos/tarea-8.json': { nombre: 'del público' },
+    'catalogo/destinos/tarea-9.json': { pais: 'del público' },
+    'config/transporte.json': { 'alemania-hamburgo': { eurPorKg: 0, minimo: 0 } },
+    'data/precios.json': { 'limon-verna': 99 },
+    'data/descuentos.json': { tramos: [{ desdeKg: 1, porcentaje: 50 }] },
   })) {
     mkdirSync(join(root, path, '..'), { recursive: true })
     writeFileSync(join(root, path), JSON.stringify(value))
@@ -27,19 +30,28 @@ function liveRepo() {
 test('a rehearsal copy keeps the platform and seed content, drops audience files and resets the seed state', () => {
   const live = liveRepo()
   const copy = mkdtempSync(join(tmpdir(), 'copy-'))
-  rehearsalCopy(live, copy, ['content', 'config', 'data', 'factory'])
+  rehearsalCopy(live, copy, ['content', 'catalogo', 'config', 'data', 'factory'])
 
-  assert.ok(existsSync(join(copy, 'content/muro/bienvenida.json')))
-  assert.equal(existsSync(join(copy, 'content/muro/tarea-7.json')), false)
-  assert.equal(existsSync(join(copy, 'content/secciones/tarea-8.json')), false)
+  assert.ok(existsSync(join(copy, 'content/campanas/bienvenida.json')))
+  assert.ok(existsSync(join(copy, 'catalogo/productos/limon-verna.json')))
+  for (const gone of ['content/campanas/tarea-7.json', 'catalogo/productos/tarea-8.json', 'catalogo/destinos/tarea-9.json']) {
+    assert.equal(existsSync(join(copy, gone)), false, gone)
+  }
   const seed = (p) => JSON.parse(readFileSync(join(repo, 'factory/seed', p), 'utf8'))
-  assert.deepEqual(JSON.parse(readFileSync(join(copy, 'config/entradas.json'), 'utf8')), seed('config/entradas.json'))
-  assert.deepEqual(JSON.parse(readFileSync(join(copy, 'data/cifras.json'), 'utf8')), seed('data/cifras.json'))
+  for (const p of ['config/transporte.json', 'data/precios.json', 'data/descuentos.json']) {
+    assert.deepEqual(JSON.parse(readFileSync(join(copy, p), 'utf8')), seed(p), p)
+  }
 })
 
 test('the seed files are valid content', async () => {
   const { validateFile } = await import('../lib/schemas.js')
-  for (const p of ['config/entradas.json', 'data/cifras.json']) {
+  for (const p of ['config/transporte.json', 'data/precios.json', 'data/descuentos.json']) {
     assert.deepEqual(validateFile(p, readFileSync(join(repo, 'factory/seed', p), 'utf8')), { ok: true, errors: [] }, p)
+  }
+})
+
+test('the old wall, sections, figures and ticket config are gone, seed copies included', () => {
+  for (const gone of ['content/muro', 'content/secciones', 'data/cifras.json', 'config/entradas.json', 'factory/seed/data/cifras.json', 'factory/seed/config/entradas.json']) {
+    assert.equal(existsSync(join(repo, gone)), false, gone)
   }
 })

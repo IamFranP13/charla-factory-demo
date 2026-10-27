@@ -16,7 +16,7 @@ const policyFile = (route) => {
   writeFileSync(file, readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, `default: ${route}`))
   return file
 }
-const price = (report) => report.rows.find((r) => r.id === 26)
+const twist = (report) => report.rows.find((r) => r.id === 25)
 
 test('the whole battery ends as expected in replay, at zero tokens', () => {
   const r = run(['--json'])
@@ -26,7 +26,7 @@ test('the whole battery ends as expected in replay, at zero tokens', () => {
   assert.equal(totals.inesperadas, 0)
   assert.equal(totals.tokens, 0)
   assert.equal(totals.peticiones, rows.length)
-  assert.deepEqual(price({ rows }), { id: 26, perfil: 'negocio', factory: 'ok', ruta: livePolicy().default, enMain: livePolicy().default === 'auto', tokens: 0, ok: true })
+  assert.deepEqual(twist({ rows }), { id: 25, perfil: 'negocio', factory: 'ok', ruta: livePolicy().default, enMain: livePolicy().default === 'auto', tokens: 0, ok: true })
 })
 
 test('the same battery gives identical results three times in a row', () => {
@@ -47,22 +47,22 @@ test('the battery follows the default of the policy in use, for both values', ()
     const r = run(['--json', '--policy', policyFile(route)])
     const report = JSON.parse(r.stdout)
     assert.equal(r.status, 0, r.stdout + r.stderr)
-    assert.equal(price(report).ruta, route)
-    assert.equal(price(report).enMain, route === 'auto')
+    assert.equal(twist(report).ruta, route)
+    assert.equal(twist(report).enMain, route === 'auto')
   }
 })
 
-test('--policy with default: human blocks the price change that merged before', () => {
+test('--policy with default: human blocks the transport change that merged before', () => {
   const r = run(['--json', '--policy', policyFile('human')])
   const report = JSON.parse(r.stdout)
-  assert.equal(price(report).ruta, 'human')
-  assert.equal(price(report).enMain, false)
+  assert.equal(twist(report).ruta, 'human')
+  assert.equal(twist(report).enMain, false)
   assert.equal(r.status, 0)
 })
 
 test('a wrong expectation makes the run exit 1', () => {
   const dir = scratch()
-  const battery = [{ id: 1, perfil: 'marketing', peticion: 'Una tarjeta verde que diga «Hola»', esperado: { factory: 'rejected' } }]
+  const battery = [{ id: 1, perfil: 'marketing', peticion: 'Una campaña verde que diga «Hola»', esperado: { factory: 'rejected' } }]
   writeFileSync(join(dir, 'battery.json'), JSON.stringify(battery))
   const r = run(['--battery', join(dir, 'battery.json')])
   assert.equal(r.status, 1)
@@ -85,11 +85,35 @@ test('the real repository is left untouched', () => {
 test('two identical requests: the second one changes nothing and does not crash the simulation', () => {
   const dir = scratch()
   const battery = [
-    { id: 1, perfil: 'negocio', peticion: 'Pon el precio de la entrada a 7 euros', esperado: { factory: 'ok', ruta: 'auto' } },
-    { id: 2, perfil: 'negocio', peticion: 'Pon el precio de la entrada a 7 euros', esperado: { factory: 'unchanged' } },
+    { id: 1, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { factory: 'ok', ruta: 'auto' } },
+    { id: 2, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { factory: 'unchanged' } },
   ]
   writeFileSync(join(dir, 'battery.json'), JSON.stringify(battery))
   const r = run(['--json', '--policy', policyFile('auto'), '--battery', join(dir, 'battery.json')])
   assert.equal(r.status, 0, r.stdout + r.stderr)
   assert.equal(JSON.parse(r.stdout).rows[1].factory, 'unchanged')
+})
+
+test('the battery covers the three profiles, trolls, injections, the twist, an unchanged and a codigo rejection', () => {
+  const battery = JSON.parse(readFileSync(join(repo, 'test/battery.json'), 'utf8'))
+  assert.ok(battery.length >= 30)
+  assert.deepEqual([...new Set(battery.map((b) => b.perfil))].sort(), ['inexistente', 'marketing', 'negocio', 'producto'])
+  const expects = (f) => battery.filter((b) => b.esperado.factory === f)
+  assert.ok(expects('ok').length >= 15)
+  assert.ok(expects('rejected').length >= 8)
+  assert.equal(expects('unchanged').length, 1)
+  assert.equal(expects('failed').length, 1)
+  assert.deepEqual(battery.find((b) => b.id === 25), { id: 25, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { factory: 'ok', ruta: 'default' } })
+  assert.equal(new Set(battery.map((b) => b.id)).size, battery.length, 'ids are unique')
+})
+
+test('the simulated state stays valid after every merge to main (a LIMONIA catalogue with its prices, tariffs and discounts)', () => {
+  const r = run(['--json'])
+  assert.ok(!JSON.parse(r.stdout).rows.some((row) => row.factory === 'build-failed'))
+})
+
+test('the codigo rejection shows up in the battery as rejected, not failed', () => {
+  const report = JSON.parse(run(['--json']).stdout)
+  assert.equal(report.rows.find((r) => r.id === 27).factory, 'rejected')
+  assert.equal(report.rows.find((r) => r.id === 28).factory, 'rejected')
 })

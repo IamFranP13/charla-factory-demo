@@ -9,19 +9,19 @@ const repo = new URL('..', import.meta.url).pathname
 const script = join(repo, 'scripts/preflight.mjs')
 
 // A scratch copy with only what the preflight reads.
-function scratchRepo({ policy, price } = {}) {
+function scratchRepo({ policy, tariff } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'preflight-'))
   for (const dir of ['policy', 'config', 'factory/seed/config']) mkdirSync(join(root, dir), { recursive: true })
   const risk = readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, 'default: auto')
   writeFileSync(join(root, 'policy/risk.yaml'), policy ? policy(risk) : risk)
-  cpSync(join(repo, 'factory/seed/config/entradas.json'), join(root, 'factory/seed/config/entradas.json'))
-  const seed = JSON.parse(readFileSync(join(root, 'factory/seed/config/entradas.json'), 'utf8'))
-  writeFileSync(join(root, 'config/entradas.json'), JSON.stringify({ ...seed, precio: price ?? seed.precio }))
+  cpSync(join(repo, 'factory/seed/config/transporte.json'), join(root, 'factory/seed/config/transporte.json'))
+  const seed = JSON.parse(readFileSync(join(root, 'factory/seed/config/transporte.json'), 'utf8'))
+  writeFileSync(join(root, 'config/transporte.json'), JSON.stringify({ ...seed, 'alemania-hamburgo': tariff ?? seed['alemania-hamburgo'] }))
   return root
 }
 const run = (root) => spawnSync(process.execPath, [script, '--root', root], { encoding: 'utf8' })
 
-test('everything ready: open hole, factory set, seed price: exit 0', () => {
+test('everything ready: open hole, factory set, seed tariff: exit 0', () => {
   const r = run(scratchRepo())
   assert.equal(r.status, 0, r.stdout + r.stderr)
   assert.equal(r.stdout.match(/✓/g).length, 3)
@@ -34,11 +34,11 @@ test('default: human (hole already closed): exit 1 and the ✗ line names the ho
   assert.match(r.stdout, /✗.*agujero/)
 })
 
-test('the price is not the seed price: exit 1 and it says how to reset', () => {
-  const r = run(scratchRepo({ price: 0 }))
+test('transport to Germany is not the seed tariff (the twist already happened): exit 1 and it says how to reset', () => {
+  const r = run(scratchRepo({ tariff: { eurPorKg: 0, minimo: 0 } }))
   assert.equal(r.status, 1)
-  assert.match(r.stdout, /✗.*precio/)
-  assert.match(r.stdout, /factory\/seed\/config\/entradas\.json/)
+  assert.match(r.stdout, /✗.*transporte.*alemania-hamburgo/i)
+  assert.match(r.stdout, /factory\/seed\/config\/transporte\.json/)
 })
 
 test('an empty factory login: exit 1', () => {

@@ -4,57 +4,19 @@ import { validateFile } from '../lib/schemas.js'
 
 const json = (value) => JSON.stringify(value)
 
-test('a wall card with text, author, emoji and color is valid', () => {
-  const result = validateFile('content/muro/hola-sala.json', json({ texto: 'Hola desde la fila 3', autor: 'Ana', emoji: '👋', color: 'amarillo' }))
-  assert.deepEqual(result, { ok: true, errors: [] })
-})
-
-test('a wall card needs text of at most 140 characters', () => {
-  assert.equal(validateFile('content/muro/a.json', json({})).ok, false)
-  assert.equal(validateFile('content/muro/a.json', json({ texto: 'x'.repeat(141) })).ok, false)
-  assert.equal(validateFile('content/muro/a.json', json({ texto: 'x'.repeat(140) })).ok, true)
-})
-
-test('plain text only: HTML and links are rejected', () => {
-  for (const texto of ['<script>alert(1)</script>', 'mira https://example.com', 'a > b']) {
-    const result = validateFile('content/muro/a.json', json({ texto }))
-    assert.equal(result.ok, false, texto)
-  }
-})
-
-test('unknown fields and unknown colors are rejected', () => {
-  assert.equal(validateFile('content/muro/a.json', json({ texto: 'hola', extra: 1 })).ok, false)
-  assert.equal(validateFile('content/muro/a.json', json({ texto: 'hola', color: 'fucsia' })).ok, false)
-})
-
-test('a section has a title and a body', () => {
-  assert.equal(validateFile('content/secciones/faq.json', json({ titulo: 'FAQ', cuerpo: 'Preguntas al final.' })).ok, true)
-  assert.equal(validateFile('content/secciones/faq.json', json({ titulo: 'FAQ' })).ok, false)
-})
-
-test('data files hold short text or number values', () => {
-  assert.equal(validateFile('data/cifras.json', json({ asistentes: 120, ciudad: 'Valencia' })).ok, true)
-  assert.equal(validateFile('data/cifras.json', json({ lista: [1, 2] })).ok, false)
-})
-
-test('config/entradas.json holds a non-negative price and a capacity', () => {
-  assert.equal(validateFile('config/entradas.json', json({ precio: 0, aforo: 200 })).ok, true)
-  assert.equal(validateFile('config/entradas.json', json({ precio: -5, aforo: 200 })).ok, false)
-})
-
 test('file names are lowercase slugs ending in .json', () => {
-  assert.equal(validateFile('content/muro/Hola Sala.json', json({ texto: 'hola' })).ok, false)
-  assert.equal(validateFile('content/muro/../../x.json', json({ texto: 'hola' })).ok, false)
+  assert.equal(validateFile('content/campanas/Hola Sala.json', json({ titulo: 'a', texto: 'b', color: 'oliva' })).ok, false)
+  assert.equal(validateFile('content/campanas/../../x.json', json({ titulo: 'a', texto: 'b', color: 'oliva' })).ok, false)
 })
 
-test('files outside the content folders have no schema', () => {
+test('files outside the data folders have no schema', () => {
   const result = validateFile('policy/risk.yaml', 'default: auto')
   assert.equal(result.ok, false)
   assert.match(result.errors[0], /no schema/)
 })
 
 test('invalid JSON is reported, not thrown', () => {
-  const result = validateFile('content/muro/a.json', '{nope')
+  const result = validateFile('content/campanas/a.json', '{nope')
   assert.equal(result.ok, false)
   assert.match(result.errors[0], /JSON/)
 })
@@ -175,9 +137,15 @@ test('config/transporte.json: eurPorKg 0..10 and minimo 0..5000 per destination 
   assert.equal(f({ 'Bad Key': { eurPorKg: 1, minimo: 1 } }).ok, false)
 })
 
-test('old schemas keep working: data/ stays free for other files, config/ allows only entradas and transporte', () => {
-  assert.equal(validateFile('data/cifras.json', json({ asistentes: 3 })).ok, true)
-  assert.equal(validateFile('data/cifras.json', json({ asistentes: 'x'.repeat(121) })).ok, false)
-  assert.equal(validateFile('config/entradas.json', json({ precio: 5, aforo: 10 })).ok, true)
-  assert.equal(validateFile('config/otro.json', json({ precio: 5, aforo: 10 })).ok, false)
+test('the retired folders have no schema any more: wall, sections, figures and ticket config', () => {
+  for (const path of ['content/muro/a.json', 'content/secciones/a.json', 'data/cifras.json', 'config/entradas.json']) {
+    const result = validateFile(path, json({ texto: 'hola' }))
+    assert.equal(result.ok, false, path)
+  }
+  assert.match(validateFile('content/muro/a.json', json({ texto: 'hola' })).errors[0], /no schema/)
+})
+
+test('data/ and config/ only accept their named files', () => {
+  assert.equal(validateFile('data/otro.json', json({ a: 1 })).ok, false)
+  assert.equal(validateFile('config/otro.json', json({ a: { eurPorKg: 1, minimo: 1 } })).ok, false)
 })

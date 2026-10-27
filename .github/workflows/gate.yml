@@ -7,7 +7,7 @@ name: Risk gate
 # checkout below names the base branch explicitly for every event.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
   pull_request_review:
     types: [submitted, dismissed]
 
@@ -20,18 +20,25 @@ permissions:
   contents: write
   pull-requests: write
 
+# Closing a PR is a separate run: it must not cancel a verdict in progress, nor be cancelled by one.
 concurrency:
-  group: risk-gate-${{ github.event.pull_request.number }}
+  group: risk-gate-${{ github.event.pull_request.number }}-${{ github.event.action == 'closed' && 'closed' || 'judge' }}
   cancel-in-progress: true
 
 jobs:
   # Stable job name: "risk-gate" is the required status check on main.
   # Only the pull request event produces it: a check with the same name from another event
   # lands in a separate check suite, and branch protection keeps seeing the old failure.
+  # A closed PR is not judged again (see mark-closed).
   risk-gate:
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # issues: write lets the gate update the task state in the linked issue's body (it never decides anything with it).
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
     env:
       PR: ${{ github.event.pull_request.number }}
       GH_TOKEN: ${{ github.token }}
@@ -47,7 +54,7 @@ jobs:
           cache: npm
 
       # Installs the dependencies of the BASE checkout (just `yaml`).
-      - run: npm ci
+      - run: npm ci --omit=dev
 
       # The gate exits 1 when it blocks (waiting for a human). That must fail the
       # job, but the label/comment steps below still need to run, so this step
@@ -106,3 +113,32 @@ jobs:
           gh run watch "$id" -R "$GITHUB_REPOSITORY" > /dev/null || true
           gh run rerun "$id" -R "$GITHUB_REPOSITORY"
           echo "Re-ran risk-gate run $id for $head"
+
+  # The PR was closed: record the merge (or the refusal) in the task state of the linked issue.
+  # SECURITY: pull_request_target with a write token, so it checks out the base commit the PR was
+  # opened against (never the PR head), has no App key and merges nothing. Fork PRs are skipped.
+  mark-closed:
+    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --omit=dev
+
+      - run: node scripts/gate.mjs --closed "$PR"

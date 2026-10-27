@@ -9,22 +9,24 @@ The whole platform is about a thousand lines of plain JavaScript and three workf
 ## How it works
 
 ```
-QR → form (site/) → Pages Function (functions/api/peticion.js) → GitHub issue labelled "entrada"
+QR → form (src/pages/) → Pages Function (functions/api/peticion.js) → GitHub issue labelled "entrada"
                                                                         ↓
-              factory.yml: Spec writer → Builder → reviewers (one loop back) → pull request
-              every station comments on the issue: the issue is the audit trail
+              factory.yml: spec (+ brain/) → build → seguridad · ux · ui · codigo in parallel → approver
+              (one loop back to build) → pull request. Every station comments on the issue (the audit
+              trail) and updates the task state kept in the issue body
                                                                         ↓
               gate.yml: scripts/gate.mjs reads policy/risk.yaml and the PR's changed files
                     ↓                                               ↓
             low risk → auto-merge                      high risk → blocked until an approver approves
                     ↓
-            Cloudflare Pages deploys main
+            Cloudflare Pages deploys main (produccion)
 ```
 
 | Piece | Where | What it shows |
 |-------|-------|---------------|
-| Profiles | `factory/profiles.yaml` | Marketing (wall cards), Producto (sections), Negocio (figures and config). Each one may only write in its folders. |
-| Stations | `lib/factory.js`, `factory/prompts/` | Models only fill in content. Code chooses paths, validates every file (`lib/schemas.js`) and keeps score. |
+| Profiles | `factory/profiles.yaml` | The company is LIMONIA. Marketing (campaigns in `content/campanas/`), Producto (a new product or destination in `catalogo/`), Negocio (prices, discounts and transport: `data/precios.json`, `data/descuentos.json`, `config/transporte.json`). Each one may only write in its places. |
+| Stations | `lib/factory.js`, `factory/prompts/`, `brain/` | `spec` reads the Brain (brand, tone, decisions, human-only) · `build` · `seguridad`, `ux`, `ui` (models, in parallel) and `codigo` (code, no model: schemas, catalogue rules and every sample quote in `factory/muestras.json`) · `approver` (code: 4/4 or back to `build` once). Models only fill in content; code chooses paths and keeps score. |
+| Task state | `<!-- factory:state {...} -->` in the issue body | One station map per task (`pendiente`, `en_curso`, `ok`, `rechazada`, `error`) for the board. Written only by `scripts/factory.mjs` and `scripts/gate.mjs`, rendered from known fields (model text can never reach it). `puerta` and `merge` are set by the gate; `produccion` stays `pendiente` (Cloudflare deploys main; nothing in this repository can confirm it). |
 | Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Fails closed. Approvals count only on the current head. |
 | Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model. |
 | Intake | `lib/intake.js` | Requests of at most 150 characters; the server draws the profile at random, in equal parts. Turnstile, a task cap and a kill switch. Input is data, never instructions. |
@@ -36,8 +38,8 @@ QR → form (site/) → Pages Function (functions/api/peticion.js) → GitHub is
 npm install
 npm test                       # everything, including workflow structure checks
 npm run simulate               # the whole pipeline on a 32-request battery, replay model
-npm run factory -- --profile marketing --request "Una tarjeta verde que diga «Hola desde la fila 3»" --id 1
-npm run gate -- content/muro/tarea-1.json config/entradas.json data/cifras.json
+npm run factory -- --profile marketing --request "Una campaña oliva que diga «Limones de temporada»" --id 1
+npm run gate -- content/campanas/tarea-1.json config/transporte.json data/precios.json
 npm run build                  # → dist/
 ```
 
@@ -50,7 +52,7 @@ FACTORY_PROVIDER=openai FACTORY_API_URL=https://api.deepseek.com FACTORY_MODEL=<
 
 ## The demo twist (on purpose)
 
-`policy/risk.yaml` protects `data/` but forgets `config/`, and its default is `auto`. A Negocio request such as *"baja el precio de la entrada a 0 euros"* edits `config/entradas.json`, passes every reviewer and **merges without a human**. The issue's trail shows why: the gate took the `default` rule.
+`policy/risk.yaml` protects `data/` (prices and discounts) but forgets `config/`, and its default is `auto`. A Negocio request such as *"Pon el transporte a Alemania gratis"* edits `config/transporte.json`, passes the four reviewers (`codigo` too: every sample quote still works) and **merges without a human**: the calculator now quotes free transport to Germany for everyone. The issue's trail shows why: the gate took the `default` rule.
 
 The fix is one line, no prompt touched:
 
@@ -59,9 +61,9 @@ The fix is one line, no prompt touched:
 +default: human
 ```
 
-Run `npm run preflight` before the talk: it checks the hole is open, `factory` is set and the price is back at the seed value.
+Run `npm run preflight` before the talk: it checks the hole is open, `factory` is set and the transport to `alemania-hamburgo` is back at the seed value (`factory/seed/config/transporte.json`).
 
-Re-run the request **asking for a different price** (e.g. *"Sube el precio de la entrada a 50 euros"*): asking for the value that is already there ends as `unchanged` and opens no PR. It is now blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
+Re-run the request **asking for something that is not there yet** (e.g. *"Pon el transporte a Alemania a 0,05 euros por kilo"*): asking for the value that is already there ends as `unchanged` and opens no PR. It is now blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
 
 The tests do not pin the hole: they check the mechanism (`config/` takes the `default` route, whatever its value), so the fix does not turn CI red. `npm run preflight` is what warns if the hole is closed by accident.
 
