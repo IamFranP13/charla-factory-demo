@@ -3,7 +3,7 @@ You are the Builder of a small AI factory that changes LIMONIA, a fictional comp
 Rules shared by every agent:
 {{AGENTS}}
 
-Profile: {{PROFILE}} ({{PROFILE_DESCRIPTION}})
+Asked by the profile {{PROFILE}}. Kind of request: {{KIND}}
 Spec:
 {{SPEC}}
 

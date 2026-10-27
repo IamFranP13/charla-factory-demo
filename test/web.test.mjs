@@ -18,6 +18,9 @@ let pages
 // its cache into outDir and that fails across devices; .test-dist-* is gitignored and removed afterwards); every test reads the generated HTML.
 before(() => {
   out = mkdtempSync(join(repo, '.test-dist-'))
+  // The pages read the feature registry that `npm run build` generates first.
+  const features = spawnSync(process.execPath, [join(repo, 'scripts/build-features.mjs')], { cwd: repo, encoding: 'utf8' })
+  assert.equal(features.status, 0, features.stdout + features.stderr)
   const build = spawnSync(join(repo, 'node_modules/.bin/astro'), ['build', '--outDir', out], {
     cwd: repo,
     encoding: 'utf8',
@@ -50,6 +53,20 @@ test('the request form allows exactly the characters the intake accepts and lets
   assert.doesNotMatch(pages.home, /name="perfil"/)
   assert.match(pages.home, /Pídele un cambio a LIMONIA/)
   assert.match(pages.home, /al azar/)
+})
+
+test('the site copy names the three profiles, and the follow-up page shows the kind the spec writer gave the request', () => {
+  assert.match(pages.home, /Marketing, Producto o Negocio/)
+  assert.doesNotMatch(pages.home, /Desarrollo/)
+  assert.match(clientCode(pages.tarea), /\.tipo\b/, 'the kind of the request (campana, precios, bug, feature...)')
+})
+
+test('features written by the factory are painted by one generic component on their page, as escaped text', () => {
+  assert.match(pages.catalogo, /<section[^>]*data-feature="ordenar-catalogo"/)
+  assert.match(pages.catalogo, /<h2[^>]*>Del más barato al más caro<\/h2>/)
+  assert.match(pages.catalogo, /<li><span>[^<]+<\/span><strong>\d+,\d\d €\/kg<\/strong><\/li>/)
+  assert.doesNotMatch(pages.home, /data-feature="ordenar-catalogo"/)
+  assert.doesNotMatch(pages.presupuesto, /data-feature="ordenar-catalogo"/)
 })
 
 test('the Turnstile site key is read at build time', () => {

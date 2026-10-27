@@ -1,0 +1,30 @@
+---
+// One generic component paints every feature of a page: the features return data, this turns it into markup,
+// and Astro escapes every text. A feature that does not follow the contract is not painted (src/lib/features.js).
+import registro from '../features/index.js'
+import { paraPagina } from '../lib/features.js'
+
+const { donde } = Astro.props
+const features = paraPagina(registro, donde)
+---
+{features.map((f) => (
+  <section class="contenedor seccion feature" data-feature={f.id} aria-labelledby={`feature-${f.id}`}>
+    <h2 id={`feature-${f.id}`}>{f.titulo}</h2>
+    {f.resultado.tipo === 'lista' && (
+      <ul class="feature__lista">
+        {f.resultado.items.map((item) => (
+          <li><span>{item.texto}</span>{item.valor !== undefined && <strong>{item.valor}</strong>}</li>
+        ))}
+      </ul>
+    )}
+    {f.resultado.tipo === 'tabla' && (
+      <div class="feature__tabla">
+        <table>
+          <thead><tr>{f.resultado.columnas.map((columna) => <th scope="col">{columna}</th>)}</tr></thead>
+          <tbody>{f.resultado.filas.map((fila) => <tr>{fila.map((celda) => <td>{celda}</td>)}</tr>)}</tbody>
+        </table>
+      </div>
+    )}
+    {f.resultado.tipo === 'texto' && <p class="feature__texto">{f.resultado.texto}</p>}
+  </section>
+))}

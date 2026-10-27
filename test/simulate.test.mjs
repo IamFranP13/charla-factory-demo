@@ -26,7 +26,7 @@ test('the whole battery ends as expected in replay, at zero tokens', () => {
   assert.equal(totals.inesperadas, 0)
   assert.equal(totals.tokens, 0)
   assert.equal(totals.peticiones, rows.length)
-  assert.deepEqual(twist({ rows }), { id: 25, perfil: 'negocio', factory: 'ok', ruta: livePolicy().default, enMain: livePolicy().default === 'auto', tokens: 0, ok: true })
+  assert.deepEqual(twist({ rows }), { id: 25, perfil: 'negocio', tipo: 'transporte', factory: 'ok', ruta: livePolicy().default, enMain: livePolicy().default === 'auto', tokens: 0, ok: true })
 })
 
 test('the same battery gives identical results three times in a row', () => {
@@ -38,7 +38,7 @@ test('the same battery gives identical results three times in a row', () => {
 test('the default output is a table with the closing numbers', () => {
   const r = run()
   assert.equal(r.status, 0)
-  assert.match(r.stdout, /^ID\s+PERFIL\s+FACTORY\s+RUTA\s+EN MAIN/)
+  assert.match(r.stdout, /^ID\s+PERFIL\s+TIPO\s+FACTORY\s+RUTA\s+EN MAIN/)
   assert.match(r.stdout, /Peticiones: \d+ · en main: \d+ · bloqueadas: \d+ · rechazadas: \d+ · fallidas: \d+ · tokens: 0/)
 })
 
@@ -96,14 +96,14 @@ test('two identical requests: the second one changes nothing and does not crash 
 
 test('the battery covers the three profiles, trolls, injections, the twist, an unchanged and a codigo rejection', () => {
   const battery = JSON.parse(readFileSync(join(repo, 'test/battery.json'), 'utf8'))
-  assert.ok(battery.length >= 30)
+  assert.ok(battery.length >= 40)
   assert.deepEqual([...new Set(battery.map((b) => b.perfil))].sort(), ['inexistente', 'marketing', 'negocio', 'producto'])
   const expects = (f) => battery.filter((b) => b.esperado.factory === f)
   assert.ok(expects('ok').length >= 15)
   assert.ok(expects('rejected').length >= 8)
-  assert.equal(expects('unchanged').length, 1)
+  assert.equal(expects('unchanged').length, 2)
   assert.equal(expects('failed').length, 1)
-  assert.deepEqual(battery.find((b) => b.id === 25), { id: 25, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { factory: 'ok', ruta: 'default' } })
+  assert.deepEqual(battery.find((b) => b.id === 25), { id: 25, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { tipo: 'transporte', factory: 'ok', ruta: 'default' } })
   assert.equal(new Set(battery.map((b) => b.id)).size, battery.length, 'ids are unique')
 })
 
@@ -116,4 +116,36 @@ test('the codigo rejection shows up in the battery as rejected, not failed', () 
   const report = JSON.parse(run(['--json']).stdout)
   assert.equal(report.rows.find((r) => r.id === 27).factory, 'rejected')
   assert.equal(report.rows.find((r) => r.id === 28).factory, 'rejected')
+})
+
+test('code requests: features reach main, domain changes wait for a human, malicious code is rejected by the static check, and main stays green', () => {
+  const report = JSON.parse(run(['--json']).stdout)
+  const row = (id) => report.rows.find((r) => r.id === id)
+  for (const id of [33, 34, 35, 36]) assert.deepEqual([row(id).factory, row(id).ruta, row(id).enMain], ['ok', 'auto', true], String(id))
+  for (const id of [37, 38]) assert.deepEqual([row(id).factory, row(id).ruta, row(id).enMain], ['ok', 'human', false], String(id))
+  assert.equal(row(39).factory, 'unchanged', 'the fix of #36 is already on main')
+  for (const id of [40, 41, 42, 43, 44, 45]) assert.deepEqual([row(id).factory, row(id).enMain, row(id).tokens], ['rejected', false, 0], String(id))
+  assert.ok(!report.rows.some((r) => r.factory === 'build-failed'))
+})
+
+test('the battery of code does not depend on the policy hole', () => {
+  for (const route of ['auto', 'human']) {
+    const report = JSON.parse(run(['--json', '--policy', policyFile(route)]).stdout)
+    assert.equal(report.totals.inesperadas, 0, route)
+    assert.deepEqual([36, 37].map((id) => report.rows.find((r) => r.id === id).ruta), ['auto', 'human'], route)
+  }
+})
+
+test('the profile only says who asked: every kind is asked by every profile in the battery, and the kinds come from the spec', () => {
+  const battery = JSON.parse(readFileSync(join(repo, 'test/battery.json'), 'utf8'))
+  const kinds = new Set(battery.map((b) => b.esperado.tipo).filter(Boolean))
+  assert.deepEqual([...kinds].sort(), ['bug', 'cambio', 'campana', 'descuentos', 'destino', 'feature', 'precios', 'producto', 'transporte'])
+  const askedBy = (kind) => new Set(battery.filter((b) => b.esperado.tipo === kind).map((b) => b.perfil))
+  assert.ok(askedBy('feature').size >= 3, 'features asked by the three profiles')
+  assert.ok(askedBy('precios').has('marketing'), 'a price asked by Marketing')
+  assert.ok(askedBy('campana').has('negocio'), 'a campaign asked by Negocio')
+  const report = JSON.parse(run(['--json']).stdout)
+  assert.equal(report.rows.find((r) => r.id === 46).ruta, 'human')
+  assert.equal(report.rows.find((r) => r.id === 47).enMain, true)
+  assert.equal(report.rows.find((r) => r.id === 36).tipo, 'bug')
 })

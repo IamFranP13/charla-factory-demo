@@ -4,7 +4,7 @@ A tiny AI factory, built for the talk *Vibe Engineering a escala de empresa*.
 
 The audience scans a QR code and asks for a change to this website. A chain of cheap agents builds it. A **risk gate written in code, not in a prompt** decides whether the change goes straight to production or waits for a human.
 
-The whole platform is about a thousand lines of plain JavaScript and three workflows. That is the point of the talk: **an AI factory is not an AI problem, it is a platform problem.**
+The whole platform is a couple of thousand lines of plain JavaScript and three workflows. That is the point of the talk: **an AI factory is not an AI problem, it is a platform problem.**
 
 ## How it works
 
@@ -24,14 +24,27 @@ QR → form (src/pages/) → Pages Function (functions/api/peticion.js) → GitH
 
 | Piece | Where | What it shows |
 |-------|-------|---------------|
-| Profiles | `factory/profiles.yaml` | The company is LIMONIA. Marketing (campaigns in `content/campanas/`), Producto (a new product or destination in `catalogo/`), Negocio (prices, discounts and transport: `data/precios.json`, `data/descuentos.json`, `config/transporte.json`). Each one may only write in its places. |
-| Stations | `lib/factory.js`, `factory/prompts/`, `brain/` | `spec` reads the Brain (brand, tone, decisions, human-only) · `build` · `seguridad`, `ux`, `ui` (models, in parallel) and `codigo` (code, no model: schemas, catalogue rules and every sample quote in `factory/muestras.json`) · `approver` (code: 4/4 or back to `build` once). Models only fill in content; code chooses paths and keeps score. |
-| Task state | `<!-- factory:state {...} -->` in the issue body | One station map per task (`pendiente`, `en_curso`, `ok`, `rechazada`, `error`) for the board. Written only by `scripts/factory.mjs` and `scripts/gate.mjs`, rendered from known fields (model text can never reach it). `puerta` and `merge` are set by the gate. Optional `motivo` (plain text, at most 160 characters: why a station refused or failed) and `mergeCommit` (the PR's merge commit, 40 hex). `produccion` is confirmed by `/api/estado`, not stored (see *Following a request*). The pure helpers live in `lib/estado.js`. |
+| Profiles | `factory/profiles.yaml` | Who asked: Marketing, Producto or Negocio, drawn at random by the server. Only a label (and the fallback kinds if the spec names none): it does not limit what a request can be. |
+| Kinds | `factory/kinds.yaml` | What a request IS, named by the Spec writer: `campana` (`content/campanas/`), `producto` and `destino` (`catalogo/`), `precios`, `descuentos`, `transporte` (`data/precios.json`, `data/descuentos.json`, `config/transporte.json`) and the three code kinds `bug`, `feature`, `cambio` (`src/features/`, `src/domain/`). The kind decides the surface; code enforces it. |
+| Stations | `lib/factory.js`, `factory/prompts/`, `brain/` | `spec` reads the Brain (brand, tone, decisions, human-only) · `build` · `seguridad`, `ux`, `ui` (models, in parallel) and `codigo` (code, no model: schemas, catalogue rules and every sample quote in `factory/muestras.json`; for code, the static check and the isolated tests, see *Code from the audience*) · `approver` (code: 4/4 or back to `build` once). Models only fill in content; code chooses paths and keeps score. |
+| Task state | `<!-- factory:state {...} -->` in the issue body | One station map per task (`pendiente`, `en_curso`, `ok`, `rechazada`, `error`) for the board. Written only by `scripts/factory.mjs` and `scripts/gate.mjs`, rendered from known fields (model text can never reach it). `puerta` and `merge` are set by the gate. Optional `tipo` (the kind, one of `factory/kinds.yaml`), `motivo` (plain text, at most 160 characters: why a station refused or failed) and `mergeCommit` (the PR's merge commit, 40 hex). `produccion` is confirmed by `/api/estado`, not stored (see *Following a request*). The pure helpers live in `lib/estado.js`. |
 | Follow-up | `functions/api/estado.js`, `lib/estado.js`, `/tarea/?n=N`, `/factory/` | `GET /api/estado` is the one read the pages poll every 5 s: the task of each request, the queue waiting for a person and the counters. See *Following a request*. |
-| Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Fails closed. Approvals count only on the current head. |
-| Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model. |
+| Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Safe changes merge by themselves (campaigns, catalogue, a feature, if CI passes); risky ones wait for a human (prices, discounts, the domain, the platform). Fails closed. Approvals count only on the current head. |
+| Code | `lib/sandbox.js`, `src/features/`, `src/domain/`, `scripts/build-features.mjs` | Small code written by the factory, with its isolation. See *Code from the audience*. |
+| Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model (`FACTORY_REVIEW_MODEL`) and so can the Builder of code (`FACTORY_CODE_MODEL`, optional). |
 | Intake | `lib/intake.js` | Requests of at most 150 characters; the server draws the profile at random, in equal parts. Turnstile, a task cap and a kill switch. Input is data, never instructions. |
 | Shared rules | `AGENTS.md` | The same rules for the factory agents and for a local harness (Pi, Claude Code, OpenCode…). |
+
+## Code from the audience
+
+Any request can be small code: **`bug`** (a fix in a feature or in the domain), **`feature`** (a new section of a page) or **`cambio`** (a business rule). The Spec writer names the kind; the profile does not matter.
+
+- **Surface** (checked by code, `lib/sandbox.js` `codePathError`): `src/features/<id>/index.js` + `index.test.mjs` (a new feature goes in `src/features/tarea-<n>/`, named by the factory; or an existing one, for a bug) and `src/domain/*.js` + `*.test.mjs` (existing files, or new ones named `tarea-<n>...`). `feature` only touches features, `cambio` only the domain, `bug` either. At most 3 files; the model answers either the whole text of a file or exact edits (`cambios: [{buscar, reemplazar}]`, each `buscar` must match once) that the factory applies.
+- **Contract of a feature** (`src/features/contrato.js`): `export default { id, titulo (≤ 60), donde: 'inicio'|'catalogo'|'presupuesto', calcular(estado) }`. `calcular` is pure and returns data: `{tipo: 'lista', items}`, `{tipo: 'tabla', columnas, filas}` or `{tipo: 'texto', texto}` (plain text, ≤ 40 rows). One generic component (`components/Features.astro`) paints it with escaped text.
+- **The registry** is generated at build time (`scripts/build-features.mjs`, runs in `npm run build` and `npm run dev`; `src/features/index.js` is not committed). Every feature is computed **inside the isolation** and the site only receives the data it returned: it never imports the code of a feature. A feature that does not load, breaks the contract, throws or hangs is skipped with a warning; the build never fails because of it.
+- **Isolation guarantee.** Nothing a model writes is imported by the factory, the gate or the site. (1) The static check rejects, before anything runs, any `node:` import, `fetch`, `eval`, `Function`, `process`, `globalThis`, `global`, `require`, `constructor`, dynamic `import()`/`import.meta`, and any import outside `src/domain/` and `src/features/` (tests may import `node:test` and `node:assert`). (2) Then the tests of the domain and the features, the sample quotes and the feature contract run in a throwaway copy with **no `.git`, no `node_modules`, an empty environment (only `PATH`; the model key and the GitHub tokens are not there), a read-only view of that copy only** (Node permission model: no writes, no child processes, no network where Node has the switch), `--disallow-code-generation-from-strings`, no `fetch`, 256 MB and a **60 s limit** after which the run is killed and the task is rejected. Test: `test/sandbox.test.mjs` (canary variable, writes, spawn, reads outside, eval, loops, memory).
+- **Gate.** `src/features/*/index.js` and `index.test.mjs` are `auto` (they reach production by themselves if CI, the `build` check, passes: it runs the same tests); `src/domain/**` is `human`; the rest of `src/` is the platform (`human`). The strictest route in the diff wins.
+- **Planted bugs** (the starting state; `reset-demo` restores them from `factory/seed/src/`): the feature `ordenar-catalogo` ("Del más barato al más caro") lists the dearest first, and the discount is not applied at the exact kilos of a tier (1.000 kg in the calculator: `<` instead of `<=` in `src/domain/presupuesto.js`). Their exact tests were left out, so CI is green with the bugs. Replay has patches for both, for three features (cheapest per category, transit days, average price per kilo) and for a rule change (15 % from 50.000 kg), plus malicious attempts (`process.env`, `fetch`, `import('node:fs')`, `eval`) that the static check rejects.
 
 ## Following a request
 
@@ -41,14 +54,14 @@ QR → form (src/pages/) → Pages Function (functions/api/peticion.js) → GitH
 
 Production is confirmed without new permissions: `npm run build` writes `dist/deploy.json` (`{commit, builtAt}` from `CF_PAGES_COMMIT_SHA`, or `git rev-parse HEAD` locally), `gate.mjs --closed` stores the PR's `mergeCommit`, and for merged tasks not yet in production the API reads its own `/deploy.json` and asks `GET /repos/{repo}/compare/{mergeCommit}...{deployed}`: `identical` or `ahead` means deployed (cached for the life of the worker); `behind`/`diverged` keeps waiting.
 
-Pages: the form saves the task numbers in `localStorage` (`limonia:tareas`, last 20) and links to `/tarea/?n=N`; the home lists them under *Tus peticiones*. `/tarea/` shows the stations vertically and the final message; when deployed it links to where the change shows, by profile (Marketing campaign → `/`, Producto product or destination → `/catalogo/`, Negocio prices, discounts, transport → `/presupuesto/`). `/factory/` is the big-screen board.
+Pages: the form saves the task numbers in `localStorage` (`limonia:tareas`, last 20) and links to `/tarea/?n=N`; the home lists them under *Tus peticiones*. `/tarea/` shows the stations vertically and the final message; it shows the kind the Spec writer gave the request (`tipo`), and when deployed it links to where the change shows, by kind (campaign → `/`, product or destination → `/catalogo/`, prices, discounts, transport, rule change → `/presupuesto/`, a feature or a bug → `/`). `/factory/` is the big-screen board.
 
 ## Run it locally (free, offline)
 
 ```bash
 npm install
 npm test                       # everything, including workflow structure checks
-npm run simulate               # the whole pipeline on a 32-request battery, replay model
+npm run simulate               # the whole pipeline on a 47-request battery, replay model
 npm run factory -- --profile marketing --request "Una campaña oliva que diga «Limones de temporada»" --id 1
 npm run gate -- content/campanas/tarea-1.json config/transporte.json data/precios.json
 npm run build                  # → dist/
@@ -102,7 +115,7 @@ PRs opened with the default `GITHUB_TOKEN` do not trigger workflows, so the fact
 
 ### 3. Model
 
-Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https://api.deepseek.com`), `FACTORY_MODEL`. Secret: `FACTORY_API_KEY`. Use a prepaid account with a spending limit. Without these variables the factory uses the free replay model.
+Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https://api.deepseek.com`), `FACTORY_MODEL`, and optionally `FACTORY_CODE_MODEL` (the Builder of code; if unset the same model builds code, with room for longer answers). Secret: `FACTORY_API_KEY`. Use a prepaid account with a spending limit. Without these variables the factory uses the free replay model.
 
 ### 4. Cloudflare Pages (site + intake)
 
@@ -140,7 +153,7 @@ The repository is public, but no key is in it: they live in GitHub Actions secre
 
 Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
 
-Before the talk: `npm run reset-demo -- --apply` (removes the audience's content, restores the seed data, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
+Before the talk: `npm run reset-demo -- --apply` (removes the audience's content and features, restores the seed data and the planted bugs, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
 
 After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key.
 

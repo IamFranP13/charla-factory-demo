@@ -5,3 +5,5 @@ dist/
 .env
 .wrangler/
 .test-dist-*/
+# generated at build time by scripts/build-features.mjs
+src/features/index.js

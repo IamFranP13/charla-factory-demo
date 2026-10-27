@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { presupuestar } from '../src/domain/presupuesto.js'
-import { validateCatalog } from '../src/domain/catalogo.js'
+import { presupuestar } from './presupuesto.js'
+import { validateCatalog } from './catalogo.js'
 
 const estado = () => ({
   productos: {
@@ -83,27 +83,17 @@ test('every error is reported, not only the first', () => {
   assert.equal(r.errores.length, 3)
 })
 
-test('discount boundaries sit exactly at desdeKg', () => {
-  assert.equal(una(999).descuento.porcentaje, 0)
-  assert.equal(una(1000).descuento.porcentaje, 3)
-  assert.equal(una(4999).descuento.porcentaje, 3)
-  assert.equal(una(5000).descuento.porcentaje, 6)
-  assert.equal(una(19999).descuento.porcentaje, 6)
-  assert.equal(una(20000).descuento.porcentaje, 10)
-  assert.equal(una(100000).descuento.porcentaje, 10)
-})
-
 test('the discount applies to the subtotal and uses the total kilos across lines', () => {
-  const r = pedir([{ productoId: 'limon', kg: 600 }, { productoId: 'naranja', kg: 400 }])
-  assert.equal(r.kgTotal, 1000)
-  assert.equal(r.subtotal, 1040)
-  assert.deepEqual(r.descuento, { porcentaje: 3, importe: 31.2 })
+  const r = pedir([{ productoId: 'limon', kg: 700 }, { productoId: 'naranja', kg: 400 }])
+  assert.equal(r.kgTotal, 1100)
+  assert.equal(r.subtotal, 1160)
+  assert.deepEqual(r.descuento, { porcentaje: 3, importe: 34.8 })
 })
 
 test('discount tiers work even when listed out of order', () => {
   const e = estado()
   e.descuentos.tramos.reverse()
-  assert.equal(pedir([{ productoId: 'limon', kg: 5000 }], 'hamburgo', e).descuento.porcentaje, 6)
+  assert.equal(pedir([{ productoId: 'limon', kg: 5001 }], 'hamburgo', e).descuento.porcentaje, 6)
 })
 
 test('transport is the minimum when per-kg is lower, and per-kg when higher', () => {
@@ -128,11 +118,11 @@ test('amounts are rounded to cents', () => {
 })
 
 test('total = subtotal - discount + transport', () => {
-  const r = una(20000)
-  assert.equal(r.subtotal, 24000)
-  assert.equal(r.descuento.importe, 2400)
-  assert.equal(r.transporte, 2000)
-  assert.equal(r.total, 23600)
+  const r = una(25000)
+  assert.equal(r.subtotal, 30000)
+  assert.equal(r.descuento.importe, 3000)
+  assert.equal(r.transporte, 2500)
+  assert.equal(r.total, 29500)
 })
 
 test('amounts are never negative', () => {

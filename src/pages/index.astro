@@ -5,6 +5,7 @@ import CampanaCard from '../components/CampanaCard.astro'
 import ProductoCard from '../components/ProductoCard.astro'
 import PeticionForm from '../components/PeticionForm.astro'
 import MisPeticiones from '../components/MisPeticiones.astro'
+import Features from '../components/Features.astro'
 import { campanas, productos, destinos } from '../lib/contenido.js'
 
 const todas = productos()
@@ -54,6 +55,8 @@ const cifras = [
       {destacados.map((producto) => <ProductoCard producto={producto} />)}
     </div>
   </section>
+
+  <Features donde="inicio" />
 
   <section class="contenedor seccion pide" id="pide" aria-labelledby="pide-titulo">
     <div>

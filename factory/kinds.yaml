@@ -1,0 +1,56 @@
+# What a request can BE, and so what the factory may write for it. The Spec writer classifies every request into one of
+# these kinds; the kind (never the profile) decides the surface, and the factory enforces it in code before anything
+# reaches a pull request. The risk gate (policy/risk.yaml) then decides, by what the diff touches, whether it merges
+# by itself or waits for a human.
+#   folders / newFile:  each request creates exactly ONE new file in one of these folders; the model picks the
+#                       folder, the factory picks the name: tarea-<n>.json
+#   files:              the only existing files the request may modify (at most 2)
+#   code / scope:       the request writes code (at most 3 files). `scope` says where: `features`
+#                       (src/features/<id>/index.js and its test) and/or `domain` (src/domain/*.js and its tests).
+#                       See lib/sandbox.js for the exact paths, the static check and the isolated run of its tests
+# The order of this file is the order of the kinds everywhere (state, prompts, pages).
+
+campana:
+  description: A message or banner for the home page (a new campaign card).
+  folders: ["content/campanas/"]
+  newFile: true
+
+producto:
+  description: A new product for the catalogue (no price yet; Negocio sets it later).
+  folders: ["catalogo/productos/"]
+  newFile: true
+
+destino:
+  description: A new export destination (no transport tariff yet; Negocio sets it later).
+  folders: ["catalogo/destinos/"]
+  newFile: true
+
+precios:
+  description: Change the price per kilo of existing products.
+  files: ["data/precios.json"]
+  newFile: false
+
+descuentos:
+  description: Change the volume discount tiers.
+  files: ["data/descuentos.json"]
+  newFile: false
+
+transporte:
+  description: Change the transport tariffs of existing destinations.
+  files: ["config/transporte.json"]
+  newFile: false
+
+bug:
+  description: Something in the site behaves wrongly (a list in the wrong order, a discount not applied) and the request asks to fix it, in an existing feature or in the business rules.
+  code: true
+  scope: ["features", "domain"]
+
+feature:
+  description: A small new section for one page (inicio, catalogo or presupuesto) that shows data computed from the catalogue, prices, discounts and transport.
+  code: true
+  scope: ["features"]
+
+cambio:
+  description: A change to a business rule of the quote calculator (how a discount, a price or a transport cost is computed), not just a figure in the data.
+  code: true
+  scope: ["domain"]

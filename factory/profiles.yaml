@@ -1,26 +1,20 @@
-# Who can ask for what. The factory enforces this in code before anything reaches a pull request.
-#   folders:  (newFile profiles) the only folders this profile may add a file to. The model picks the
-#             folder; the factory picks the name: tarea-<n>.json
-#   files:    (the others) the only existing files this profile may modify (at most 2 per request)
-#   newFile:  true = each request creates exactly one new file
-# Every request goes through the same stations (spec → build → seguridad · ux · ui · codigo → approver),
-# whatever the profile. This file limits what a profile can touch. The risk gate (policy/risk.yaml)
-# decides separately, by what the diff touches, whether a human must approve.
+# Who asks. The server draws one of these at random for every request, in equal parts; nobody chooses.
+# The profile is only "who asked": it shows in the trail and on the pages. What a request may change is decided by
+# its KIND (factory/kinds.yaml), classified by the Spec writer, never by the profile.
+#   kinds:  the default kinds of the profile: what the factory may write when the Spec writer names no kind.
+#           (Data only: a profile never defaults to code.)
 
 marketing:
   label: Marketing
   description: Mensajes y banners de campaña de LIMONIA.
-  folders: ["content/campanas/"]
-  newFile: true
+  kinds: ["campana"]
 
 producto:
   label: Producto
   description: Funcionalidades del catálogo de LIMONIA, un producto nuevo o un destino de exportación nuevo.
-  folders: ["catalogo/productos/", "catalogo/destinos/"]
-  newFile: true
+  kinds: ["producto", "destino"]
 
 negocio:
   label: Negocio
   description: Precios, descuentos por volumen y tarifas de transporte de LIMONIA.
-  files: ["data/precios.json", "data/descuentos.json", "config/transporte.json"]
-  newFile: false
+  kinds: ["precios", "descuentos", "transporte"]

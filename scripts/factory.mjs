@@ -57,9 +57,9 @@ async function main() {
 
   if (issue && pr !== undefined) return markPullRequest(issue, pr)
 
-  const { provider, reviewProvider } = providersFromEnv()
-  if (issue) await runIssue(issue, { provider, reviewProvider })
-  else await runLocal({ id: opt('--id') ?? String(Date.now()), profile, request }, { provider, reviewProvider })
+  const providers = providersFromEnv()
+  if (issue) await runIssue(issue, providers)
+  else await runLocal({ id: opt('--id') ?? String(Date.now()), profile, request }, providers)
 }
 
 async function runLocal(task, providers) {

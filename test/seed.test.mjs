@@ -64,10 +64,9 @@ test('in the seed, exactly one product has no price and every destination has tr
 })
 
 test('cargarEstado reads ids from file names', () => {
-  const e = cargarEstado(root)
-  assert.ok(e.productos['limon-verna'])
-  assert.ok(e.destinos['alemania-hamburgo'])
-  assert.equal(e.descuentos.tramos.length, 3)
+  assert.ok(cargarEstado(root).productos['limon-verna'])
+  assert.ok(cargarEstado(root).destinos['alemania-hamburgo'])
+  assert.equal(cargarEstado(seed).descuentos.tramos.length, 3, 'the figures are the seed ones: the live ones are what the audience changes')
 })
 
 test('every sample order in factory/muestras.json matches its expectation, live and in the seed', () => {

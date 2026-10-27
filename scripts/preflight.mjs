@@ -36,6 +36,22 @@ const checks = [
       ? { ok: true, text: `El transporte a alemania-hamburgo es el de partida (${show(seed)}): la petición cambiará algo` }
       : { ok: false, text: `El transporte a alemania-hamburgo es ${show(live)} y el de partida es ${show(seed)}. Restáuralo: copia factory/seed/config/transporte.json sobre config/transporte.json` }
   },
+  () => {
+    // The two planted bugs (S15) must be on main, byte for byte as the seed has them; a merged fix leaves them different.
+    const bugs = ['src/domain/presupuesto.js', 'src/features/ordenar-catalogo/index.js']
+    const fixed = bugs.filter((file) => readFileSync(join(root, file), 'utf8') !== readFileSync(join(root, 'factory/seed', file), 'utf8'))
+    return fixed.length === 0
+      ? { ok: true, text: 'Los dos bugs sembrados siguen ahí (descuento en el límite del tramo, orden del catálogo)' }
+      : { ok: false, text: `${fixed.join(', ')} ya no es el de partida (un arreglo ya se ha fusionado). Restáuralo: npm run reset-demo -- --apply` }
+  },
+  () => {
+    const policy = parsePolicy(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'))
+    const via = (file) => routeFor(policy, [file]).route
+    const [feature, domain, platform] = [via('src/features/tarea-1/index.js'), via('src/domain/presupuesto.js'), via('src/pages/index.astro')]
+    return feature === 'auto' && domain === 'human' && platform === 'human'
+      ? { ok: true, text: 'Política de código: las features van solas, el dominio y el resto de src/ esperan a una persona' }
+      : { ok: false, text: `Política de código rota: feature ${feature} (debe ser auto), dominio ${domain} y resto de src/ ${platform} (deben ser human)` }
+  },
 ]
 
 let failed = false

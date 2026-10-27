@@ -41,8 +41,8 @@ test('a commit that is not a sha is never published: git is used instead', () =>
   assert.equal(json.commit, head)
 })
 
-test('npm run build writes deploy.json after astro build, with the content validation first', () => {
+test('npm run build writes deploy.json after astro build, with the content validation first and the feature registry before the site', () => {
   const build = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).scripts.build
   const steps = build.split('&&').map((s) => s.trim())
-  assert.deepEqual(steps, ['node scripts/validate-content.mjs', 'astro build', 'node scripts/deploy-meta.mjs'])
+  assert.deepEqual(steps, ['node scripts/validate-content.mjs', 'node scripts/build-features.mjs', 'astro build', 'node scripts/deploy-meta.mjs'])
 })

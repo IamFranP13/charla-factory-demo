@@ -22,8 +22,8 @@ const json = args.includes('--json')
 try {
   const battery = JSON.parse(readFileSync(take('--battery') ?? `${repo}test/battery.json`, 'utf8'))
   const policy = parsePolicy(readFileSync(take('--policy') ?? `${repo}policy/risk.yaml`, 'utf8'))
-  const { provider, reviewProvider } = providersFromEnv()
-  const report = await simulate({ repo, battery, policy, provider, reviewProvider })
+  const providers = providersFromEnv()
+  const report = await simulate({ repo, battery, policy, ...providers })
   console.log(json ? JSON.stringify(report) : renderTable(report))
   process.exit(report.totals.inesperadas ? 1 : 0)
 } catch (error) {

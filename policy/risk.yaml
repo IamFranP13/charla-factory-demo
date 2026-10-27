@@ -17,6 +17,17 @@ approvers:
   - IamFranP13
 
 rules:
+  # Desarrollo: a feature (src/features/<id>/index.js and its test) goes alone to production when the tests pass.
+  # Only these two exact shapes: anything else under src/features/ (the contract, the registry, other files) is platform.
+  - paths:
+      - "src/features/*/index.js"
+      - "src/features/*/index.test.mjs"
+    route: auto
+
+  # The business rules of the quote calculator, like data/: a human decides.
+  - paths: ["src/domain/**"]
+    route: human
+
   # The platform itself: only humans change the factory.
   - paths:
       - "policy/**"

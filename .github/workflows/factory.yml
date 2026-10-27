@@ -69,6 +69,7 @@ jobs:
           FACTORY_PROVIDER: ${{ vars.FACTORY_PROVIDER }}
           FACTORY_API_URL: ${{ vars.FACTORY_API_URL }}
           FACTORY_MODEL: ${{ vars.FACTORY_MODEL }}
+          FACTORY_CODE_MODEL: ${{ vars.FACTORY_CODE_MODEL }}
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
 
       - id: pr

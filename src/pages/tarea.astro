@@ -33,7 +33,7 @@ import Diagrama from '../components/Diagrama.astro'
 
   function pintar(tarea) {
     titulo.textContent = `Petición #${tarea.numero}`
-    detalle.textContent = `${tarea.titulo} · Perfil sorteado: ${PERFILES[tarea.perfil] ?? tarea.perfil}${demo ? ' · MODO DEMO' : ''}`
+    detalle.textContent = `${tarea.titulo} · Perfil sorteado: ${PERFILES[tarea.perfil] ?? tarea.perfil}${tarea.tipo ? ` (${tarea.tipo})` : ''}${demo ? ' · MODO DEMO' : ''}`
     const resultado = MENSAJES[tarea.resultadoFinal] ? tarea.resultadoFinal : 'en_curso'
     final.className = `final final--${resultado}`
     final.textContent = MENSAJES[resultado]
@@ -43,7 +43,7 @@ import Diagrama from '../components/Diagrama.astro'
     enlace.replaceChildren()
     if (resultado === 'desplegada') {
       const link = document.createElement('a')
-      link.href = enlaceFor(tarea.perfil)
+      link.href = enlaceFor(tarea.perfil, tarea.tipo)
       link.textContent = 'Ver el cambio en la web'
       enlace.append(link)
     }

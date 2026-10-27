@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro'
 import Calculadora from '../components/Calculadora.astro'
+import Features from '../components/Features.astro'
 ---
 <Base title="Presupuesto" description="Calcula el importe de tu pedido LIMONIA con descuento por volumen y transporte.">
   <section class="contenedor seccion">
@@ -9,4 +10,5 @@ import Calculadora from '../components/Calculadora.astro'
     <p class="lead">Elige productos, kilos y destino. El importe se recalcula al instante.</p>
     <Calculadora />
   </section>
+  <Features donde="presupuesto" />
 </Base>

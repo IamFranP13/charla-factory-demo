@@ -6,13 +6,14 @@
 //   --no-push                              with --apply: no commit or push (files and GitHub only)
 //   --root <dir>                           another checkout (tests)
 //
-// Files: removes the audience's files (content/*/tarea-N.json, catalogo/*/tarea-N.json), copies the
-// seed data back (factory/seed/) and reopens the policy hole (default: auto).
+// Files: removes the audience's files (content/*/tarea-N.json, catalogo/*/tarea-N.json, the feature folders
+// src/features/tarea-N/ and the domain files src/domain/tarea-N*), copies the seed back (factory/seed/: the
+// data, and the code with its two planted bugs, so a merged fix is undone) and reopens the policy hole (default: auto).
 // GitHub: closes open factory PRs (branches tarea/N) and open requests, and removes the "entrada"
 // label from every request so the board starts empty and the intake cap is free again.
 
 import { readdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
 import { isAudienceFile } from '../lib/factory.js'
@@ -24,11 +25,14 @@ const POLICY = 'policy/risk.yaml'
 export function resetFiles(root, { dryRun = false } = {}) {
   const changes = []
 
-  for (const top of ['content', 'catalogo']) {
+  for (const top of ['content', 'catalogo', 'src/features', 'src/domain']) {
     for (const path of walk(join(root, top))) {
       if (!isAudienceFile(path)) continue
       changes.push(relative(root, path))
-      if (!dryRun) rmSync(path)
+      if (!dryRun) {
+        rmSync(path)
+        removeIfEmpty(dirname(path), join(root, top))
+      }
     }
   }
 
@@ -48,6 +52,11 @@ export function resetFiles(root, { dryRun = false } = {}) {
     if (!dryRun) writeFileSync(join(root, POLICY), open)
   }
   return changes
+}
+
+// A feature folder with no files left goes away too (never above `stop`).
+function removeIfEmpty(dir, stop) {
+  if (dir !== stop && dir.startsWith(stop) && readdirSync(dir).length === 0) rmSync(dir, { recursive: true })
 }
 
 function walk(dir) {

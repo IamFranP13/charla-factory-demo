@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro'
 import ProductoCard from '../components/ProductoCard.astro'
+import Features from '../components/Features.astro'
 import { productos, destinos } from '../lib/contenido.js'
 import { eur } from '../lib/formato.js'
 
@@ -16,6 +17,8 @@ const hacia = destinos()
       {lista.map((producto) => <ProductoCard producto={producto} detalle />)}
     </div>
   </section>
+
+  <Features donde="catalogo" />
 
   <section class="contenedor seccion" aria-labelledby="destinos">
     <h2 id="destinos">Destinos de exportación</h2>
