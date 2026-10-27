@@ -166,35 +166,90 @@ legend { font-weight: 700; font-size: 1.1rem; margin-bottom: .75rem; color: var(
 .resumen__nota { color: var(--tinta-suave); font-size: .9rem; margin: .5rem 0 0; }
 .calculadora--error .resumen { opacity: .75; }
 
-/* Follow-up (/tarea) and board (/factory): function over looks, built from the same tokens */
+/* Follow-up (/tarea) and board (/factory) */
 .final { font-family: var(--fuente-titulo); font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 700; padding: 1rem 1.25rem; border-radius: var(--radio); background: var(--crema); color: var(--oliva-oscuro); margin: 1rem 0; }
 .final--desplegada { background: var(--oliva); color: #fff; }
 .final--esperando_persona { background: var(--limon-suave); }
 .final--rechazada, .final--fallida, .final--cerrada { background: #fbe6dc; color: #7a2b0e; }
-.estaciones { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .5rem; max-width: 28rem; }
-.estacion { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; border: 1px solid var(--borde); border-left-width: 6px; border-radius: 12px; background: #fff; }
-.estacion--en_curso { border-left-color: var(--limon); background: var(--limon-suave); font-weight: 700; }
-.estacion--ok { border-left-color: var(--oliva); }
-.estacion--rechazada, .estacion--error { border-left-color: #c4511f; background: #fbe6dc; }
-.estacion--pendiente { color: var(--tinta-suave); }
 .mis-peticiones { margin: 0; padding-left: 1.25rem; }
 
 .totales { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0 2rem; }
 .total { background: var(--crema); border-radius: var(--radio); padding: .75rem 1.5rem; min-width: 9rem; }
 .total dt { font-weight: 600; }
 .total dd { margin: 0; font-family: var(--fuente-titulo); font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: var(--oliva-oscuro); }
-.diagrama { display: flex; flex-wrap: wrap; gap: 1rem; align-items: stretch; margin-bottom: 2rem; }
-.paralelo { display: flex; flex-wrap: wrap; gap: .75rem; padding: .75rem; border: 2px dashed var(--oliva-claro); border-radius: var(--radio); }
-.paralelo__nota { width: 100%; margin: 0; font-size: .85rem; color: var(--tinta-suave); }
-.caja { flex: 1 1 11rem; min-width: 11rem; background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); padding: .75rem 1rem; }
-.caja h3 { margin: 0; font-size: 1.1rem; }
-.caja__n { margin: 0; font-family: var(--fuente-titulo); font-size: 2rem; font-weight: 700; color: var(--oliva); }
-.caja__tareas { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
-.chip { font-size: .85rem; padding: .15rem .5rem; border-radius: 999px; background: var(--crema); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chip--en_curso { background: var(--limon-suave); }
-.chip--desplegada { background: var(--oliva-claro); }
-.chip--rechazada, .chip--fallida, .chip--cerrada { background: #fbe6dc; }
+/* The factory scheme: a stepper of cards, vertical on phones and horizontal on wide screens */
+.ruta { list-style: none; margin: 1.5rem 0; padding: 0; display: grid; gap: .85rem; counter-reset: paso; }
+.paso { position: relative; counter-increment: paso; background: #fff; border: 1px solid var(--borde); border-radius: 14px; padding: .8rem 1rem .8rem 3.4rem; box-shadow: var(--sombra); transition: background .4s, border-color .4s, opacity .4s; }
+.paso__marca { position: absolute; left: .9rem; top: .8rem; width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--borde); background: #fff; color: var(--tinta-suave); font-size: .85rem; font-weight: 700; transition: background .4s, border-color .4s, color .4s; }
+.paso__marca::before { content: counter(paso); }
+.paso__nombre { margin: 0; font-size: 1.1rem; }
+.paso__nota { margin: .15rem 0 0; font-size: .8rem; color: var(--tinta-suave); font-style: italic; }
+.paso__etiqueta { margin: .4rem 0 0; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--oliva-oscuro); overflow-wrap: anywhere; }
+.paso__etiqueta[hidden] { display: none; }
+.paso + .paso::before { content: ''; position: absolute; left: 1.7rem; top: -.9rem; width: 2px; height: .85rem; background: var(--borde); }
+.paso[data-estado='ok'] + .paso::before, .paso[data-estado='en_curso'] + .paso::before { background: var(--oliva); }
+
+.paso[data-estado='pendiente'] { opacity: .6; background: var(--blanco); }
+.paso[data-estado='en_curso'] { border-color: var(--limon); background: var(--limon-suave); animation: pulso 1.8s ease-in-out infinite; }
+.paso[data-estado='en_curso'] .paso__marca { background: var(--limon); border-color: var(--oliva); color: var(--oliva-oscuro); }
+.paso[data-estado='ok'] { border-color: var(--oliva-claro); }
+.paso[data-estado='ok'] .paso__marca { background: var(--oliva); border-color: var(--oliva); color: #fff; }
+.paso[data-estado='ok'] .paso__marca::before { content: '✓'; }
+.paso[data-estado='rechazada'], .paso[data-estado='error'] { border-color: #c4511f; background: #fbe6dc; color: #7a2b0e; }
+.paso[data-estado='rechazada'] h3, .paso[data-estado='error'] h3 { color: #7a2b0e; }
+.paso[data-estado='rechazada'] .paso__marca, .paso[data-estado='error'] .paso__marca { background: #c4511f; border-color: #c4511f; color: #fff; }
+.paso[data-estado='rechazada'] .paso__marca::before, .paso[data-estado='error'] .paso__marca::before { content: '!'; }
+.paso[data-estado='rechazada'] .paso__etiqueta, .paso[data-estado='error'] .paso__etiqueta { color: #7a2b0e; }
+@keyframes pulso { 50% { box-shadow: 0 0 0 6px rgb(242 214 67 / 40%); } }
+
+.revisores { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; margin: .5rem 0 0; padding: 0; }
+.revisor { font-size: .78rem; font-weight: 600; padding: .15rem .6rem; border-radius: 999px; background: var(--crema); color: var(--tinta-suave); border: 1px solid transparent; }
+.revisor[data-estado='en_curso'] { background: var(--limon-suave); color: var(--oliva-oscuro); border-color: var(--limon); }
+.revisor[data-estado='ok'] { background: #e3ecc2; color: #33401a; }
+.revisor[data-estado='rechazada'], .revisor[data-estado='error'] { background: #c4511f; color: #fff; }
+
+@media (min-width: 900px) {
+  .ruta { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1.1rem; align-items: stretch; }
+  .paso { padding: 2.9rem .6rem .8rem; text-align: center; }
+  .paso__marca { left: 50%; top: .7rem; margin-left: -.85rem; }
+  .paso + .paso::before { left: -1.1rem; top: 1.45rem; width: 1.1rem; height: 2px; }
+  .paso__nombre { font-size: 1rem; }
+  .revisores { justify-content: center; }
+}
+
+/* /tarea: one request */
+.seguimiento .ruta { margin-block: 2rem; }
+.motivo { font-size: 1.1rem; }
+.motivo:empty { display: none; }
+
+/* /factory: the board, big enough for a projector */
+.contenedor--ancho { width: min(1760px, 100% - 2.5rem); }
+.tablero-cab { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .75rem 2rem; }
+.sigue { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.sigue label { margin: 0; }
+.sigue input { width: 7rem; }
+.siguiendo { min-height: 1.6em; margin: .75rem 0 0; font-weight: 600; color: var(--oliva-oscuro); }
+.ruta--tablero .paso__nombre { font-size: clamp(1rem, 1.2vw, 1.6rem); }
+.ruta--tablero .paso { min-height: 9rem; }
+.ruta--tablero .paso[data-ocupada] { border-color: var(--oliva-claro); }
+.paso__n { position: absolute; right: .7rem; top: .6rem; font-family: var(--fuente-titulo); font-weight: 700; font-size: 1.3rem; color: var(--oliva); }
+.paso__fichas { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .6rem; min-height: 1.5rem; justify-content: inherit; }
+.ficha { display: inline-block; font-size: clamp(.78rem, .95vw, 1.2rem); font-weight: 600; line-height: 1.3; padding: .1rem .6rem; border-radius: 999px; background: var(--crema); border: 1px solid var(--borde); color: var(--oliva-oscuro); }
+.ficha--mas { background: transparent; border-style: dashed; color: var(--tinta-suave); }
+.ficha--seguida { background: var(--limon); border-color: var(--oliva); }
+.ficha--desplegada { background: #e3ecc2; border-color: var(--oliva); }
+.ficha--rechazada { background: #fbe6dc; border-color: #c4511f; color: #7a2b0e; animation: destello .7s ease-in-out 4; }
+.ficha--vuelo { font-family: var(--fuente); }
+@keyframes destello { 50% { background: #c4511f; color: #fff; } }
+.totales { margin-top: 2rem; }
+.total { background: #fff; border: 1px solid var(--borde); box-shadow: var(--sombra); flex: 1 1 11rem; }
+.total--alerta dd { color: #7a2b0e; }
+.cola-titulo { margin-top: 1.5rem; }
 .cola { font-size: 1.25rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .paso, .paso__marca, .ficha { animation: none !important; transition: none !important; }
+}
 
 /* Footer */
 .pie { background: var(--oliva-oscuro); color: #eef0dc; margin-top: 3rem; padding-block: 2rem; }

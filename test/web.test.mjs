@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { MAX_LENGTH } from '../lib/intake.js'
 import { STATIONS, STATION_LABELS, MENSAJES } from '../lib/estado.js'
 import { NAV } from '../src/lib/nav.js'
+import { PASOS, REVISORES } from '../src/lib/diagrama.js'
 import { cargarEstado } from '../src/domain/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
@@ -122,29 +123,56 @@ test('the home lists "Tus peticiones" from localStorage, with a link to each tas
   assert.ok(bundle.includes('/tarea/?n='))
 })
 
-test('/tarea/ polls the status API every 5 s for one task and shows the stations and the final message', () => {
+// Both factory pages draw the same scheme as a stepper, in the styles of the rest of the site (Base layout).
+function assertScheme(html, name) {
+  for (const paso of PASOS) {
+    assert.ok(html.includes(`data-paso="${paso.id}"`), `${name}: step ${paso.id}`)
+    assert.ok(html.includes(`>${paso.label}<`), `${name}: label ${paso.label}`)
+  }
+  for (const label of ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción']) assert.ok(html.includes(`>${label}<`), `${name}: ${label}`)
+  for (const id of REVISORES) assert.ok(html.includes(`data-revisor="${id}"`), `${name}: reviewer ${id}`)
+  assert.match(html, /Brain/, `${name}: the note that points to the Brain`)
+  assert.match(html, /class="cabecera"/, `${name}: the site header`)
+  assert.match(html, /<a class="marca"/, `${name}: the LIMONIA brand`)
+  assert.doesNotMatch(html, /tema-charla|Chivo/, `${name}: not the talk's theme`)
+  assert.match(html, /href="\/factory\/"/)
+}
+
+test('/tarea/ draws the factory scheme as a stepper and polls the status API for one task', () => {
   const bundle = clientCode(pages.tarea)
+  assertScheme(pages.tarea, '/tarea/')
   assert.ok(bundle.includes('/api/estado?tarea='))
   assert.match(bundle, /5e3|5000/)
-  for (const label of Object.values(STATION_LABELS)) assert.ok(bundle.includes(label), label)
   for (const message of Object.values(MENSAJES)) assert.ok(bundle.includes(message), message)
-  for (const status of ['pendiente', 'en curso', 'ok', 'rechazada', 'error']) assert.ok(bundle.includes(status), status)
+  for (const status of ['pendiente', 'en_curso', 'ok', 'rechazada', 'error']) assert.ok(bundle.includes(status), status)
+  for (const label of ['NO HACE FALTA', 'ESPERANDO A UNA PERSONA']) assert.ok(bundle.includes(label) || pages.tarea.includes(label), label)
   assert.match(pages.tarea, /viewport/)
   assert.match(bundle, /textContent|replaceChildren/)
   assert.doesNotMatch(bundle, /innerHTML/)
 })
 
-test('/factory/ polls the status API every 5 s and shows the diagram, the queue and the totals', () => {
+test('/factory/ draws the stepper with counters and task chips, the queue and the totals, polling every 5 s', () => {
   const bundle = clientCode(pages.factory)
+  assertScheme(pages.factory, '/factory/')
+  assert.match(pages.factory, /data-fichas/, 'every step has room for the task chips')
   assert.ok(bundle.includes('/api/estado'))
   const entry = [...pages.factory.matchAll(/<script type="module" src="(\/_astro\/[^"]+)"/g)].map((m) => readFileSync(join(out, m[1]), 'utf8')).join('\n')
   assert.ok(entry.includes('/api/estado'))
   assert.doesNotMatch(entry, /api\/estado\?tarea/, 'the board reads the whole list')
   assert.match(bundle, /5e3|5000/)
-  for (const label of Object.values(STATION_LABELS)) assert.ok(bundle.includes(label), label)
   assert.match(pages.factory, /Esperando a una persona/i)
-  for (const total of ['Peticiones', 'Desplegadas', 'Esperando', 'Rechazadas']) assert.match(pages.factory, new RegExp(total))
+  assert.match(pages.factory, /Sigue tu petición/)
+  assert.match(pages.factory, /<input[^>]*name="n"/)
+  for (const total of ['Peticiones', 'En producción', 'Esperando', 'Rechazadas']) assert.match(pages.factory, new RegExp(total))
   assert.doesNotMatch(bundle, /innerHTML/)
+})
+
+test('the demo mode (?demo=1) is built in, driven by a fake sequence, and only switched on by the parameter', () => {
+  for (const html of [pages.factory, pages.tarea]) {
+    const bundle = clientCode(html)
+    assert.match(bundle, /demo/)
+    assert.match(bundle, /get\(["'`]demo["'`]\)/)
+  }
 })
 
 test('the stations of the pages are the ones of the factory', () => {

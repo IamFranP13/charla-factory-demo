@@ -1,79 +1,102 @@
 ---
 import Base from '../layouts/Base.astro'
-import { STATION_LABELS } from '../../lib/estado.js'
+import Diagrama from '../components/Diagrama.astro'
 
-// The talk diagram: Entrada → Spec writer → Builder → four reviewers in parallel → Approver → ¿Humano? → Main o PR → Producción.
-const antes = ['entrada', 'spec', 'build']
-const paralelo = ['seguridad', 'ux', 'ui', 'codigo']
-const despues = ['approver', 'puerta', 'merge', 'produccion']
-const totales = [['peticiones', 'Peticiones'], ['desplegadas', 'Desplegadas'], ['esperando', 'Esperando'], ['rechazadas', 'Rechazadas']]
+const totales = [
+  ['peticiones', 'Peticiones', ''],
+  ['desplegadas', 'En producción', 'total--secundario'],
+  ['esperando', 'Esperando', ''],
+  ['rechazadas', 'Rechazadas', 'total--alerta'],
+]
 ---
-<Base title="Factory" description="La factory de LIMONIA en directo: cada petición, en su estación.">
-  <section class="contenedor seccion tablero">
-    <h1>La factory en directo</h1>
-    <p id="tablero-estado" role="status" aria-live="polite"></p>
+<Base title="Factory" description="La factory de LIMONIA en directo: cada petición, en su estación del esquema.">
+  <section class="contenedor contenedor--ancho seccion tablero">
+    <div class="tablero-cab">
+      <div>
+        <p class="sobretitulo">Factory</p>
+        <h1>La factory en directo</h1>
+      </div>
+      <form class="sigue" id="sigue" autocomplete="off">
+        <label for="sigue-n">Sigue tu petición #</label>
+        <input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" />
+        <button class="boton boton--borde" type="submit">Seguir</button>
+      </form>
+    </div>
+    <p class="siguiendo" id="siguiendo" role="status" aria-live="polite"></p>
+    <p id="tablero-estado" class="siguiendo" role="status" aria-live="polite"></p>
+
+    <Diagrama tablero />
 
     <dl class="totales">
-      {totales.map(([id, label]) => (
-        <div class="total"><dt>{label}</dt><dd data-total={id}>0</dd></div>
+      {totales.map(([id, label, clase]) => (
+        <div class={`total ${clase}`}><dt>{label}</dt><dd data-total={id}>0</dd></div>
       ))}
     </dl>
 
-    <div class="diagrama">
-      {antes.map((id) => (
-        <section class="caja" data-estacion={id}>
-          <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
-        </section>
-      ))}
-      <div class="paralelo">
-        <p class="paralelo__nota">en paralelo</p>
-        {paralelo.map((id) => (
-          <section class="caja" data-estacion={id}>
-            <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
-          </section>
-        ))}
-      </div>
-      {despues.map((id) => (
-        <section class="caja" data-estacion={id}>
-          <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
-        </section>
-      ))}
-    </div>
-
-    <h2>Esperando a una persona</h2>
+    <h2 class="cola-titulo">Esperando a una persona</h2>
     <ol class="cola" id="cola"></ol>
     <p id="cola-vacia">Nadie espera ahora mismo.</p>
   </section>
 <script>
+  import { ocupacion } from '../lib/diagrama.js'
+  import { aplicar, crearFichas } from '../components/diagrama-cliente.js'
+  import { esDemo, sondearDemo } from '../components/demo-datos.js'
   import { sondear } from '../lib/sondeo.js'
 
-  const POR_CAJA = 6
+  // How long a rejected / deployed chip stays in its box before it leaves for its counter.
+  const RETENCION = { rechazada: 6000, fallida: 6000, cerrada: 6000, sin_cambios: 4000, desplegada: 4000 }
+  const A_PRODUCCION = ['desplegada']
+
+  const raiz = document.querySelector('[data-diagrama]')
   const estado = document.getElementById('tablero-estado')
+  const siguiendo = document.getElementById('siguiendo')
   const cola = document.getElementById('cola')
   const vacia = document.getElementById('cola-vacia')
-  const FINALES = ['en_curso', 'esperando_persona', 'desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada']
+  const formulario = document.getElementById('sigue')
+  const entrada = document.getElementById('sigue-n')
+  const fichas = crearFichas(raiz)
+  const demo = esDemo()
+
+  let ultimo = null
+  let primera = true
+  const vistas = new Map() // number → { desde: first time seen in a final state, retirada }
+  let seguida = /^\d{1,9}$/.test(new URLSearchParams(location.search).get('n') ?? '') ? Number(new URLSearchParams(location.search).get('n')) : null
+  if (seguida) entrada.value = String(seguida)
 
   function pintar(datos) {
-    for (const caja of document.querySelectorAll('[data-estacion]')) {
-      const id = caja.dataset.estacion
-      const aqui = (datos.tareas ?? []).filter((t) => t.estacion === id)
-      caja.querySelector('[data-n]').textContent = String(datos.contadores?.porEstacion?.[id] ?? aqui.length)
-      const items = aqui.slice(0, POR_CAJA).map((t) => {
-        const item = document.createElement('li')
-        item.className = `chip chip--${FINALES.includes(t.resultadoFinal) ? t.resultadoFinal : 'en_curso'}`
-        item.textContent = `#${t.numero} ${t.titulo}`
-        return item
-      })
-      if (aqui.length > POR_CAJA) {
-        const mas = document.createElement('li')
-        mas.className = 'chip'
-        mas.textContent = `+${aqui.length - POR_CAJA} más`
-        items.push(mas)
-      }
-      caja.querySelector('[data-tareas]').replaceChildren(...items)
-    }
-    for (const total of document.querySelectorAll('[data-total]')) total.textContent = String(datos.contadores?.[total.dataset.total] ?? 0)
+    ultimo = datos
+    const tareas = datos.tareas ?? []
+    const ahora = Date.now()
+    const vivas = new Set(tareas.map((t) => t.numero))
+    for (const n of [...vistas.keys()]) if (!vivas.has(n)) vistas.delete(n)
 
+    const rechazadas = new Set()
+    const desplegadas = new Set()
+    const enCaja = []
+    for (const t of tareas) {
+      const espera = RETENCION[t.resultadoFinal]
+      if (!espera) {
+        enCaja.push(t)
+        continue
+      }
+      // A task that was already finished when the page opened goes straight to the counters.
+      const vista = vistas.get(t.numero) ?? { desde: ahora, retirada: primera }
+      vistas.set(t.numero, vista)
+      if (vista.retirada) continue
+      enCaja.push(t)
+      if (A_PRODUCCION.includes(t.resultadoFinal)) desplegadas.add(t.numero)
+      else rechazadas.add(t.numero)
+    }
+    primera = false
+
+    fichas.pintarFichas(ocupacion(enCaja).pasos, { rechazadas, desplegadas, seguida })
+    retirarVencidas(enCaja)
+
+    for (const total of document.querySelectorAll('[data-total]')) {
+      const id = total.dataset.total
+      const c = datos.contadores ?? {}
+      total.textContent = String(id === 'rechazadas' ? (c.rechazadas ?? 0) + (c.fallidas ?? 0) + (c.cerradas ?? 0) : (c[id] ?? 0))
+    }
     cola.replaceChildren(...(datos.cola ?? []).map((c) => {
       const item = document.createElement('li')
       const link = document.createElement('a')
@@ -83,12 +106,51 @@ const totales = [['peticiones', 'Peticiones'], ['desplegadas', 'Desplegadas'], [
       return item
     }))
     vacia.hidden = (datos.cola ?? []).length > 0
-    estado.textContent = ''
+    estado.textContent = demo ? 'MODO DEMO · datos de ejemplo' : ''
+    seguir()
     return false
   }
 
-  sondear('/api/estado', pintar, () => {
-    estado.textContent = 'Sin conexión con la factory. Reintentando…'
+  // Rejected chips flash in their step, then go to "Rechazadas"; deployed ones leave through Producción to "En producción".
+  function retirarVencidas(enCaja) {
+    const ahora = Date.now()
+    for (const t of enCaja) {
+      const vista = vistas.get(t.numero)
+      if (!vista || vista.retirada || ahora - vista.desde < (RETENCION[t.resultadoFinal] ?? Infinity)) continue
+      vista.retirada = true
+      const destino = document.querySelector(`[data-total="${A_PRODUCCION.includes(t.resultadoFinal) ? 'desplegadas' : 'rechazadas'}"]`)
+      fichas.retirar(t.numero, destino)
+    }
+  }
+  setInterval(() => {
+    if (!ultimo) return
+    const caja = (ultimo.tareas ?? []).filter((t) => RETENCION[t.resultadoFinal] && vistas.has(t.numero) && !vistas.get(t.numero).retirada)
+    retirarVencidas(caja)
+  }, 500)
+
+  // "Sigue tu petición #N": that request's path painted over the board, as in /tarea/.
+  function seguir() {
+    const tarea = seguida ? (ultimo?.tareas ?? []).find((t) => t.numero === seguida) : null
+    aplicar(raiz, tarea ?? null)
+    siguiendo.textContent = seguida ? (tarea ? `Siguiendo la petición #${seguida}: ${tarea.mensaje ?? ''}` : `Todavía no vemos la petición #${seguida}.`) : ''
+  }
+  formulario.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const valor = entrada.value.trim().replace(/^#/, '')
+    seguida = /^\d{1,9}$/.test(valor) ? Number(valor) : null
+    const url = new URL(location.href)
+    if (seguida) url.searchParams.set('n', String(seguida))
+    else url.searchParams.delete('n')
+    history.replaceState(null, '', url)
+    if (ultimo) pintar(ultimo)
   })
+
+  if (demo) {
+    sondearDemo(pintar)
+  } else {
+    sondear('/api/estado', pintar, () => {
+      estado.textContent = 'Sin conexión con la factory. Reintentando…'
+    })
+  }
 </script>
 </Base>
