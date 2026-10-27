@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, cpSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runFactory } from '../lib/factory.js'
+import { runFactory, isAudienceFile } from '../lib/factory.js'
 import { replayProvider } from '../lib/providers.js'
 import { validateFile } from '../lib/schemas.js'
 
@@ -11,7 +11,7 @@ const repo = new URL('..', import.meta.url).pathname
 
 function scratch() {
   const root = mkdtempSync(join(tmpdir(), 'factory-'))
-  for (const dir of ['content', 'data', 'config', 'factory', 'policy']) cpSync(join(repo, dir), join(root, dir), { recursive: true })
+  for (const dir of ['content', 'data', 'config', 'factory', 'policy']) cpSync(join(repo, dir), join(root, dir), { recursive: true, filter: (src) => !isAudienceFile(src) })
   cpSync(join(repo, 'AGENTS.md'), join(root, 'AGENTS.md'))
   return root
 }
@@ -154,4 +154,12 @@ test('token usage is added up across stations', async () => {
   const provider = scripted({ spec, build: card('content/muro/tarea-13.json'), moderacion: ok })
   const result = await runFactory({ task: { id: 13, profile: 'marketing', request: 'x' }, root: scratch(), provider, trace: () => {} })
   assert.deepEqual(result.usage, { input: 30, output: 15 })
+})
+
+test('audience files are recognised so rehearsal copies can leave them out', () => {
+  assert.equal(isAudienceFile('/repo/content/muro/tarea-12.json'), true)
+  assert.equal(isAudienceFile('content/secciones/tarea-1.json'), true)
+  assert.equal(isAudienceFile('/repo/content/muro/bienvenida.json'), false)
+  assert.equal(isAudienceFile('/repo/content/muro'), false)
+  assert.equal(isAudienceFile('/repo/data/tarea-1.json'), false)
 })
