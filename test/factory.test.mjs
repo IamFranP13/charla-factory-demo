@@ -1,9 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, cpSync } from 'node:fs'
+import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runFactory, isAudienceFile } from '../lib/factory.js'
+import { rehearsalCopy } from '../lib/rehearsal.js'
 import { replayProvider } from '../lib/providers.js'
 import { validateFile } from '../lib/schemas.js'
 
@@ -11,8 +12,7 @@ const repo = new URL('..', import.meta.url).pathname
 
 function scratch() {
   const root = mkdtempSync(join(tmpdir(), 'factory-'))
-  for (const dir of ['content', 'data', 'config', 'factory', 'policy']) cpSync(join(repo, dir), join(root, dir), { recursive: true, filter: (src) => !isAudienceFile(src) })
-  cpSync(join(repo, 'AGENTS.md'), join(root, 'AGENTS.md'))
+  rehearsalCopy(repo, root, ['content', 'data', 'config', 'factory', 'policy', 'AGENTS.md'])
   return root
 }
 
@@ -162,4 +162,14 @@ test('audience files are recognised so rehearsal copies can leave them out', () 
   assert.equal(isAudienceFile('/repo/content/muro/bienvenida.json'), false)
   assert.equal(isAudienceFile('/repo/content/muro'), false)
   assert.equal(isAudienceFile('/repo/data/tarea-1.json'), false)
+})
+
+test('a build that changes nothing ends as "unchanged": no reviewers, no files, so no empty commit', async () => {
+  const provider = scripted({ spec, build: { ficheros: [{ ruta: 'config/entradas.json', contenido: { precio: 15, aforo: 200 } }] } })
+  const events = []
+  const result = await runFactory({ task: { id: 14, profile: 'negocio', request: 'Pon el precio a 15' }, root: scratch(), provider, trace: (e) => events.push(e) })
+  assert.equal(result.status, 'unchanged')
+  assert.deepEqual(result.files, [])
+  assert.deepEqual(provider.calls, ['spec', 'build'])
+  assert.match(events.at(-1).detail, /config\/entradas\.json/)
 })

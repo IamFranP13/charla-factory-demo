@@ -1,19 +1,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync, chmodSync, readFileSync, cpSync, existsSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, chmodSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseIssueBody, fence } from '../scripts/factory.mjs'
-import { isAudienceFile } from '../lib/factory.js'
+import { rehearsalCopy } from '../lib/rehearsal.js'
 
 const repo = new URL('..', import.meta.url).pathname
 
 // The CLI writes into the repository it runs from, so each test runs a scratch copy.
 function scratch() {
   const root = mkdtempSync(join(tmpdir(), 'factory-cli-'))
-  for (const dir of ['content', 'data', 'config', 'factory', 'lib', 'scripts', 'node_modules']) cpSync(join(repo, dir), join(root, dir), { recursive: true, filter: (src) => !isAudienceFile(src) })
-  for (const file of ['AGENTS.md', 'package.json']) cpSync(join(repo, file), join(root, file))
+  rehearsalCopy(repo, root, ['content', 'data', 'config', 'factory', 'lib', 'scripts', 'node_modules', 'AGENTS.md', 'package.json'])
   return root
 }
 
