@@ -59,9 +59,11 @@ The fix is one line, no prompt touched:
 +default: human
 ```
 
-Re-run the same request: blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
+Run `npm run preflight` before the talk: it checks the hole is open, `factory` is set and the price is back at the seed value.
 
-A test (`THE HOLE`) pins the gap so nobody closes it by accident before the talk.
+Re-run the request **asking for a different price** (e.g. *"Sube el precio de la entrada a 50 euros"*): asking for the value that is already there ends as `unchanged` and opens no PR. It is now blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
+
+The tests do not pin the hole: they check the mechanism (`config/` takes the `default` route, whatever its value), so the fix does not turn CI red. `npm run preflight` is what warns if the hole is closed by accident.
 
 ## Setup (once)
 

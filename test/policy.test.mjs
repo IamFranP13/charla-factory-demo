@@ -41,14 +41,19 @@ test('the strictest route wins: a card plus a data change needs a human', () => 
   assert.equal(r.files.length, 2)
 })
 
-test('THE HOLE (on purpose, for the demo): config/ is not covered, so it falls to the default', () => {
-  const r = routeFor(policy, ['config/entradas.json'])
-  assert.equal(r.route, 'auto')
-  assert.deepEqual(r.files, [{ file: 'config/entradas.json', route: 'auto', rule: 'default' }])
+const withDefault = (route) => parsePolicy(readFileSync(`${repo}policy/risk.yaml`, 'utf8').replace(/^default:.*$/m, `default: ${route}`))
+
+test('config/ is not covered by any rule, so it falls to whatever the default says', () => {
+  for (const route of ['auto', 'human']) {
+    const r = routeFor(withDefault(route), ['config/entradas.json'])
+    assert.equal(r.route, route)
+    assert.deepEqual(r.files, [{ file: 'config/entradas.json', route, rule: 'default' }])
+  }
+  assert.deepEqual(routeFor(policy, ['config/entradas.json']).files.map((f) => f.rule), ['default'])
 })
 
 test('the one-line fix closes the hole', () => {
-  const fixed = parsePolicy(readFileSync(`${repo}policy/risk.yaml`, 'utf8').replace('default: auto', 'default: human'))
+  const fixed = withDefault('human')
   assert.equal(routeFor(fixed, ['config/entradas.json']).route, 'human')
   assert.equal(routeFor(fixed, ['content/muro/hola.json']).route, 'auto')
 })

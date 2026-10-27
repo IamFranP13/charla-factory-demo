@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync, chmodSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { approvalsAtHead } from '../lib/github.js'
+import { parsePolicy } from '../lib/policy.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const gate = join(repo, 'scripts/gate.mjs')
@@ -21,9 +22,10 @@ test('local mode: prints the route of each file and the overall route', () => {
 })
 
 test('local mode --json prints machine-readable output', () => {
+  const route = parsePolicy(readFileSync(join(repo, 'policy/risk.yaml'), 'utf8')).default
   const r = run(['--json', 'config/entradas.json'])
   assert.equal(r.status, 0)
-  assert.deepEqual(JSON.parse(r.stdout), { route: 'auto', files: [{ file: 'config/entradas.json', route: 'auto', rule: 'default' }] })
+  assert.deepEqual(JSON.parse(r.stdout), { route, files: [{ file: 'config/entradas.json', route, rule: 'default' }] })
 })
 
 test('--policy points at another policy file', () => {
@@ -130,10 +132,24 @@ test('CI mode: the judged head sha is exported so the merge can pin it', () => {
   assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /^head=abc123$/m)
 })
 
-test('CI mode: THE HOLE still works for the factory (config/ auto-merges)', () => {
+// The live default is not pinned: these tests use explicit policies derived from the real file.
+function policyWithDefault(route) {
+  const file = join(mkdtempSync(join(tmpdir(), 'gate-')), 'risk.yaml')
+  writeFileSync(file, readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, `default: ${route}`))
+  return file
+}
+
+test('CI mode: with default: auto the hole is open (config/ auto-merges for the factory)', () => {
   const env = fakeGh({ files: [{ filename: 'config/entradas.json' }], reviews: [] })
-  assert.equal(run(['--pr', '7'], env).status, 0)
+  assert.equal(run(['--pr', '7', '--policy', policyWithDefault('auto')], env).status, 0)
   assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /merge=true/)
+})
+
+test('CI mode: with default: human the fix blocks config/ until an approver approves', () => {
+  const env = fakeGh({ files: [{ filename: 'config/entradas.json' }], reviews: [] })
+  const r = run(['--pr', '7', '--policy', policyWithDefault('human')], env)
+  assert.equal(r.status, 1)
+  assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /merge=false/)
 })
 
 test('CI mode: a truncated file list (fewer files than changed_files) fails closed', () => {

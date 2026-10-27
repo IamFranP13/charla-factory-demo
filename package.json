@@ -12,6 +12,7 @@
     "gate": "node scripts/gate.mjs",
     "factory": "node scripts/factory.mjs",
     "simulate": "node scripts/simulate.mjs",
+    "preflight": "node scripts/preflight.mjs",
     "numbers": "node scripts/numbers.mjs",
     "test": "node --test \"test/*.test.mjs\""
   },
