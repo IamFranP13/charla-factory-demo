@@ -13,6 +13,8 @@ const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
 </form>
 
 <script>
+  import { guardar } from '../lib/tareas-guardadas.js'
+
   const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
   const form = document.getElementById('peticion')
   const estado = document.getElementById('estado')
@@ -39,8 +41,10 @@ const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
       if (response.ok) {
         const link = document.createElement('a')
         link.href = `/tarea/?n=${encodeURIComponent(body.tarea)}`
-        link.textContent = 'Sigue tu tarea'
+        link.textContent = 'Sigue tu petición'
         estado.replaceChildren(`Recibida: tarea #${body.tarea}. Te ha tocado pedirlo como ${PERFILES[body.perfil] ?? body.perfil}. `, link)
+        guardar(body.tarea)
+        window.dispatchEvent(new Event('limonia:tareas'))
         form.reset()
         contador.textContent = '0'
       } else {

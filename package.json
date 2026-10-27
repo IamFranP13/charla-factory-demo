@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "node scripts/validate-content.mjs && astro build",
+    "build": "node scripts/validate-content.mjs && astro build && node scripts/deploy-meta.mjs",
     "dev": "astro dev",
     "gate": "node scripts/gate.mjs",
     "factory": "node scripts/factory.mjs",

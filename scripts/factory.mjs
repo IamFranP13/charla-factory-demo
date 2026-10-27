@@ -98,6 +98,7 @@ async function runIssue(number, providers) {
   // The state marker lives in the issue body; it is rewritten on every station change.
   let body = data.body
   let state = initialState(task.profile)
+  let motivo = null
   const publish = () => {
     try {
       body = replaceState(body, state)
@@ -113,6 +114,8 @@ async function runIssue(number, providers) {
     task, root, ...providers,
     trace: (e) => {
       state = applyEvent(state, e)
+      // The reason shown to the audience is the last thing a station refused, failed or found unchanged.
+      if (['rejected', 'error', 'unchanged'].includes(e.status)) motivo = e.station === 'approver' ? e.detail.replace(/^rechazada por segunda vez: /, '') : `${e.station}: ${e.detail}`
       publish()
       if (e.status === 'en_curso') return
       console.log(`${e.station.padEnd(11)} ${e.status.padEnd(8)} ${e.detail}`)
@@ -121,7 +124,7 @@ async function runIssue(number, providers) {
     },
   })
   writeFiles(result.files)
-  state = finishState(state, result.status)
+  state = finishState(state, result.status, undefined, motivo)
   publish()
 
   const summary = { status: result.status, profile: task.profile, files: result.files.map((f) => f.path), attempts: result.attempts, usage: result.usage, ms: Date.now() - started }

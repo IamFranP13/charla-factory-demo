@@ -78,14 +78,15 @@ function judgePullRequest(policy, number) {
   process.exit(decision.pass ? 0 : 1)
 }
 
-// The pull request was closed: merged → the change is in main (production deploys it next); not merged → refused.
+// The pull request was closed: merged → the change is in main (production deploys it next; the merge commit lets
+// /api/estado confirm it); not merged → refused.
 function markClosed(number) {
   const pr = pullRequest(number)
   markTask(pr, (state) => {
     const estaciones = { ...state.estaciones }
     if (pr.merged) {
       estaciones.merge = 'ok'
-      return { ...state, estaciones, fase: 'produccion', actualizado: new Date().toISOString() }
+      return { ...state, estaciones, fase: 'produccion', mergeCommit: pr.merge_commit_sha, actualizado: new Date().toISOString() }
     }
     estaciones[estaciones.puerta === 'ok' ? 'merge' : 'puerta'] = 'rechazada'
     return { ...state, estaciones, actualizado: new Date().toISOString() }

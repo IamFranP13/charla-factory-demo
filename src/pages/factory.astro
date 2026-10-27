@@ -1,0 +1,94 @@
+---
+import Base from '../layouts/Base.astro'
+import { STATION_LABELS } from '../../lib/estado.js'
+
+// The talk diagram: Entrada → Spec writer → Builder → four reviewers in parallel → Approver → ¿Humano? → Main o PR → Producción.
+const antes = ['entrada', 'spec', 'build']
+const paralelo = ['seguridad', 'ux', 'ui', 'codigo']
+const despues = ['approver', 'puerta', 'merge', 'produccion']
+const totales = [['peticiones', 'Peticiones'], ['desplegadas', 'Desplegadas'], ['esperando', 'Esperando'], ['rechazadas', 'Rechazadas']]
+---
+<Base title="Factory" description="La factory de LIMONIA en directo: cada petición, en su estación.">
+  <section class="contenedor seccion tablero">
+    <h1>La factory en directo</h1>
+    <p id="tablero-estado" role="status" aria-live="polite"></p>
+
+    <dl class="totales">
+      {totales.map(([id, label]) => (
+        <div class="total"><dt>{label}</dt><dd data-total={id}>0</dd></div>
+      ))}
+    </dl>
+
+    <div class="diagrama">
+      {antes.map((id) => (
+        <section class="caja" data-estacion={id}>
+          <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
+        </section>
+      ))}
+      <div class="paralelo">
+        <p class="paralelo__nota">en paralelo</p>
+        {paralelo.map((id) => (
+          <section class="caja" data-estacion={id}>
+            <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
+          </section>
+        ))}
+      </div>
+      {despues.map((id) => (
+        <section class="caja" data-estacion={id}>
+          <h3>{STATION_LABELS[id]}</h3><p class="caja__n" data-n>0</p><ul class="caja__tareas" data-tareas></ul>
+        </section>
+      ))}
+    </div>
+
+    <h2>Esperando a una persona</h2>
+    <ol class="cola" id="cola"></ol>
+    <p id="cola-vacia">Nadie espera ahora mismo.</p>
+  </section>
+<script>
+  import { sondear } from '../lib/sondeo.js'
+
+  const POR_CAJA = 6
+  const estado = document.getElementById('tablero-estado')
+  const cola = document.getElementById('cola')
+  const vacia = document.getElementById('cola-vacia')
+  const FINALES = ['en_curso', 'esperando_persona', 'desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada']
+
+  function pintar(datos) {
+    for (const caja of document.querySelectorAll('[data-estacion]')) {
+      const id = caja.dataset.estacion
+      const aqui = (datos.tareas ?? []).filter((t) => t.estacion === id)
+      caja.querySelector('[data-n]').textContent = String(datos.contadores?.porEstacion?.[id] ?? aqui.length)
+      const items = aqui.slice(0, POR_CAJA).map((t) => {
+        const item = document.createElement('li')
+        item.className = `chip chip--${FINALES.includes(t.resultadoFinal) ? t.resultadoFinal : 'en_curso'}`
+        item.textContent = `#${t.numero} ${t.titulo}`
+        return item
+      })
+      if (aqui.length > POR_CAJA) {
+        const mas = document.createElement('li')
+        mas.className = 'chip'
+        mas.textContent = `+${aqui.length - POR_CAJA} más`
+        items.push(mas)
+      }
+      caja.querySelector('[data-tareas]').replaceChildren(...items)
+    }
+    for (const total of document.querySelectorAll('[data-total]')) total.textContent = String(datos.contadores?.[total.dataset.total] ?? 0)
+
+    cola.replaceChildren(...(datos.cola ?? []).map((c) => {
+      const item = document.createElement('li')
+      const link = document.createElement('a')
+      link.href = c.url
+      link.textContent = `PR #${c.pr}`
+      item.append(link, ` · tarea #${c.tarea ?? '?'} · ${c.titulo}`)
+      return item
+    }))
+    vacia.hidden = (datos.cola ?? []).length > 0
+    estado.textContent = ''
+    return false
+  }
+
+  sondear('/api/estado', pintar, () => {
+    estado.textContent = 'Sin conexión con la factory. Reintentando…'
+  })
+</script>
+</Base>

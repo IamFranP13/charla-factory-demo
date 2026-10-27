@@ -1,0 +1,72 @@
+---
+import Base from '../layouts/Base.astro'
+import { STATIONS, STATION_LABELS } from '../../lib/estado.js'
+
+const estaciones = STATIONS.map((id) => ({ id, label: STATION_LABELS[id] }))
+---
+<Base title="Tu petición" description="Sigue tu petición a LIMONIA hasta que llega a la web.">
+  <section class="contenedor seccion seguimiento">
+    <p class="sobretitulo">Seguimiento</p>
+    <h1 id="tarea-titulo">Tu petición</h1>
+    <p id="tarea-detalle"></p>
+    <div id="tarea-final" class="final" role="status" aria-live="polite">Buscando tu petición…</div>
+    <p id="tarea-motivo"></p>
+    <p id="tarea-enlace"></p>
+    <ol class="estaciones" id="tarea-estaciones">
+      {estaciones.map((e) => (
+        <li class="estacion estacion--pendiente" data-estacion={e.id}>
+          <span class="estacion__nombre">{e.label}</span>
+          <span class="estacion__valor">pendiente</span>
+        </li>
+      ))}
+    </ol>
+  </section>
+<script>
+  import { STATION_LABELS, MENSAJES, enlaceFor } from '../../lib/estado.js'
+  import { sondear } from '../lib/sondeo.js'
+
+  const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
+  const VALORES = { pendiente: 'pendiente', en_curso: 'en curso', ok: 'ok', rechazada: 'rechazada', error: 'error' }
+  const FINALES = ['desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada']
+  const PARADAS = ['rechazada', 'fallida', 'cerrada']
+
+  const numero = new URLSearchParams(location.search).get('n') ?? ''
+  const titulo = document.getElementById('tarea-titulo')
+  const detalle = document.getElementById('tarea-detalle')
+  const final = document.getElementById('tarea-final')
+  const motivo = document.getElementById('tarea-motivo')
+  const enlace = document.getElementById('tarea-enlace')
+
+  function pintar(tarea) {
+    titulo.textContent = `Petición #${tarea.numero}`
+    detalle.textContent = `${tarea.titulo} · Perfil sorteado: ${PERFILES[tarea.perfil] ?? tarea.perfil}`
+    const resultado = MENSAJES[tarea.resultadoFinal] ? tarea.resultadoFinal : 'en_curso'
+    final.className = `final final--${resultado}`
+    final.textContent = MENSAJES[resultado]
+    const parada = PARADAS.includes(resultado) ? `Se detuvo en: ${STATION_LABELS[tarea.estacion] ?? tarea.estacion}. ` : ''
+    motivo.textContent = tarea.motivo ? `${parada}Motivo: ${tarea.motivo}` : parada
+    enlace.replaceChildren()
+    if (resultado === 'desplegada') {
+      const link = document.createElement('a')
+      link.href = enlaceFor(tarea.perfil)
+      link.textContent = 'Ver el cambio en la web'
+      enlace.append(link)
+    }
+    for (const item of document.querySelectorAll('[data-estacion]')) {
+      const valor = VALORES[tarea.estaciones?.[item.dataset.estacion]] ? tarea.estaciones[item.dataset.estacion] : 'pendiente'
+      item.className = `estacion estacion--${valor}`
+      item.querySelector('.estacion__valor').textContent = VALORES[valor]
+    }
+    return FINALES.includes(resultado)
+  }
+
+  if (/^\d{1,9}$/.test(numero)) {
+    // A task created a moment ago may not be in the 10 s cache yet: a 404 keeps polling.
+    sondear(`/api/estado?tarea=${numero}`, (body) => (body.tareas?.[0] ? pintar(body.tareas[0]) : false), (estado) => {
+      final.textContent = estado === 404 ? 'Todavía no vemos tu petición. Seguimos buscando…' : 'Sin conexión con la factory. Reintentando…'
+    })
+  } else {
+    final.textContent = 'Falta el número de tu petición.'
+  }
+</script>
+</Base>

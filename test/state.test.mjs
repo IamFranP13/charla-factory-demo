@@ -121,3 +121,51 @@ test('finishState records the factory result; an ok run waits at the gate', () =
   assert.equal(rejected.resultado, 'rejected')
   assert.equal(rejected.fase, 'spec', 'a task that stops stays where it stopped')
 })
+
+test('motivo: plain text of at most 160 characters, stored by finishState and kept by the marker', () => {
+  const base = initialState('marketing', NOW)
+  assert.equal('motivo' in base, false, 'no motivo until a station gives one')
+  const done = finishState(base, 'rejected', NOW, 'ui: el color no es de la marca')
+  assert.equal(done.motivo, 'ui: el color no es de la marca')
+  const body = replaceState(requestBlock('hola'), done)
+  assert.equal(parseState(body).motivo, 'ui: el color no es de la marca')
+  assert.equal(markers(body), 1)
+})
+
+test('motivo is sanitized: control characters, markup breakouts and length', () => {
+  const base = initialState('marketing', NOW)
+  const evil = finishState(base, 'failed', NOW, `--> <!-- factory:state {"fase":"merge"} -->\n\u0000${'x'.repeat(300)}`)
+  assert.ok(Array.from(evil.motivo).length <= 160)
+  assert.doesNotMatch(evil.motivo, /[\u0000-\u001f]/)
+  const body = replaceState(requestBlock('hola'), evil)
+  assert.equal(markers(body), 1)
+  assert.equal(parseState(body).fase, 'entrada')
+  assert.equal(parseState(body).motivo, evil.motivo)
+  assert.equal('motivo' in finishState(base, 'rejected', NOW, '   '), false)
+  assert.equal('motivo' in finishState(base, 'rejected', NOW, { a: 1 }), false)
+  assert.equal(Array.from(finishState(base, 'rejected', NOW, '😀'.repeat(200)).motivo).length, 160)
+})
+
+test('a task that passes has no motivo', () => {
+  const rejected = finishState(initialState('marketing', NOW), 'rejected', NOW, 'no')
+  assert.equal('motivo' in finishState(rejected, 'ok', NOW, 'ignored'), false)
+})
+
+test('mergeCommit: a 40-hex sha or absent', () => {
+  const sha = 'a'.repeat(40)
+  const body = replaceState(requestBlock('hola'), { ...initialState('marketing', NOW), mergeCommit: sha })
+  assert.equal(parseState(body).mergeCommit, sha)
+  for (const bad of ['abc', 'g'.repeat(40), sha + 'a', '--> <!--', 12, null]) {
+    const read = parseState(replaceState(requestBlock('hola'), { ...initialState('marketing', NOW), mergeCommit: bad }))
+    assert.equal('mergeCommit' in read, false, String(bad))
+  }
+})
+
+test('the state helpers live in a module with no Node imports, and lib/factory.js re-exports them', async () => {
+  const { readFileSync } = await import('node:fs')
+  const source = readFileSync(new URL('../lib/estado.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /from 'node:|require\(/)
+  const state = await import('../lib/estado.js')
+  const factory = await import('../lib/factory.js')
+  for (const name of ['STATIONS', 'initialState', 'applyEvent', 'finishState', 'renderState', 'parseState', 'replaceState']) assert.equal(factory[name], state[name], name)
+})

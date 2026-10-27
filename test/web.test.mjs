@@ -4,6 +4,8 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { MAX_LENGTH } from '../lib/intake.js'
+import { STATIONS, STATION_LABELS, MENSAJES } from '../lib/estado.js'
+import { NAV } from '../src/lib/nav.js'
 import { cargarEstado } from '../src/domain/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
@@ -22,7 +24,7 @@ before(() => {
   })
   assert.equal(build.status, 0, build.stdout + build.stderr)
   const read = (path) => readFileSync(join(out, path), 'utf8')
-  pages = { home: read('index.html'), catalogo: read('catalogo/index.html'), presupuesto: read('presupuesto/index.html') }
+  pages = { home: read('index.html'), catalogo: read('catalogo/index.html'), presupuesto: read('presupuesto/index.html'), tarea: read('tarea/index.html'), factory: read('factory/index.html') }
 })
 
 after(() => rmSync(out, { recursive: true, force: true }))
@@ -94,10 +96,57 @@ test('the quote calculator only offers products that can be priced', () => {
   }
 })
 
-test('every page has the navigation with a disabled slot for the factory', () => {
+test('every page has the navigation, with the factory board enabled', () => {
+  assert.equal(NAV.some((item) => item.pronto), false)
   for (const html of Object.values(pages)) {
     assert.match(html, /href="\/catalogo\/"/)
     assert.match(html, /href="\/presupuesto\/"/)
-    assert.match(html, /Factory <small>pronto<\/small>/)
+    assert.match(html, /href="\/factory\/"/)
+    assert.doesNotMatch(html, /<small>pronto<\/small>/)
   }
+})
+
+test('the form remembers the submitted task numbers (max 20) and links to the follow-up page', () => {
+  const bundle = clientCode(pages.home)
+  assert.ok(bundle.includes('limonia:tareas'))
+  assert.ok(bundle.includes('Sigue tu petición'))
+  assert.ok(bundle.includes('Recibida: tarea #'), 'the existing success sentence stays')
+  assert.match(bundle, /slice\(-?20|MAX_GUARDADAS|20/)
+})
+
+test('the home lists "Tus peticiones" from localStorage, with a link to each task', () => {
+  assert.match(pages.home, /Tus peticiones/)
+  assert.match(pages.home, /id="mis-peticiones"/)
+  const bundle = clientCode(pages.home)
+  assert.ok(bundle.includes('limonia:tareas'))
+  assert.ok(bundle.includes('/tarea/?n='))
+})
+
+test('/tarea/ polls the status API every 5 s for one task and shows the stations and the final message', () => {
+  const bundle = clientCode(pages.tarea)
+  assert.ok(bundle.includes('/api/estado?tarea='))
+  assert.match(bundle, /5e3|5000/)
+  for (const label of Object.values(STATION_LABELS)) assert.ok(bundle.includes(label), label)
+  for (const message of Object.values(MENSAJES)) assert.ok(bundle.includes(message), message)
+  for (const status of ['pendiente', 'en curso', 'ok', 'rechazada', 'error']) assert.ok(bundle.includes(status), status)
+  assert.match(pages.tarea, /viewport/)
+  assert.match(bundle, /textContent|replaceChildren/)
+  assert.doesNotMatch(bundle, /innerHTML/)
+})
+
+test('/factory/ polls the status API every 5 s and shows the diagram, the queue and the totals', () => {
+  const bundle = clientCode(pages.factory)
+  assert.ok(bundle.includes('/api/estado'))
+  const entry = [...pages.factory.matchAll(/<script type="module" src="(\/_astro\/[^"]+)"/g)].map((m) => readFileSync(join(out, m[1]), 'utf8')).join('\n')
+  assert.ok(entry.includes('/api/estado'))
+  assert.doesNotMatch(entry, /api\/estado\?tarea/, 'the board reads the whole list')
+  assert.match(bundle, /5e3|5000/)
+  for (const label of Object.values(STATION_LABELS)) assert.ok(bundle.includes(label), label)
+  assert.match(pages.factory, /Esperando a una persona/i)
+  for (const total of ['Peticiones', 'Desplegadas', 'Esperando', 'Rechazadas']) assert.match(pages.factory, new RegExp(total))
+  assert.doesNotMatch(bundle, /innerHTML/)
+})
+
+test('the stations of the pages are the ones of the factory', () => {
+  assert.deepEqual(Object.keys(STATION_LABELS), STATIONS)
 })

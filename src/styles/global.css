@@ -166,6 +166,36 @@ legend { font-weight: 700; font-size: 1.1rem; margin-bottom: .75rem; color: var(
 .resumen__nota { color: var(--tinta-suave); font-size: .9rem; margin: .5rem 0 0; }
 .calculadora--error .resumen { opacity: .75; }
 
+/* Follow-up (/tarea) and board (/factory): function over looks, built from the same tokens */
+.final { font-family: var(--fuente-titulo); font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 700; padding: 1rem 1.25rem; border-radius: var(--radio); background: var(--crema); color: var(--oliva-oscuro); margin: 1rem 0; }
+.final--desplegada { background: var(--oliva); color: #fff; }
+.final--esperando_persona { background: var(--limon-suave); }
+.final--rechazada, .final--fallida, .final--cerrada { background: #fbe6dc; color: #7a2b0e; }
+.estaciones { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .5rem; max-width: 28rem; }
+.estacion { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; border: 1px solid var(--borde); border-left-width: 6px; border-radius: 12px; background: #fff; }
+.estacion--en_curso { border-left-color: var(--limon); background: var(--limon-suave); font-weight: 700; }
+.estacion--ok { border-left-color: var(--oliva); }
+.estacion--rechazada, .estacion--error { border-left-color: #c4511f; background: #fbe6dc; }
+.estacion--pendiente { color: var(--tinta-suave); }
+.mis-peticiones { margin: 0; padding-left: 1.25rem; }
+
+.totales { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0 2rem; }
+.total { background: var(--crema); border-radius: var(--radio); padding: .75rem 1.5rem; min-width: 9rem; }
+.total dt { font-weight: 600; }
+.total dd { margin: 0; font-family: var(--fuente-titulo); font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: var(--oliva-oscuro); }
+.diagrama { display: flex; flex-wrap: wrap; gap: 1rem; align-items: stretch; margin-bottom: 2rem; }
+.paralelo { display: flex; flex-wrap: wrap; gap: .75rem; padding: .75rem; border: 2px dashed var(--oliva-claro); border-radius: var(--radio); }
+.paralelo__nota { width: 100%; margin: 0; font-size: .85rem; color: var(--tinta-suave); }
+.caja { flex: 1 1 11rem; min-width: 11rem; background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); padding: .75rem 1rem; }
+.caja h3 { margin: 0; font-size: 1.1rem; }
+.caja__n { margin: 0; font-family: var(--fuente-titulo); font-size: 2rem; font-weight: 700; color: var(--oliva); }
+.caja__tareas { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
+.chip { font-size: .85rem; padding: .15rem .5rem; border-radius: 999px; background: var(--crema); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip--en_curso { background: var(--limon-suave); }
+.chip--desplegada { background: var(--oliva-claro); }
+.chip--rechazada, .chip--fallida, .chip--cerrada { background: #fbe6dc; }
+.cola { font-size: 1.25rem; }
+
 /* Footer */
 .pie { background: var(--oliva-oscuro); color: #eef0dc; margin-top: 3rem; padding-block: 2rem; }
 .pie__fila { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 2rem; }

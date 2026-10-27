@@ -56,11 +56,11 @@ test('approvals only count when the latest review of that user is APPROVED on th
 })
 
 // CI mode talks to GitHub through the gh CLI; here gh is a stub that serves fixtures.
-function fakeGh({ files, reviews, head = 'head', author = 'murciatech-factory[bot]', headRepo = 'o/r', changed = files.length, ref = 'tarea/5', merged = false, issueBody = undefined, issueFails = false }) {
+function fakeGh({ files, reviews, head = 'head', author = 'murciatech-factory[bot]', headRepo = 'o/r', changed = files.length, ref = 'tarea/5', merged = false, mergeSha = 'c'.repeat(40), issueBody = undefined, issueFails = false }) {
   const dir = mkdtempSync(join(tmpdir(), 'gh-'))
   writeFileSync(join(dir, 'files.json'), JSON.stringify(files))
   writeFileSync(join(dir, 'reviews.json'), JSON.stringify(reviews))
-  writeFileSync(join(dir, 'pr.json'), JSON.stringify({ user: { login: author }, merged, head: { sha: head, ref, repo: headRepo === null ? null : { full_name: headRepo } }, changed_files: changed }))
+  writeFileSync(join(dir, 'pr.json'), JSON.stringify({ user: { login: author }, merged, merge_commit_sha: mergeSha, head: { sha: head, ref, repo: headRepo === null ? null : { full_name: headRepo } }, changed_files: changed }))
   const body = issueBody ?? replaceState('Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"hola"}\n```\n', { ...initialState('marketing'), resultado: 'ok', fase: 'puerta', pr: 7 })
   writeFileSync(join(dir, 'issue.json'), JSON.stringify({ number: 5, user: { login: 'o' }, body }))
   writeFileSync(join(dir, 'gh'), `#!/bin/sh
@@ -248,6 +248,13 @@ test('--closed: a merged PR marks merge ok and the task waits at production', ()
   assert.equal(state.estaciones.merge, 'ok')
   assert.equal(state.estaciones.produccion, 'pendiente')
   assert.equal(state.fase, 'produccion')
+  assert.equal(state.mergeCommit, 'c'.repeat(40))
+})
+
+test('--closed: a merge commit that is not a sha is not stored', () => {
+  const env = fakeGh({ files: [{ filename: 'content/campanas/a.json' }], reviews: [], merged: true, mergeSha: '--> nope' })
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.equal('mergeCommit' in issueState(env), false)
 })
 
 test('--closed: a PR closed without merging marks the gate rechazada', () => {
@@ -256,6 +263,7 @@ test('--closed: a PR closed without merging marks the gate rechazada', () => {
   const state = issueState(env)
   assert.equal(state.estaciones.puerta, 'rechazada')
   assert.equal(state.estaciones.merge, 'pendiente')
+  assert.equal('mergeCommit' in state, false)
 })
 
 test('--closed never judges the PR: it does not read files or reviews', () => {

@@ -26,11 +26,22 @@ QR → form (src/pages/) → Pages Function (functions/api/peticion.js) → GitH
 |-------|-------|---------------|
 | Profiles | `factory/profiles.yaml` | The company is LIMONIA. Marketing (campaigns in `content/campanas/`), Producto (a new product or destination in `catalogo/`), Negocio (prices, discounts and transport: `data/precios.json`, `data/descuentos.json`, `config/transporte.json`). Each one may only write in its places. |
 | Stations | `lib/factory.js`, `factory/prompts/`, `brain/` | `spec` reads the Brain (brand, tone, decisions, human-only) · `build` · `seguridad`, `ux`, `ui` (models, in parallel) and `codigo` (code, no model: schemas, catalogue rules and every sample quote in `factory/muestras.json`) · `approver` (code: 4/4 or back to `build` once). Models only fill in content; code chooses paths and keeps score. |
-| Task state | `<!-- factory:state {...} -->` in the issue body | One station map per task (`pendiente`, `en_curso`, `ok`, `rechazada`, `error`) for the board. Written only by `scripts/factory.mjs` and `scripts/gate.mjs`, rendered from known fields (model text can never reach it). `puerta` and `merge` are set by the gate; `produccion` stays `pendiente` (Cloudflare deploys main; nothing in this repository can confirm it). |
+| Task state | `<!-- factory:state {...} -->` in the issue body | One station map per task (`pendiente`, `en_curso`, `ok`, `rechazada`, `error`) for the board. Written only by `scripts/factory.mjs` and `scripts/gate.mjs`, rendered from known fields (model text can never reach it). `puerta` and `merge` are set by the gate. Optional `motivo` (plain text, at most 160 characters: why a station refused or failed) and `mergeCommit` (the PR's merge commit, 40 hex). `produccion` is confirmed by `/api/estado`, not stored (see *Following a request*). The pure helpers live in `lib/estado.js`. |
+| Follow-up | `functions/api/estado.js`, `lib/estado.js`, `/tarea/?n=N`, `/factory/` | `GET /api/estado` is the one read the pages poll every 5 s: the task of each request, the queue waiting for a person and the counters. See *Following a request*. |
 | Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Fails closed. Approvals count only on the current head. |
 | Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model. |
 | Intake | `lib/intake.js` | Requests of at most 150 characters; the server draws the profile at random, in equal parts. Turnstile, a task cap and a kill switch. Input is data, never instructions. |
 | Shared rules | `AGENTS.md` | The same rules for the factory agents and for a local harness (Pi, Claude Code, OpenCode…). |
+
+## Following a request
+
+`GET /api/estado` (Pages Function) lists the issues labelled `entrada` (1 call) and the open PRs labelled `necesita-humano` (1 call, through the issues endpoint, so Issues: read is enough), parses each state marker with the same rules as `parseState`, caches the whole answer 10 s (Cache API, in-memory fallback) and returns `{tareas, cola, contadores, actualizado}`; `?tarea=N` filters (404 `{error}` if unknown). It never returns request text beyond the issue title, tokens or GitHub errors (502 with a generic message).
+
+`resultadoFinal` is derived: `desplegada` (production confirmed), `rechazada` / `fallida` / `sin_cambios` (the factory result, with `motivo`), `cerrada` (PR closed without merge), `esperando_persona` (PR in the queue, or routed to a human and not approved yet), `en_curso` (everything else, including merged and waiting for the deploy).
+
+Production is confirmed without new permissions: `npm run build` writes `dist/deploy.json` (`{commit, builtAt}` from `CF_PAGES_COMMIT_SHA`, or `git rev-parse HEAD` locally), `gate.mjs --closed` stores the PR's `mergeCommit`, and for merged tasks not yet in production the API reads its own `/deploy.json` and asks `GET /repos/{repo}/compare/{mergeCommit}...{deployed}`: `identical` or `ahead` means deployed (cached for the life of the worker); `behind`/`diverged` keeps waiting.
+
+Pages: the form saves the task numbers in `localStorage` (`limonia:tareas`, last 20) and links to `/tarea/?n=N`; the home lists them under *Tus peticiones*. `/tarea/` shows the stations vertically and the final message; when deployed it links to where the change shows, by profile (Marketing campaign → `/`, Producto product or destination → `/catalogo/`, Negocio prices, discounts, transport → `/presupuesto/`). `/factory/` is the big-screen board.
 
 ## Run it locally (free, offline)
 
@@ -103,7 +114,7 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 |----------|-------|
 | `TURNSTILE_SITE_KEY` | Turnstile site key (used at build time) |
 | `TURNSTILE_SECRET` | Turnstile secret key |
-| `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else |
+| `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else (also read by `/api/estado`) |
 | `GITHUB_REPO` | `owner/repo` |
 | `INTAKE_OPEN` | `1` to accept requests, anything else closes the form (kill switch) |
 | `INTAKE_MAX_TASKS` | Task cap, default `15`, **max `100`** (higher values are clamped; the check is not atomic, so a burst can overshoot slightly) |

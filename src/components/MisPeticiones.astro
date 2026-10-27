@@ -1,0 +1,27 @@
+<section class="contenedor seccion" id="mis-peticiones" aria-labelledby="mis-titulo" hidden>
+  <h2 id="mis-titulo">Tus peticiones</h2>
+  <ul class="mis-peticiones" id="mis-lista"></ul>
+</section>
+
+<script>
+  import { leer } from '../lib/tareas-guardadas.js'
+
+  const seccion = document.getElementById('mis-peticiones')
+  const lista = document.getElementById('mis-lista')
+
+  function pintar() {
+    const numeros = leer().reverse()
+    lista.replaceChildren(...numeros.map((n) => {
+      const item = document.createElement('li')
+      const link = document.createElement('a')
+      link.href = `/tarea/?n=${n}`
+      link.textContent = `Petición #${n}: sigue cómo va`
+      item.append(link)
+      return item
+    }))
+    seccion.hidden = numeros.length === 0
+  }
+
+  pintar()
+  window.addEventListener('limonia:tareas', pintar)
+</script>

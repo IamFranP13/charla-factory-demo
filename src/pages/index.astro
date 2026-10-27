@@ -4,6 +4,7 @@ import Paisaje from '../components/Paisaje.astro'
 import CampanaCard from '../components/CampanaCard.astro'
 import ProductoCard from '../components/ProductoCard.astro'
 import PeticionForm from '../components/PeticionForm.astro'
+import MisPeticiones from '../components/MisPeticiones.astro'
 import { campanas, productos, destinos } from '../lib/contenido.js'
 
 const todas = productos()
@@ -61,4 +62,6 @@ const cifras = [
     </div>
     <PeticionForm />
   </section>
+
+  <MisPeticiones />
 </Base>

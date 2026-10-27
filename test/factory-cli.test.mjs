@@ -133,6 +133,14 @@ test('issue mode: a rejected task ends with resultado rejected and the rejecting
   assert.equal(state.estaciones.ui, 'rechazada')
   assert.equal(state.estaciones.approver, 'rechazada')
   assert.equal(state.estaciones.puerta, 'pendiente')
+  assert.match(state.motivo, /ui:/, 'the motivo names the station that refused')
+  assert.ok(Array.from(state.motivo).length <= 160)
+})
+
+test('issue mode: an accepted task has no motivo', () => {
+  const gh = fakeGh(issue())
+  assert.equal(run(scratch(), ['--issue', '5'], gh.env).status, 0)
+  assert.equal('motivo' in parseState(finalBody(gh)), false)
 })
 
 test('issue mode --pr: records the pull request and puts the task at the gate, through the script', () => {
