@@ -53,7 +53,7 @@ test('approvals only count when the latest review of that user is APPROVED on th
 })
 
 // CI mode talks to GitHub through the gh CLI; here gh is a stub that serves fixtures.
-function fakeGh({ files, reviews, head = 'head', author = 'charla-factory[bot]', headRepo = 'o/r', changed = files.length }) {
+function fakeGh({ files, reviews, head = 'head', author = 'murciatech-factory[bot]', headRepo = 'o/r', changed = files.length }) {
   const dir = mkdtempSync(join(tmpdir(), 'gh-'))
   writeFileSync(join(dir, 'files.json'), JSON.stringify(files))
   writeFileSync(join(dir, 'reviews.json'), JSON.stringify(reviews))
