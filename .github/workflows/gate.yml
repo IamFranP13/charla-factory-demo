@@ -11,10 +11,11 @@ on:
   pull_request_review:
     types: [submitted, dismissed]
 
-# contents: write + pull-requests: write is enough to label, comment and squash-merge.
-# NOTE: a merge done with GITHUB_TOKEN does NOT trigger the push workflow, so
-# deploying main must come from Cloudflare Pages' own Git integration, never
-# from a GitHub workflow.
+# contents: write + pull-requests: write is enough to label and comment.
+# Auto-merge is enabled with the factory App token instead (see the merge step):
+# GitHub does not fire the side effects of a merge done with GITHUB_TOKEN, so the
+# linked issue would stay open and the branch would not be deleted.
+# Deploying main still comes from Cloudflare Pages' own Git integration.
 permissions:
   contents: write
   pull-requests: write
@@ -57,10 +58,20 @@ jobs:
         continue-on-error: true
         run: node scripts/gate.mjs --pr "$PR"
 
+      # The App key is only touched when the gate has already decided to merge.
+      # Safe here: this job runs the BASE branch code only, never the PR's.
+      - id: app
+        if: steps.gate.outputs.merge == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+
       # Pin the commit the gate judged: a push after the verdict cancels the merge.
       - if: steps.gate.outputs.merge == 'true'
         env:
           HEAD: ${{ steps.gate.outputs.head }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh pr merge "$PR" --auto --squash --match-head-commit "$HEAD"
 
       - if: steps.gate.outputs.route == 'human'

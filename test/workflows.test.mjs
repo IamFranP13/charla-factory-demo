@@ -90,6 +90,20 @@ test('gate.yml: judges the PR, merges on merge=true, labels the human route, and
   assert.match(last.run, /exit 1/)
 })
 
+test('gate.yml: auto-merge is enabled as the factory App, so the merge closes the issue and deletes the branch', () => {
+  const list = steps(load('gate'), 'risk-gate')
+  const appIndex = list.findIndex((s) => s.uses?.startsWith('actions/create-github-app-token@'))
+  const mergeIndex = list.findIndex((s) => s.run?.includes('gh pr merge'))
+  const gateIndex = list.findIndex((s) => s.id === 'gate')
+  assert.ok(appIndex > gateIndex && appIndex < mergeIndex, 'App token is minted after the verdict, before the merge')
+  const app = list[appIndex]
+  assert.equal(app.id, 'app')
+  assert.equal(app.if, "steps.gate.outputs.merge == 'true'", 'the App key is only used when the gate decided to merge')
+  assert.equal(app.with['app-id'], '${{ secrets.FACTORY_APP_ID }}')
+  assert.equal(app.with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
+  assert.equal(list[mergeIndex].env.GH_TOKEN, '${{ steps.app.outputs.token }}')
+})
+
 test('ci.yml: pull_request and push to main run install, test and build in job "build"', () => {
   const wf = load('ci')
   assert.ok('pull_request' in wf.on)
