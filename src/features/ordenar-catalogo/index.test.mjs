@@ -22,3 +22,7 @@ test('only products that are available and priced are listed', () => {
   const nombres = feature.calcular(estado).items.map((i) => i.texto)
   assert.deepEqual([...nombres].sort(), ['Limón Verna', 'Tomate Raf'])
 })
+
+test('lists from the cheapest to the most expensive', () => {
+  assert.deepEqual(feature.calcular(estado).items.map((i) => i.texto), ['Limón Verna', 'Tomate Raf'])
+})
