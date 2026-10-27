@@ -54,3 +54,7 @@ test('providers from env: reviewers can use a different model', () => {
 test('providers from env: an unknown provider is an error', () => {
   assert.throws(() => providersFromEnv({ FACTORY_PROVIDER: 'magic' }), /unknown FACTORY_PROVIDER/)
 })
+
+test('providers from env: an empty FACTORY_PROVIDER (unset repository variable in Actions) means replay', () => {
+  assert.equal(providersFromEnv({ FACTORY_PROVIDER: '', FACTORY_API_URL: '', FACTORY_MODEL: '', FACTORY_API_KEY: '' }).provider.name, 'replay')
+})
