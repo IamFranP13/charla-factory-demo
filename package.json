@@ -8,7 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "build": "node scripts/validate-content.mjs && astro build",
+    "dev": "astro dev",
     "gate": "node scripts/gate.mjs",
     "factory": "node scripts/factory.mjs",
     "simulate": "node scripts/simulate.mjs",
@@ -18,5 +19,8 @@
   },
   "dependencies": {
     "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "astro": "^7.4.2"
   }
 }

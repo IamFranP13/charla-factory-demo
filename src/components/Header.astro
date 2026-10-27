@@ -1,0 +1,42 @@
+---
+import { NAV } from '../lib/nav.js'
+
+const { actual } = Astro.props
+const normal = (p) => (p.endsWith('/') ? p : `${p}/`)
+const esActual = (href) => normal(actual) === normal(href)
+---
+<header class="cabecera">
+  <div class="contenedor cabecera__fila">
+    <a class="marca" href="/" aria-label="LIMONIA, inicio">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <ellipse cx="16" cy="18" rx="12" ry="9" fill="var(--limon)" transform="rotate(-20 16 18)" />
+        <path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="var(--oliva)" />
+      </svg>
+      <span>LIMONIA</span>
+    </a>
+    <button class="menu-boton" type="button" aria-expanded="false" aria-controls="menu">Menú</button>
+    <nav id="menu" class="menu" aria-label="Principal">
+      <ul>
+        {NAV.map((item) => (
+          <li>
+            {item.pronto ? (
+              <span class="menu__pronto" aria-disabled="true">{item.label} <small>pronto</small></span>
+            ) : (
+              <a href={item.href} aria-current={esActual(item.href) ? 'page' : undefined}>{item.label}</a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const boton = document.querySelector('.menu-boton')
+  const menu = document.getElementById('menu')
+  boton?.addEventListener('click', () => {
+    const abierto = boton.getAttribute('aria-expanded') === 'true'
+    boton.setAttribute('aria-expanded', String(!abierto))
+    menu?.classList.toggle('menu--abierto', !abierto)
+  })
+</script>

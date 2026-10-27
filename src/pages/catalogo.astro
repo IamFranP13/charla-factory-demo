@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro'
+import ProductoCard from '../components/ProductoCard.astro'
+import { productos, destinos } from '../lib/contenido.js'
+import { eur } from '../lib/formato.js'
+
+const lista = productos()
+const hacia = destinos()
+---
+<Base title="Catálogo" description="Catálogo LIMONIA: productos, precios por kilogramo y destinos de exportación.">
+  <section class="contenedor seccion">
+    <p class="sobretitulo">Catálogo</p>
+    <h1>Productos de la huerta de Murcia</h1>
+    <p class="lead">Precios por kilogramo para pedidos mayoristas. Los productos sin tarifa publicada se cotizan a medida.</p>
+    <div class="rejilla rejilla--3">
+      {lista.map((producto) => <ProductoCard producto={producto} detalle />)}
+    </div>
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="destinos">
+    <h2 id="destinos">Destinos de exportación</h2>
+    <ul class="destinos">
+      {hacia.map((destino) => (
+        <li class="tarjeta destino" id={`destino-${destino.id}`}>
+          <strong>{destino.ciudad}</strong>
+          <span>{destino.pais}</span>
+          <span class="destino__dias">{destino.diasTransito} {destino.diasTransito === 1 ? 'día' : 'días'} de tránsito</span>
+          {destino.tarifa && <span class="destino__tarifa">{eur(destino.tarifa.eurPorKg)}/kg · mínimo {eur(destino.tarifa.minimo)}</span>}
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>

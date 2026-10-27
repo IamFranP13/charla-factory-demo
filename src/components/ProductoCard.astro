@@ -1,0 +1,19 @@
+---
+import { eur } from '../lib/formato.js'
+
+const { producto, detalle = false } = Astro.props
+---
+<article class="tarjeta producto" id={`producto-${producto.id}`}>
+  <div class="producto__cabecera">
+    <span class="producto__emoji" aria-hidden="true">{producto.emoji}</span>
+    <span class:list={['insignia', producto.disponible ? 'insignia--ok' : 'insignia--no']}>
+      {producto.disponible ? 'Disponible' : 'No disponible'}
+    </span>
+  </div>
+  <h3>{producto.nombre}</h3>
+  {detalle && <p class="producto__meta">{producto.categoria === 'fruta' ? 'Fruta' : 'Hortaliza'} · {producto.origen}</p>}
+  {detalle && <p>{producto.descripcion}</p>}
+  <p class="producto__precio">
+    {producto.precioKg === null ? <span class="producto__consultar">Precio a consultar</span> : <><strong>{eur(producto.precioKg)}</strong> / kg</>}
+  </p>
+</article>

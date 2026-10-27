@@ -1,0 +1,139 @@
+---
+import { estado, productos, destinos } from '../lib/contenido.js'
+
+// Only products that can actually be quoted are offered; the domain still validates everything.
+const pedibles = productos().filter((p) => p.disponible && p.precioKg !== null)
+const hacia = destinos().filter((d) => d.tarifa)
+---
+<div class="calculadora" id="calculadora" data-estado={JSON.stringify(estado)}>
+  <form class="calculadora__form" id="pedido" novalidate aria-label="Datos del pedido">
+    <fieldset>
+      <legend>Productos</legend>
+      <ul id="lineas" class="lineas"></ul>
+      <button class="boton boton--borde" type="button" id="anadir">+ Añadir producto</button>
+    </fieldset>
+
+    <div class="campo">
+      <label for="destino">Destino</label>
+      <select id="destino" name="destino">
+        {hacia.map((d) => <option value={d.id}>{d.ciudad}, {d.pais} · {d.diasTransito} días</option>)}
+      </select>
+    </div>
+
+    <ul id="errores" class="errores" role="alert" aria-live="assertive"></ul>
+  </form>
+
+  <section class="resumen" aria-labelledby="resumen-titulo" aria-live="polite">
+    <h2 id="resumen-titulo">Resumen</h2>
+    <ul id="resumen-lineas" class="resumen__lineas"></ul>
+    <dl class="resumen__totales">
+      <div><dt>Subtotal</dt><dd id="r-subtotal">—</dd></div>
+      <div><dt id="r-descuento-etiqueta">Descuento por volumen</dt><dd id="r-descuento">—</dd></div>
+      <div class="resumen__transporte"><dt>Transporte <span id="r-transporte-destino"></span></dt><dd id="r-transporte">—</dd></div>
+      <div class="resumen__total"><dt>Total</dt><dd id="r-total">—</dd></div>
+    </dl>
+    <p id="r-tarifa" class="resumen__nota"></p>
+  </section>
+
+  <template id="plantilla-linea">
+    <li class="linea">
+      <div class="campo">
+        <label>Producto
+          <select class="linea__producto">
+            {pedibles.map((p) => <option value={p.id}>{p.emoji} {p.nombre}</option>)}
+          </select>
+        </label>
+      </div>
+      <div class="campo">
+        <label>Kilos
+          <input class="linea__kg" type="number" inputmode="numeric" min="1" max="100000" step="1" value="1000" />
+        </label>
+      </div>
+      <button class="linea__quitar" type="button">Quitar</button>
+    </li>
+  </template>
+</div>
+
+<script>
+  import { presupuestar } from '../domain/presupuesto.js'
+  import { eur, kg } from '../lib/formato.js'
+
+  const raiz = document.getElementById('calculadora')
+  const estado = JSON.parse(raiz.dataset.estado)
+  const $ = (id) => document.getElementById(id)
+  const lineas = $('lineas')
+  const plantilla = $('plantilla-linea')
+
+  function anadir(kilos = 1000) {
+    const fila = plantilla.content.firstElementChild.cloneNode(true)
+    fila.querySelector('.linea__kg').value = String(kilos)
+    lineas.append(fila)
+    renumerar()
+    calcular()
+  }
+
+  // Each control gets an accessible name that includes its position.
+  function renumerar() {
+    lineas.querySelectorAll('.linea').forEach((fila, i) => {
+      fila.querySelector('.linea__producto').setAttribute('aria-label', `Producto de la línea ${i + 1}`)
+      fila.querySelector('.linea__kg').setAttribute('aria-label', `Kilos de la línea ${i + 1}`)
+      fila.querySelector('.linea__quitar').setAttribute('aria-label', `Quitar la línea ${i + 1}`)
+    })
+  }
+
+  const leer = () => ({
+    lineas: [...lineas.querySelectorAll('.linea')].map((fila) => ({
+      productoId: fila.querySelector('.linea__producto').value,
+      kg: fila.querySelector('.linea__kg').valueAsNumber,
+    })),
+    destinoId: $('destino').value,
+  })
+
+  function texto(id, valor) {
+    $(id).textContent = valor
+  }
+
+  function calcular() {
+    const pedido = leer()
+    const r = presupuestar(pedido, estado)
+    $('errores').replaceChildren(...r.errores.map((e) => Object.assign(document.createElement('li'), { textContent: e })))
+    raiz.classList.toggle('calculadora--error', !r.ok)
+
+    $('resumen-lineas').replaceChildren(
+      ...r.lineas.map((l) => {
+        const li = document.createElement('li')
+        li.append(Object.assign(document.createElement('span'), { textContent: `${l.nombre} · ${kg(l.kg)} × ${eur(l.precioKg)}` }))
+        li.append(Object.assign(document.createElement('strong'), { textContent: eur(l.importe) }))
+        return li
+      }),
+    )
+
+    const destino = estado.destinos[pedido.destinoId]
+    const tarifa = estado.transporte[pedido.destinoId]
+    texto('r-transporte-destino', destino ? `a ${destino.ciudad}` : '')
+    texto('r-tarifa', tarifa ? `Tarifa: ${eur(tarifa.eurPorKg)}/kg con un mínimo de ${eur(tarifa.minimo)}.` : '')
+    if (!r.ok) {
+      for (const id of ['r-subtotal', 'r-descuento', 'r-transporte', 'r-total']) texto(id, '—')
+      texto('r-descuento-etiqueta', 'Descuento por volumen')
+      return
+    }
+    texto('r-subtotal', eur(r.subtotal))
+    texto('r-descuento-etiqueta', r.descuento.porcentaje > 0 ? `Descuento por volumen (${r.descuento.porcentaje} %)` : 'Descuento por volumen (sin tramo)')
+    texto('r-descuento', r.descuento.importe > 0 ? `− ${eur(r.descuento.importe)}` : eur(0))
+    texto('r-transporte', r.transporte === 0 ? 'Gratis' : eur(r.transporte))
+    texto('r-total', eur(r.total))
+  }
+
+  $('anadir').addEventListener('click', () => anadir())
+  lineas.addEventListener('click', (event) => {
+    const quitar = event.target.closest('.linea__quitar')
+    if (!quitar) return
+    quitar.closest('.linea').remove()
+    renumerar()
+    calcular()
+  })
+  $('pedido').addEventListener('input', calcular)
+  $('pedido').addEventListener('submit', (event) => event.preventDefault())
+
+  anadir()
+</script>

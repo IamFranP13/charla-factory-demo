@@ -1,0 +1,64 @@
+---
+import Base from '../layouts/Base.astro'
+import Paisaje from '../components/Paisaje.astro'
+import CampanaCard from '../components/CampanaCard.astro'
+import ProductoCard from '../components/ProductoCard.astro'
+import PeticionForm from '../components/PeticionForm.astro'
+import { campanas, productos, destinos } from '../lib/contenido.js'
+
+const todas = productos()
+const destacados = todas.filter((p) => p.disponible && p.precioKg !== null).slice(0, 4)
+const dias = Math.min(...destinos().map((d) => d.diasTransito))
+const cifras = [
+  [todas.filter((p) => p.disponible).length, 'productos disponibles'],
+  [destinos().length, 'destinos en Europa'],
+  [`${dias} días`, 'desde el campo al primer destino'],
+]
+---
+<Base title="LIMONIA" description="Fruta y hortaliza de Murcia, directa a tu almacén en Europa.">
+  <script slot="head" is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+  <section class="hero">
+    <Paisaje />
+    <div class="contenedor hero__contenido">
+      <p class="sobretitulo">Murcia · Exportación agroalimentaria</p>
+      <h1>De la huerta de Murcia a las mesas de Europa</h1>
+      <p class="hero__texto">Limones, naranjas, mandarinas y hortalizas de temporada para mayoristas. Cataloga, calcula tu presupuesto y recíbelo en pocos días.</p>
+      <div class="hero__acciones">
+        <a class="boton" href="/presupuesto/">Calcular presupuesto</a>
+        <a class="boton boton--borde" href="/catalogo/">Ver catálogo</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="contenedor cifras" aria-label="LIMONIA en cifras">
+    {cifras.map(([valor, etiqueta]) => (
+      <div class="cifra"><strong>{valor}</strong><span>{etiqueta}</span></div>
+    ))}
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="campanas">
+    <h2 id="campanas">Campañas</h2>
+    <div class="rejilla rejilla--3">
+      {campanas().map((campana) => <CampanaCard campana={campana} />)}
+    </div>
+  </section>
+
+  <section class="contenedor seccion" aria-labelledby="destacados">
+    <div class="seccion__cabecera">
+      <h2 id="destacados">Productos destacados</h2>
+      <a href="/catalogo/">Ver todo el catálogo →</a>
+    </div>
+    <div class="rejilla rejilla--4">
+      {destacados.map((producto) => <ProductoCard producto={producto} />)}
+    </div>
+  </section>
+
+  <section class="contenedor seccion pide" id="pide" aria-labelledby="pide-titulo">
+    <div>
+      <h2 id="pide-titulo">Pídele un cambio a LIMONIA</h2>
+      <p>Tu petición entra en una pequeña fábrica de agentes de IA. El perfil con el que la pides (Marketing, Producto o Negocio) se sortea al azar, así que no puedes elegirlo.</p>
+    </div>
+    <PeticionForm />
+  </section>
+</Base>

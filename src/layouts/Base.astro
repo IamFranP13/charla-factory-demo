@@ -1,0 +1,28 @@
+---
+import '../styles/global.css'
+import Header from '../components/Header.astro'
+import Footer from '../components/Footer.astro'
+
+const { title, description = 'LIMONIA exporta fruta y hortalizas de Murcia a toda Europa.' } = Astro.props
+const pagina = title === 'LIMONIA' ? title : `${title} · LIMONIA`
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#5b6b2e" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>{pagina}</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip" href="#contenido">Saltar al contenido</a>
+    <Header actual={Astro.url.pathname} />
+    <main id="contenido">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

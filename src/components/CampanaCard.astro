@@ -1,0 +1,9 @@
+---
+const { campana } = Astro.props
+---
+<article class={`tarjeta campana campana--${campana.color}`} id={`campana-${campana.id}`}>
+  {campana.emoji && <span class="campana__emoji" aria-hidden="true">{campana.emoji}</span>}
+  <h3>{campana.titulo}</h3>
+  <p>{campana.texto}</p>
+  {campana.cta && <a class="boton boton--suave" href="/presupuesto/">{campana.cta}</a>}
+</article>
