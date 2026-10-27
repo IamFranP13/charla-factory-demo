@@ -60,13 +60,13 @@ function fakeGh(issue) {
   const dir = mkdtempSync(join(tmpdir(), 'gh-'))
   writeFileSync(join(dir, 'issue.json'), JSON.stringify(issue))
   writeFileSync(join(dir, 'gh'), `#!/bin/sh
-echo "$*" >> "${dir}/calls"
+printf '%s\\n' "$*" >> "${dir}/calls"
 case "$*" in
   "api repos/o/r/issues/5") cat "${dir}/issue.json" ;;
   "api -X PATCH repos/o/r/issues/5 --input -")
     payload=$(cat)
-    echo "$payload" >> "${dir}/patches"
-    echo "$payload" | node -e 'const fs=require("fs");const f=process.argv[1];const i=JSON.parse(fs.readFileSync(f,"utf8"));i.body=JSON.parse(fs.readFileSync(0,"utf8")).body;fs.writeFileSync(f,JSON.stringify(i))' "${dir}/issue.json"
+    printf '%s\\n' "$payload" >> "${dir}/patches"
+    printf '%s' "$payload" | node -e 'const fs=require("fs");const f=process.argv[1];const i=JSON.parse(fs.readFileSync(f,"utf8"));i.body=JSON.parse(fs.readFileSync(0,"utf8")).body;fs.writeFileSync(f,JSON.stringify(i))' "${dir}/issue.json"
     echo '{}' ;;
   "issue comment"*) cat >> "${dir}/bodies"; printf '\\n=====\\n' >> "${dir}/bodies" ;;
   *) echo "unexpected gh call: $*" >&2; exit 1 ;;
