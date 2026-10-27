@@ -64,7 +64,7 @@ function fakeGh({ files, reviews, head = 'head', author = 'murciatech-factory[bo
   const body = issueBody ?? replaceState('Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"hola"}\n```\n', { ...initialState('marketing'), resultado: 'ok', fase: 'puerta', pr: 7 })
   writeFileSync(join(dir, 'issue.json'), JSON.stringify({ number: 5, user: { login: 'o' }, body }))
   writeFileSync(join(dir, 'gh'), `#!/bin/sh
-echo "$*" >> "${dir}/calls"
+printf '%s\\n' "$*" >> "${dir}/calls"
 case "$*" in
   *pulls/7/files*) cat "${dir}/files.json" ;;
   *pulls/7/reviews*) cat "${dir}/reviews.json" ;;
@@ -72,8 +72,8 @@ case "$*" in
   "api repos/o/r/issues/5") ${issueFails ? 'echo "issue unavailable" >&2; exit 1' : `cat "${dir}/issue.json"`} ;;
   "api -X PATCH repos/o/r/issues/5 --input -")
     payload=$(cat)
-    echo "$payload" >> "${dir}/patches"
-    echo "$payload" | node -e 'const fs=require("fs");const f=process.argv[1];const i=JSON.parse(fs.readFileSync(f,"utf8"));i.body=JSON.parse(fs.readFileSync(0,"utf8")).body;fs.writeFileSync(f,JSON.stringify(i))' "${dir}/issue.json"
+    printf '%s\\n' "$payload" >> "${dir}/patches"
+    printf '%s' "$payload" | node -e 'const fs=require("fs");const f=process.argv[1];const i=JSON.parse(fs.readFileSync(f,"utf8"));i.body=JSON.parse(fs.readFileSync(0,"utf8")).body;fs.writeFileSync(f,JSON.stringify(i))' "${dir}/issue.json"
     echo '{}' ;;
   *) echo "unexpected gh call: $*" >&2; exit 1 ;;
 esac
