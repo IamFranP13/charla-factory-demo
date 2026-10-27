@@ -74,7 +74,7 @@ export function presupuestar(pedido, estado) {
   const kgTotal = lineas.reduce((sum, l) => sum + l.kg, 0)
   const subtotal = cents(lineas.reduce((sum, l) => sum + l.importe, 0))
   const tramo = (estado.descuentos?.tramos ?? [])
-    .filter((t) => t.desdeKg <= kgTotal)
+    .filter((t) => t.desdeKg < kgTotal)
     .reduce((best, t) => (!best || t.desdeKg > best.desdeKg ? t : best), null)
   const porcentaje = tramo ? tramo.porcentaje : 0
   const descuento = positive(cents((subtotal * porcentaje) / 100))
