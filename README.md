@@ -116,7 +116,22 @@ GITHUB_REPOSITORY=owner/repo FACTORY_PRICE_IN=<€/M> FACTORY_PRICE_OUT=<€/M> 
 
 prints the closing numbers: requests, in production, waiting for a person, rejected, failed, tokens, cost and mean time.
 
-Kill switch: set `INTAKE_OPEN` to `0` in Cloudflare and redeploy.
+## Spending and switches
+
+The repository is public, but no key is in it: they live in GitHub Actions secrets and Cloudflare environment variables. Only one place can spend money on the model: the factory workflow. So there are two switches:
+
+| Switch | Turns off | How | Takes effect |
+|--------|-----------|-----|--------------|
+| Factory workflow | Every model call, whatever created the issue | `gh workflow disable factory.yml` / `gh workflow enable factory.yml` | Immediately |
+| `INTAKE_OPEN` in Cloudflare | The form ("La factory está cerrada") | Set `0` or `1`, then redeploy | About a minute |
+
+Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
+
+Before the talk: `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
+
+After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key.
+
+Also recommended once a real model key exists: a prepaid model account with a small balance (it is the last spending limit), and a Cloudflare rate-limiting rule on `/api/peticion` (a few requests per minute per IP).
 
 ## License
 
