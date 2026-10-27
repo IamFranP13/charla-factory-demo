@@ -5,13 +5,15 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, cpSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resetFiles } from '../scripts/reset-demo.mjs'
+import { rehearsalCopy } from '../lib/rehearsal.js'
 
 const repo = new URL('..', import.meta.url).pathname
 
 // A repository after a talk: audience files, a free transport, the policy hole closed.
+// It starts from a rehearsal copy (the seed), never from the live data, which the audience changes.
 function afterTalk() {
   const root = mkdtempSync(join(tmpdir(), 'reset-'))
-  for (const dir of ['content', 'catalogo', 'data', 'config', 'factory', 'policy']) cpSync(join(repo, dir), join(root, dir), { recursive: true })
+  rehearsalCopy(repo, root, ['content', 'catalogo', 'data', 'config', 'factory', 'policy'])
   const write = (path, value) => {
     mkdirSync(join(root, path, '..'), { recursive: true })
     writeFileSync(join(root, path), typeof value === 'string' ? value : JSON.stringify(value))
