@@ -26,7 +26,7 @@ const issue = (number, perfil, state, over = {}) => ({
 const pull = (number, over = {}) => ({ number, title: `Tarea #${number} · negocio`, state: 'open', pull_request: {}, html_url: `https://github.com/o/r/pull/${number}`, body: `Closes #${number}`, labels: [{ name: 'necesita-humano' }], ...over })
 
 // A fake GitHub + same-origin /deploy.json. Records every call.
-function fakeFetch({ issues = [], pulls = [], deploy = { commit: SHA_B, builtAt: NOW }, compare = {}, fail = null } = {}) {
+function fakeFetch({ issues = [], pulls = [], deploy = { commit: SHA_B, builtAt: NOW }, compare = {}, fail = null, prs = {}, checks = {} } = {}) {
   const calls = []
   const fn = async (url, init = {}) => {
     const u = String(url)
@@ -36,6 +36,10 @@ function fakeFetch({ issues = [], pulls = [], deploy = { commit: SHA_B, builtAt:
     if (u.includes('/issues?labels=entrada')) return json(issues)
     if (u.includes('/issues?labels=necesita-humano')) return json(pulls)
     if (u.endsWith('/deploy.json')) return deploy === null ? json({}, 404) : json(deploy)
+    const pr = /\/pulls\/(\d+)$/.exec(u)
+    if (pr) return prs[pr[1]] ? json(prs[pr[1]]) : json({ message: 'Not Found' }, 404)
+    const runs = /\/commits\/([0-9a-f]+)\/check-runs\?check_name=build$/.exec(u)
+    if (runs) return json({ check_runs: checks[runs[1]] ?? [] })
     const m = /\/compare\/([0-9a-f]+)\.\.\.([0-9a-f]+)$/.exec(u)
     if (m) return compare[m[1]] ? json({ status: compare[m[1]] }) : json({ message: 'Not Found' }, 404)
     return json({ message: 'unexpected' }, 500)
@@ -290,4 +294,39 @@ test('derivar: the files rule says where a deployed change is visible', () => {
 
 test('the station labels are the ones of the talk diagram', () => {
   assert.deepEqual(STATIONS.map((s) => STATION_LABELS[s]), ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción'])
+})
+
+// A factory PR whose CI ("build") fails can never merge: the audience sees it blocked by the tests.
+const atMerge = (pr, ruta = 'auto') => withState('marketing', { fase: 'merge', resultado: 'ok', pr, ruta, estaciones: { ...stationsAt('puerta'), merge: 'en_curso' } })
+const run = (conclusion, status = 'completed') => ({ name: 'build', status, conclusion })
+
+test('a factory PR whose CI fails is "bloqueada_tests": Main in red with the reason, counted apart', async () => {
+  const f = fakeFetch({
+    issues: [issue(20, 'marketing', atMerge(30)), issue(21, 'marketing', atMerge(31)), issue(22, 'marketing', atMerge(32))],
+    prs: { 30: { state: 'open', merged: false, head: { sha: SHA_A } }, 31: { state: 'open', merged: false, head: { sha: SHA_B } }, 32: { state: 'open', merged: false, head: { sha: 'c'.repeat(40) } } },
+    checks: { [SHA_A]: [run('failure')], [SHA_B]: [run(null, 'in_progress')], ['c'.repeat(40)]: [run('success')] },
+  })
+  const { body } = await call(f)
+  const t = byNumber(body)
+  assert.equal(t[20].resultadoFinal, 'bloqueada_tests')
+  assert.equal(t[20].mensaje, 'Los tests automáticos han bloqueado tu cambio')
+  assert.equal(t[20].motivo, 'Los tests automáticos (CI) han fallado')
+  assert.equal(t[20].estacion, 'merge')
+  assert.equal(t[20].estaciones.merge, 'rechazada')
+  assert.equal(t[21].resultadoFinal, 'en_curso', 'CI still running')
+  assert.equal(t[22].resultadoFinal, 'en_curso', 'CI green, merge on its way')
+  assert.equal(body.contadores.bloqueadas_tests, 1)
+})
+
+test('the CI is only asked about for tasks waiting to merge, never for finished ones', async () => {
+  const f = fakeFetch({ issues: scenarios(), pulls: [pull(9)], compare: { [SHA_A]: 'ahead' } })
+  await call(f)
+  assert.equal(f.calls.filter((u) => /\/pulls\/\d+$|check-runs/.test(u)).length, 0)
+})
+
+test('if the CI cannot be read the task simply stays en_curso', async () => {
+  const f = fakeFetch({ issues: [issue(20, 'marketing', atMerge(30))], prs: {} })
+  const { r, body } = await call(f)
+  assert.equal(r.status, 200)
+  assert.equal(byNumber(body)[20].resultadoFinal, 'en_curso')
 })

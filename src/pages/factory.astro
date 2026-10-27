@@ -44,7 +44,7 @@ const totales = [
   import { sondear } from '../lib/sondeo.js'
 
   // How long a rejected / deployed chip stays in its box before it leaves for its counter.
-  const RETENCION = { rechazada: 6000, fallida: 6000, cerrada: 6000, sin_cambios: 4000, desplegada: 4000 }
+  const RETENCION = { rechazada: 6000, fallida: 6000, cerrada: 6000, bloqueada_tests: 6000, sin_cambios: 4000, desplegada: 4000 }
   const A_PRODUCCION = ['desplegada']
 
   const raiz = document.querySelector('[data-diagrama]')
@@ -95,7 +95,7 @@ const totales = [
     for (const total of document.querySelectorAll('[data-total]')) {
       const id = total.dataset.total
       const c = datos.contadores ?? {}
-      total.textContent = String(id === 'rechazadas' ? (c.rechazadas ?? 0) + (c.fallidas ?? 0) + (c.cerradas ?? 0) : (c[id] ?? 0))
+      total.textContent = String(id === 'rechazadas' ? (c.rechazadas ?? 0) + (c.fallidas ?? 0) + (c.cerradas ?? 0) + (c.bloqueadas_tests ?? 0) : (c[id] ?? 0))
     }
     cola.replaceChildren(...(datos.cola ?? []).map((c) => {
       const item = document.createElement('li')

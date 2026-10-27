@@ -170,7 +170,7 @@ legend { font-weight: 700; font-size: 1.1rem; margin-bottom: .75rem; color: var(
 .final { font-family: var(--fuente-titulo); font-size: clamp(1.6rem, 6vw, 2.4rem); font-weight: 700; padding: 1rem 1.25rem; border-radius: var(--radio); background: var(--crema); color: var(--oliva-oscuro); margin: 1rem 0; }
 .final--desplegada { background: var(--oliva); color: #fff; }
 .final--esperando_persona { background: var(--limon-suave); }
-.final--rechazada, .final--fallida, .final--cerrada { background: #fbe6dc; color: #7a2b0e; }
+.final--rechazada, .final--fallida, .final--cerrada, .final--bloqueada_tests { background: #fbe6dc; color: #7a2b0e; }
 .mis-peticiones { margin: 0; padding-left: 1.25rem; }
 
 .totales { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0 2rem; }

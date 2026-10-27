@@ -195,3 +195,13 @@ test('ocupacion falls back to the stations when the task has no `estacion` and s
   assert.deepEqual(ocupacion([]).pasos.entrada, [])
   assert.deepEqual(ocupacion(undefined).por, {})
 })
+
+test('blocked by the tests: the Main step is in red with the CI reason, everything before it is ok', () => {
+  const estaciones = { entrada: 'ok', spec: 'ok', build: 'ok', seguridad: 'ok', ux: 'ok', ui: 'ok', codigo: 'ok', approver: 'ok', puerta: 'ok', merge: 'rechazada', produccion: 'pendiente' }
+  const v = pintar({ estaciones, ruta: 'auto', resultadoFinal: 'bloqueada_tests', motivo: 'Los tests automáticos (CI) han fallado' })
+  assert.equal(v.destino, 'Main')
+  assert.equal(v.pasos.destino, 'rechazada')
+  assert.equal(v.etiquetas.destino, 'LOS TESTS AUTOMÁTICOS (CI) HAN FALLADO')
+  assert.equal(v.pasos.produccion, 'pendiente')
+  assert.equal(v.etiquetas.puerta, 'NO HACE FALTA')
+})

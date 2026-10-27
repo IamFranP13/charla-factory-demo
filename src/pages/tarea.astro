@@ -19,8 +19,8 @@ import Diagrama from '../components/Diagrama.astro'
   import { sondear } from '../lib/sondeo.js'
 
   const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
-  const FINALES = ['desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada']
-  const PARADAS = ['rechazada', 'fallida', 'cerrada']
+  const FINALES = ['desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada', 'bloqueada_tests']
+  const PARADAS = ['rechazada', 'fallida', 'cerrada', 'bloqueada_tests']
 
   const numero = new URLSearchParams(location.search).get('n') ?? ''
   const demo = esDemo()

@@ -178,3 +178,8 @@ test('the demo mode (?demo=1) is built in, driven by a fake sequence, and only s
 test('the stations of the pages are the ones of the factory', () => {
   assert.deepEqual(Object.keys(STATION_LABELS), STATIONS)
 })
+
+test('"bloqueada_tests" is a final state on /tarea/ and counts with the rejected ones on /factory/', () => {
+  assert.match(clientCode(pages.tarea), /\[[^\]]*['"`]bloqueada_tests['"`][^\]]*\]/, 'listed among the final states')
+  assert.match(clientCode(pages.factory), /bloqueadas_tests/)
+})
