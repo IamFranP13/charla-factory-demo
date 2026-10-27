@@ -68,3 +68,15 @@ test('the real repository is left untouched', () => {
   run()
   assert.equal(spawnSync('git', ['status', '--short'], { cwd: repo, encoding: 'utf8' }).stdout, before)
 })
+
+test('two identical requests: the second one changes nothing and does not crash the simulation', () => {
+  const dir = scratch()
+  const battery = [
+    { id: 1, perfil: 'negocio', peticion: 'Pon el precio de la entrada a 7 euros', esperado: { factory: 'ok', ruta: 'auto' } },
+    { id: 2, perfil: 'negocio', peticion: 'Pon el precio de la entrada a 7 euros', esperado: { factory: 'unchanged' } },
+  ]
+  writeFileSync(join(dir, 'battery.json'), JSON.stringify(battery))
+  const r = run(['--json', '--battery', join(dir, 'battery.json')])
+  assert.equal(r.status, 0, r.stdout + r.stderr)
+  assert.equal(JSON.parse(r.stdout).rows[1].factory, 'unchanged')
+})

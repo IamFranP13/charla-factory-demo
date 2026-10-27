@@ -16,7 +16,7 @@ import { gh, ghJson, repoSlug } from '../lib/github.js'
 import { MAX_LENGTH } from '../lib/intake.js'
 
 const root = new URL('..', import.meta.url).pathname
-const STATUS_ICON = { ok: '✅', rejected: '⛔', error: '⚠️', failed: '❌', ignored: '⏭️' }
+const STATUS_ICON = { ok: '✅', rejected: '⛔', error: '⚠️', failed: '❌', ignored: '⏭️', unchanged: '🟰' }
 
 // The intake writes the request as one line of JSON inside a ```json block.
 export function parseIssueBody(body) {
