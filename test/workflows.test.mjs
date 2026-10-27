@@ -185,3 +185,20 @@ test('gate.yml: mark-closed runs only on closed PRs of this repository, with the
   assert.equal(job.steps.some((s) => s.uses?.startsWith('actions/create-github-app-token@')), false, 'no App key')
   assert.equal(job.env.PR, '${{ github.event.pull_request.number }}')
 })
+
+test('every workflow takes Node from .node-version, and that version satisfies Astro', () => {
+  const version = readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim()
+  const astro = JSON.parse(readFileSync(new URL('../node_modules/astro/package.json', import.meta.url), 'utf8')).engines.node
+  const min = astro.match(/>=\s*(\d+)(?:\.(\d+))?(?:\.(\d+))?/).slice(1).map((n) => Number(n ?? 0))
+  const have = version.split('.').map(Number)
+  const ok = have[0] > min[0] || (have[0] === min[0] && have.length >= 3 && (have[1] > min[1] || (have[1] === min[1] && have[2] >= min[2])))
+  assert.ok(ok, `.node-version ${version} does not satisfy astro ${astro}`)
+  for (const name of ['ci', 'gate', 'factory']) {
+    for (const job of Object.values(load(name).jobs)) {
+      for (const s of job.steps.filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
+        assert.equal(s.with['node-version-file'], '.node-version', `${name}: setup-node must read .node-version`)
+        assert.equal(s.with['node-version'], undefined, `${name}: no hard-coded node-version`)
+      }
+    }
+  }
+})
