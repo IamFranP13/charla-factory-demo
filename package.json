@@ -15,7 +15,8 @@
     "simulate": "node scripts/simulate.mjs",
     "preflight": "node scripts/preflight.mjs",
     "numbers": "node scripts/numbers.mjs",
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "reset-demo": "node scripts/reset-demo.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.1"

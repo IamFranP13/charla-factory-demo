@@ -140,7 +140,7 @@ The repository is public, but no key is in it: they live in GitHub Actions secre
 
 Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
 
-Before the talk: `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
+Before the talk: `npm run reset-demo -- --apply` (removes the audience's content, restores the seed data, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
 
 After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key.
 
