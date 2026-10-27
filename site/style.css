@@ -27,10 +27,6 @@ h2 { font-size: 1.6rem; margin: 0 0 .6rem; }
 
 .pide { background: #fff; border: 3px solid var(--ink); padding: 1.25rem; box-shadow: 6px 6px 0 var(--ink); }
 form { display: grid; gap: .75rem; }
-.perfiles { border: 0; padding: 0; margin: 0; display: grid; gap: .4rem; }
-.perfiles legend { font-weight: 700; margin-bottom: .3rem; }
-.perfiles label { display: flex; gap: .5rem; align-items: baseline; }
-.perfiles span { color: var(--muted); font-size: .9rem; }
 textarea { font: inherit; min-height: 5rem; padding: .6rem; border: 2px solid var(--ink); }
 button { font: inherit; font-weight: 800; padding: .7rem 1rem; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
 button[disabled] { opacity: .5; cursor: wait; }

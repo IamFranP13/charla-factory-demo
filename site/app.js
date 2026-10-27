@@ -3,6 +3,7 @@
 const form = document.getElementById('peticion')
 const estado = document.getElementById('estado')
 const muro = document.getElementById('muro')
+const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault()
@@ -15,14 +16,13 @@ form.addEventListener('submit', async (event) => {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        perfil: data.get('perfil'),
         peticion: data.get('peticion'),
         turnstile: data.get('cf-turnstile-response') ?? '',
       }),
     })
     const body = await response.json().catch(() => ({}))
     estado.textContent = response.ok
-      ? `Recibida: tarea #${body.tarea}. Mira el muro en unos minutos.`
+      ? `Recibida: tarea #${body.tarea}. Te ha tocado pedirlo como ${PERFILES[body.perfil] ?? body.perfil}. Mira el muro en unos minutos.`
       : body.error ?? 'No se ha podido enviar.'
     if (response.ok) form.reset()
   } catch {

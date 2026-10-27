@@ -27,7 +27,7 @@ QR → form (site/) → Pages Function (functions/api/peticion.js) → GitHub is
 | Stations | `lib/factory.js`, `factory/prompts/` | Models only fill in content. Code chooses paths, validates every file (`lib/schemas.js`) and keeps score. |
 | Risk gate | `policy/risk.yaml`, `lib/policy.js`, `scripts/gate.mjs` | Decides by **what the diff touches**, never by who asked. Fails closed. Approvals count only on the current head. |
 | Models | `lib/providers.js` | `replay` (deterministic fake model, free, offline) or any OpenAI-compatible API. Reviewers can use another model. |
-| Intake | `lib/intake.js` | Turnstile, a task cap and a kill switch. Input is data, never instructions. |
+| Intake | `lib/intake.js` | Requests of at most 150 characters; the server draws the profile at random, in equal parts. Turnstile, a task cap and a kill switch. Input is data, never instructions. |
 | Shared rules | `AGENTS.md` | The same rules for the factory agents and for a local harness (Pi, Claude Code, OpenCode…). |
 
 ## Run it locally (free, offline)

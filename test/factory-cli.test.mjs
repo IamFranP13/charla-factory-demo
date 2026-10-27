@@ -123,8 +123,9 @@ test('fence: neutralizes backtick fences and keeps links as plain text', () => {
   assert.match(out, /^```text\n@someone \[x\]\(http:\/\/e\) ''' !\[i\]\(http:\/\/e\/i\.png\)\n```$/)
 })
 
-test('parseIssueBody measures code points, like the intake', () => {
+test('parseIssueBody measures code points, like the intake, with the same limit', async () => {
+  const { MAX_LENGTH } = await import('../lib/intake.js')
   const body = (peticion) => `\`\`\`json\n${JSON.stringify({ perfil: 'marketing', peticion })}\n\`\`\``
-  assert.notEqual(parseIssueBody(body('😀'.repeat(280))), null)
-  assert.equal(parseIssueBody(body('😀'.repeat(281))), null)
+  assert.notEqual(parseIssueBody(body('😀'.repeat(MAX_LENGTH))), null)
+  assert.equal(parseIssueBody(body('😀'.repeat(MAX_LENGTH + 1))), null)
 })

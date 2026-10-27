@@ -67,3 +67,12 @@ test('content with replacement patterns ($\' and $`) cannot inject into the temp
   assert.equal(html.match(/<form id="peticion"/g).length, 1)
   assert.ok(html.includes('a $&#39; b $` c'))
 })
+
+test('the form allows exactly the characters the intake accepts, and lets nobody choose a profile', async () => {
+  const { MAX_LENGTH } = await import('../lib/intake.js')
+  const root = fixture({})
+  buildSite(root)
+  const html = readFileSync(join(root, 'dist/index.html'), 'utf8')
+  assert.match(html, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
+  assert.doesNotMatch(html, /name="perfil"/)
+})
