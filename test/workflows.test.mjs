@@ -48,7 +48,7 @@ test('gate.yml: triggers, stable job name and permissions', () => {
   assert.deepEqual(Object.keys(wf.on).sort(), ['pull_request_review', 'pull_request_target'])
   assert.deepEqual(wf.on.pull_request_target.types, ['opened', 'synchronize', 'reopened'])
   assert.deepEqual(wf.on.pull_request_review.types, ['submitted', 'dismissed'])
-  assert.deepEqual(Object.keys(wf.jobs), ['risk-gate'])
+  assert.deepEqual(Object.keys(wf.jobs), ['risk-gate', 'rerun-gate'])
   assert.deepEqual(wf.permissions, { contents: 'write', 'pull-requests': 'write' })
 })
 
@@ -124,7 +124,17 @@ test('every action is pinned to a major version', () => {
   }
 })
 
-test('gate.yml: review events only run for same-repository pull requests', () => {
-  const job = load('gate').jobs['risk-gate']
-  assert.equal(job.if, "github.event_name != 'pull_request_review' || github.event.pull_request.head.repo.full_name == github.repository")
+test('gate.yml: the required check "risk-gate" is only produced by the pull request event', () => {
+  assert.equal(load('gate').jobs['risk-gate'].if, "github.event_name == 'pull_request_target'")
+})
+
+test('gate.yml: an approval re-runs the original risk-gate run instead of adding a second check with the same name', () => {
+  const job = load('gate').jobs['rerun-gate']
+  assert.equal(job.if, "github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name == github.repository")
+  assert.deepEqual(job.permissions, { actions: 'write', 'pull-requests': 'read' })
+  assert.equal(job.steps.filter((s) => s.uses).length, 0, 'no checkout, no actions: it only calls the API')
+  const script = job.steps.map((s) => s.run ?? '').join('\n')
+  assert.match(script, /--event pull_request_target/)
+  assert.match(script, /gh run rerun "\$id"/)
+  assert.equal(job.env.PR, '${{ github.event.pull_request.number }}')
 })

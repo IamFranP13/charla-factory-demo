@@ -26,12 +26,10 @@ concurrency:
 
 jobs:
   # Stable job name: "risk-gate" is the required status check on main.
+  # Only the pull request event produces it: a check with the same name from another event
+  # lands in a separate check suite, and branch protection keeps seeing the old failure.
   risk-gate:
-    # On review events GitHub runs the workflow definition from the PR merge ref, so a fork PR
-    # controls that run (and gets a read-only token). Only same-repository PRs are handled there.
-    # A forged "risk-gate" check cannot merge anything by itself: merging is enabled only by
-    # this gate (for factory PRs) or by a human.
-    if: github.event_name != 'pull_request_review' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request_target'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -84,3 +82,27 @@ jobs:
         run: |
           echo "Risk gate did not pass (see the gate step above)."
           exit 1
+
+  # An approval (or a dismissed one) re-runs the original risk-gate run, which reads the reviews
+  # again and replaces its own check. This job checks nothing out and runs no repository code.
+  # On review events GitHub runs the workflow definition from the PR merge ref, so fork PRs are
+  # skipped: for them, re-run the failed risk-gate job by hand after approving.
+  rerun-gate:
+    if: github.event_name == 'pull_request_review' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      pull-requests: read
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .head.sha)
+          id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow gate.yml --event pull_request_target --commit "$head" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -z "$id" ]; then echo "No risk-gate run found for $head"; exit 1; fi
+          # A run still in progress cannot be re-run: wait for it first.
+          gh run watch "$id" -R "$GITHUB_REPOSITORY" > /dev/null || true
+          gh run rerun "$id" -R "$GITHUB_REPOSITORY"
+          echo "Re-ran risk-gate run $id for $head"
