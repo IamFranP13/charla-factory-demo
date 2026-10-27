@@ -1,0 +1,26 @@
+{
+  "alemania-hamburgo": {
+    "eurPorKg": 0.14,
+    "minimo": 180
+  },
+  "francia-rungis": {
+    "eurPorKg": 0.1,
+    "minimo": 120
+  },
+  "paises-bajos-rotterdam": {
+    "eurPorKg": 0.13,
+    "minimo": 160
+  },
+  "reino-unido-londres": {
+    "eurPorKg": 0.19,
+    "minimo": 260
+  },
+  "polonia-varsovia": {
+    "eurPorKg": 0.17,
+    "minimo": 220
+  },
+  "suecia-estocolmo": {
+    "eurPorKg": 0.22,
+    "minimo": 300
+  }
+}

@@ -1,0 +1,101 @@
+[
+  {
+    "nombre": "Pedido pequeño de limón a Francia",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "limon-verna",
+          "kg": 500
+        }
+      ],
+      "destinoId": "francia-rungis"
+    },
+    "esperado": "ok"
+  },
+  {
+    "nombre": "Pedido mixto con descuento del primer tramo",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "naranja-navel",
+          "kg": 800
+        },
+        {
+          "productoId": "tomate-raf",
+          "kg": 400
+        }
+      ],
+      "destinoId": "alemania-hamburgo"
+    },
+    "esperado": "ok"
+  },
+  {
+    "nombre": "Pedido grande con el mayor descuento",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "limon-fino",
+          "kg": 15000
+        },
+        {
+          "productoId": "mandarina-clemenules",
+          "kg": 10000
+        }
+      ],
+      "destinoId": "suecia-estocolmo"
+    },
+    "esperado": "ok"
+  },
+  {
+    "nombre": "Un kilo al destino más caro",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "brocoli",
+          "kg": 1
+        }
+      ],
+      "destinoId": "reino-unido-londres"
+    },
+    "esperado": "ok"
+  },
+  {
+    "nombre": "Producto sin precio",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "alcachofa",
+          "kg": 200
+        }
+      ],
+      "destinoId": "polonia-varsovia"
+    },
+    "esperado": "error"
+  },
+  {
+    "nombre": "Producto no disponible",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "uva-de-mesa",
+          "kg": 100
+        }
+      ],
+      "destinoId": "paises-bajos-rotterdam"
+    },
+    "esperado": "error"
+  },
+  {
+    "nombre": "Destino desconocido",
+    "pedido": {
+      "lineas": [
+        {
+          "productoId": "limon-verna",
+          "kg": 100
+        }
+      ],
+      "destinoId": "marte"
+    },
+    "esperado": "error"
+  }
+]

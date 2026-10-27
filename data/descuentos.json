@@ -1,0 +1,16 @@
+{
+  "tramos": [
+    {
+      "desdeKg": 1000,
+      "porcentaje": 3
+    },
+    {
+      "desdeKg": 5000,
+      "porcentaje": 6
+    },
+    {
+      "desdeKg": 20000,
+      "porcentaje": 10
+    }
+  ]
+}
