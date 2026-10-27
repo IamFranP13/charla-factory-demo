@@ -24,21 +24,27 @@ rules:
       - "scripts/**"
       - "lib/**"
       - "functions/**"
+      - "brain/**"
+      - "src/**"
+      - "public/**"
       - "site/**"
       - ".github/**"
+      - "astro.config.mjs"
       - "AGENTS.md"
       - "package.json"
       - "package-lock.json"
     route: human
 
-  # Marketing: wall cards.
-  - paths: ["content/muro/**"]
+  # Marketing: campaigns.
+  - paths: ["content/campanas/**"]
     route: auto
 
-  # Producto: new sections.
-  - paths: ["content/secciones/**"]
+  # Producto: new products and export destinations.
+  - paths: ["catalogo/**"]
     route: auto
 
-  # Negocio: figures shown on the page.
+  # Negocio: prices and volume discounts.
   - paths: ["data/**"]
     route: human
+
+  # config/ (transport costs) has no rule: it falls to the default. That is the hole of the demo.
