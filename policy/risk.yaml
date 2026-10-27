@@ -6,7 +6,7 @@
 # Each file takes the route of the first rule that matches it, or the default.
 # The strictest route among all touched files wins.
 
-default: human
+default: auto
 
 # GitHub login of the factory App (<app-slug>[bot]). Only pull requests opened by it,
 # from a branch of this repository, can auto-merge. Must match the real App slug.
