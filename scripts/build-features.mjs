@@ -12,7 +12,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { evaluateFeatures } from '../lib/sandbox.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 
 export async function buildFeatures(root, options = {}) {
   const result = await evaluateFeatures(root, cargarEstado(root), options)

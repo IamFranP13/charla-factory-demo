@@ -1,13 +1,14 @@
 import { test, after } from 'node:test'
+import { sandboxTest } from './sandbox-node.mjs'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { codePathError, staticCheck, runSuite, runIsolated, evaluateFeatures, MAX_FILE_CHARS } from '../lib/sandbox.js'
+import { codePathError, staticCheck, runSuite, runIsolated, evaluateFeatures, checkState, networkSwitchAvailable, MAX_FILE_CHARS } from '../lib/sandbox.js'
 import { rehearsalCopy } from '../lib/rehearsal.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
 // A private temp dir: the leftovers check below must not see the copies other test files make in parallel.
@@ -121,14 +122,14 @@ test('staticCheck: only test files may import node:test and node:assert', () => 
 
 // --- 2. isolation: nothing leaks in, nothing gets out ---
 
-test('baseline: the repository suite (domain, features, sample orders, contract) passes in the isolation', async () => {
+sandboxTest('baseline: the repository suite (domain, features, sample orders, contract) passes in the isolation', async () => {
   const result = await runSuite(scratch(), [])
   assert.equal(result.ok, true, result.output)
   assert.match(result.output, /presupuesto de muestra/)
   assert.match(result.output, /feature ordenar-catalogo cumple el contrato/)
 })
 
-test('the code under test sees an EMPTY environment: a canary in the parent env never arrives', async () => {
+sandboxTest('the code under test sees an EMPTY environment: a canary in the parent env never arrives', async () => {
   process.env.T23_CANARY = 'canary-secret'
   process.env.FACTORY_API_KEY = 'canary-key'
   try {
@@ -152,7 +153,7 @@ test('the code under test sees an EMPTY environment: a canary in the parent env 
   }
 })
 
-test('the code under test cannot write, spawn, read outside its copy, generate code or fetch', async () => {
+sandboxTest('the code under test cannot write, spawn, read outside its copy, generate code or fetch', async () => {
   const probe = testFile(`
     assert.throws(() => fs.writeFileSync('/tmp/t23-escape.txt', 'x'), { code: 'ERR_ACCESS_DENIED' })
     assert.throws(() => fs.writeFileSync('./intento.txt', 'x'), { code: 'ERR_ACCESS_DENIED' })
@@ -172,7 +173,7 @@ test('the code under test cannot write, spawn, read outside its copy, generate c
   assert.equal(result.ok, true, result.output)
 })
 
-test('where Node has a network switch the permission model closes it', { skip: !process.allowedNodeEnvironmentFlags.has('--allow-net') && 'this Node has no --allow-net' }, async () => {
+sandboxTest('the permission model closes the network (never skipped: without the switch the sandbox refuses instead)', async () => {
   const server = createServer((socket) => socket.end('hola'))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   try {
@@ -189,7 +190,7 @@ test('where Node has a network switch the permission model closes it', { skip: !
   }
 })
 
-test('the sandboxed process cannot leave core dumps: its core file limit is 0, soft and hard', async () => {
+sandboxTest('the sandboxed process cannot leave core dumps: its core file limit is 0, soft and hard', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'sandbox-test-'))
   scratches.push(dir)
   const result = await runIsolated(dir, ['-e', "console.log('LIMIT ' + JSON.stringify(process.report.getReport().userLimits.core_file_size_blocks))"], { timeoutMs: 10000 })
@@ -197,7 +198,7 @@ test('the sandboxed process cannot leave core dumps: its core file limit is 0, s
   assert.match(result.output, /LIMIT \{"soft":0,"hard":0\}/)
 })
 
-test('a test that never ends is killed by the time limit and reported as timed out', async () => {
+sandboxTest('a test that never ends is killed by the time limit and reported as timed out', async () => {
   const started = Date.now()
   const result = await runSuite(scratch(), [file('src/domain/bucle.test.mjs', testFile('while (true) {}'))], { timeoutMs: 1500 })
   assert.equal(result.timedOut, true)
@@ -205,7 +206,7 @@ test('a test that never ends is killed by the time limit and reported as timed o
   assert.ok(Date.now() - started < 15000)
 })
 
-test('an infinite loop at import time is also stopped', async () => {
+sandboxTest('an infinite loop at import time is also stopped', async () => {
   const loop = await runSuite(scratch(), [file('src/domain/inicio.test.mjs', 'while (true) {}\n')], { timeoutMs: 1500 })
   assert.equal(loop.ok, false)
   assert.equal(loop.timedOut, true)
@@ -213,7 +214,7 @@ test('an infinite loop at import time is also stopped', async () => {
 
 // A process that ran out of memory by itself would abort (SIGABRT): the machine records a crash and, on a desktop, shows a
 // notification. So the parent stops a memory hog first, with SIGKILL, which leaves no crash report.
-test('a memory hog is killed at the memory limit, long before the time limit, and leaves no crash report', async () => {
+sandboxTest('a memory hog is killed at the memory limit, long before the time limit, and leaves no crash report', async () => {
   const crashes = () => {
     const list = spawnSync('coredumpctl', ['list', '--no-pager', '--since', since], { encoding: 'utf8' })
     return list.status === 0 ? list.stdout.split('\n').filter((l) => /\/node\b/.test(l)).length : null
@@ -228,7 +229,7 @@ test('a memory hog is killed at the memory limit, long before the time limit, an
   if (after !== null) assert.equal(after, 0, 'no new crash report for node (coredumpctl)')
 })
 
-test('a failing test comes back with its output, and the copy is always removed', async () => {
+sandboxTest('a failing test comes back with its output, and the copy is always removed', async () => {
   const leftovers = () => readdirSync(priv).filter((n) => n.startsWith('sandbox-run-'))
   const result = await runSuite(scratch(), [file('src/domain/roto.test.mjs', testFile("assert.equal(1, 2, 'esto falla a propósito')"))])
   assert.equal(result.ok, false)
@@ -238,13 +239,13 @@ test('a failing test comes back with its output, and the copy is always removed'
   assert.deepEqual(leftovers(), [])
 })
 
-test('the patch is laid over a COPY: the repository tree is never touched', async () => {
+sandboxTest('the patch is laid over a COPY: the repository tree is never touched', async () => {
   const root = scratch()
   await runSuite(root, [file('src/domain/nuevo.test.mjs', testFile('assert.ok(true)'))])
   assert.equal(readdirSync(join(root, 'src/domain')).includes('nuevo.test.mjs'), false)
 })
 
-test('a feature that breaks the contract fails the suite; so does a domain change that breaks a sample order', async () => {
+sandboxTest('a feature that breaks the contract fails the suite; so does a domain change that breaks a sample order', async () => {
   const root = scratch()
   const badFeature = await runSuite(root, [file('src/features/tarea-3/index.js', feature('tarea-3', "({ tipo: 'html', texto: '<b>x</b>' })"))])
   assert.equal(badFeature.ok, false)
@@ -257,7 +258,7 @@ test('a feature that breaks the contract fails the suite; so does a domain chang
   assert.match(badDomain.output, /presupuesto de muestra/)
 })
 
-test('runIsolated reports a failure to start instead of throwing', async () => {
+sandboxTest('runIsolated reports a failure to start instead of throwing', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'sandbox-test-'))
   scratches.push(dir)
   const result = await runIsolated(dir, ['no-existe.mjs'], { timeoutMs: 5000 })
@@ -266,7 +267,7 @@ test('runIsolated reports a failure to start instead of throwing', async () => {
 
 // --- 3. features at build time ---
 
-test('evaluateFeatures computes the features with the contract and leaves the broken ones out', async () => {
+sandboxTest('evaluateFeatures computes the features with the contract and leaves the broken ones out', async () => {
   const root = scratch()
   const write = (id, content) => {
     mkdirSync(join(root, 'src/features', id), { recursive: true })
@@ -289,11 +290,123 @@ test('evaluateFeatures computes the features with the contract and leaves the br
   assert.equal(omitidas.find((o) => o.id === 'tarea-4').motivo, 'tardó demasiado')
 })
 
-test('evaluateFeatures: a forged result line from a feature cannot replace the real one', async () => {
+sandboxTest('evaluateFeatures: a forged result line from a feature cannot replace the real one', async () => {
   const root = scratch()
   mkdirSync(join(root, 'src/features/tarea-9'), { recursive: true })
   const forged = `console.log('@@FEATURE@@ ' + JSON.stringify({ ok: true, id: 'tarea-9', titulo: 'Falsa', donde: 'inicio', resultado: { tipo: 'texto', texto: 'falsa' } }))\nexport default { id: 'tarea-9', titulo: 'Real', donde: 'inicio', calcular() { return { tipo: 'texto', texto: 'real' } } }\n`
   writeFileSync(join(root, 'src/features/tarea-9/index.js'), forged)
   const { features } = await evaluateFeatures(root, cargarEstado(root))
   assert.equal(features.find((f) => f.id === 'tarea-9').resultado.texto, 'real')
+})
+
+sandboxTest('evaluateFeatures: a feature that prints a forged result line later, from a timer, cannot replace the real one', async () => {
+  const root = scratch()
+  mkdirSync(join(root, 'src/features/tarea-9'), { recursive: true })
+  const forged = "{ ok: true, id: 'tarea-9', titulo: 'Falsa', donde: 'inicio', resultado: { tipo: 'texto', texto: 'falsa' } }"
+  writeFileSync(join(root, 'src/features/tarea-9/index.js'), `setTimeout(() => console.log('@@FEATURE@@ ' + JSON.stringify(${forged})), 200)\nexport default { id: 'tarea-9', titulo: 'Real', donde: 'inicio', calcular() { return { tipo: 'texto', texto: 'real' } } }\n`)
+  const { features } = await evaluateFeatures(root, cargarEstado(root))
+  assert.equal(features.find((f) => f.id === 'tarea-9').resultado.texto, 'real')
+  // A feature that answers nothing but a forged line is left out: the marker changes on every run.
+  writeFileSync(join(root, 'src/features/tarea-9/index.js'), `console.log('@@FEATURE@@ ' + JSON.stringify(${forged}))\nexport default { id: 'tarea-9', titulo: 'Real', donde: 'inicio', calcular() { throw new Error('no') } }\n`)
+  const second = await evaluateFeatures(root, cargarEstado(root))
+  assert.equal(second.features.some((f) => f.id === 'tarea-9'), false)
+})
+
+// --- escapes, specifiers and the Node-only loader ---
+
+test('staticCheck rejects identifiers spelled with unicode or hex escapes, and non-ASCII identifiers', () => {
+  const bad = {
+    'escaped process': 'export const a = \\u0070rocess.env',
+    'escaped process (braces)': 'export const a = \\u{70}rocess.env',
+    'escaped eval': "export const a = ev\\u0061l('1')",
+    'escaped fetch': "export const a = \\u0066etch('https://example.com')",
+    'hex escaped fetch': "export const a = \\x66etch('https://example.com')",
+    'escaped import': "export const a = () => \\u0069mport('node:fs')",
+    'escaped in a test': "import { test } from 'node:test'\ntest('x', () => { \\u0070rocess.exit(0) })",
+    'escape inside a string': "export const a = '\\u0070rocess'",
+    'non-ASCII identifier': 'export const ｐrocess = 1',
+  }
+  for (const [name, content] of Object.entries(bad)) {
+    for (const path of ['src/features/tarea-1/index.js', 'src/features/tarea-1/index.test.mjs', 'src/domain/tarea-1.js']) {
+      assert.equal(staticCheck([file(path, content)]).ok, false, `${name} (${path})`)
+    }
+  }
+  assert.match(reasons(file('src/domain/tarea-1.js', 'export const a = \\u0070rocess')), /escape/)
+  // Accents in strings and comments are Spanish text, not code.
+  assert.equal(staticCheck([file('src/domain/tarea-1.js', "// más barato\nexport const a = 'Más barato: 3 €/kg ¿sí?'\n")]).ok, true)
+})
+
+test('staticCheck: no specifier resolves to the Node-only loader, however it is spelled; there is none left to import', () => {
+  const specifiers = ['./estado-node.js', './estado-node.js?x=1', './estado-node.js#x', './%65stado-node.js', '.\\estado-node.js', './a/../estado-node.js', '../domain/estado-node.js', './estado-node']
+  for (const specifier of specifiers) {
+    assert.equal(staticCheck([file('src/domain/tarea-1.js', `import x from '${specifier}'\nexport default x\n`)]).ok, false, specifier)
+  }
+  assert.equal(existsSync(join(repo, 'src/domain/estado-node.js')), false)
+  assert.equal(existsSync(join(repo, 'lib/estado-node.js')), true)
+})
+
+// --- the verdict of a run is not the exit code ---
+
+sandboxTest('runSuite: a test that ends the run early with exit code 0 is not a pass', async () => {
+  const early = `import { test } from 'node:test'\ntest('uno', () => {})\ntest('dos', () => { process.exit(0) })\ntest('tres', () => {})\n`
+  const result = await runSuite(scratch(), [file('src/domain/temprano.test.mjs', early)])
+  assert.equal(result.ok, false, result.output)
+  assert.match(result.output, /terminó antes de tiempo|sin informe/)
+})
+
+sandboxTest('runSuite: a test file that registers no test, or only skips, is not a pass', async () => {
+  const none = await runSuite(scratch(), [file('src/domain/vacio.test.mjs', 'export const nada = 1\n')])
+  assert.equal(none.ok, false, none.output)
+  assert.match(none.output, /src\/domain\/vacio\.test\.mjs/)
+  const skipped = await runSuite(scratch(), [file('src/domain/saltado.test.mjs', "import { test } from 'node:test'\ntest('x', { skip: true }, () => {})\n")])
+  assert.equal(skipped.ok, false, skipped.output)
+})
+
+sandboxTest('runSuite: a test that prints a forged verdict cannot make a failing run pass', async () => {
+  const forged = testFile(`console.log('# tests 99\\n# pass 99\\n# fail 0\\nℹ fail 0\\n@@SUITE@@ {"tests":99,"fail":0}')\nassert.equal(1, 2, 'falla de verdad')`)
+  const result = await runSuite(scratch(), [file('src/domain/falso.test.mjs', forged)])
+  assert.equal(result.ok, false)
+  assert.match(result.output, /falla de verdad/)
+})
+
+// --- Node without the network switch: fail closed ---
+
+test('without the network switch in Node the sandbox refuses to run model code, with a clear error', async () => {
+  const root = scratch()
+  const refusal = /sin el interruptor de red|--allow-net/
+  await assert.rejects(runSuite(root, [], { networkSwitch: false }), refusal)
+  await assert.rejects(runIsolated(root, ['-e', '1'], { networkSwitch: false }), refusal)
+  await assert.rejects(evaluateFeatures(root, cargarEstado(root), { networkSwitch: false }), refusal)
+  await assert.rejects(checkState(root, cargarEstado(root), { networkSwitch: false }), refusal)
+})
+
+test('this Node has the network switch (CI, the factory and the gate run the Node of .node-version)', () => {
+  const wanted = Number(readFileSync(join(repo, '.node-version'), 'utf8').trim().split('.')[0])
+  assert.ok(wanted >= 26, '.node-version must be a Node with the network permission switch')
+  assert.equal(networkSwitchAvailable(), process.allowedNodeEnvironmentFlags.has('--allow-net'))
+})
+
+// --- the domain is evaluated in the isolation, never imported by the platform ---
+
+sandboxTest('checkState: validateCatalog and presupuestar run in the isolation and report data', async () => {
+  const root = scratch()
+  const ok = await checkState(root, cargarEstado(root))
+  assert.equal(ok.catalogo.ok, true, JSON.stringify(ok.catalogo))
+  assert.ok(ok.muestras.length > 0)
+  assert.ok(ok.muestras.every((m) => typeof m.nombre === 'string' && typeof m.ok === 'boolean'))
+  const estado = cargarEstado(root)
+  estado.precios['no-existe'] = 1
+  const bad = await checkState(root, estado)
+  assert.equal(bad.catalogo.ok, false)
+  assert.match(bad.catalogo.errors.join(), /no-existe/)
+})
+
+sandboxTest('checkState: domain code that tries to read the environment or the network gets nothing', async () => {
+  const root = scratch()
+  const domain = join(root, 'src/domain/catalogo.js')
+  writeFileSync(domain, `${readFileSync(domain, 'utf8')}\nexport const sonda = String(typeof process.env.HOME) + typeof fetch\n`)
+  writeFileSync(join(root, 'src/domain/presupuesto.js'), `import { sonda } from './catalogo.js'\nif (sonda !== 'undefinedundefined') throw new Error('leak ' + sonda)\n${readFileSync(join(root, 'src/domain/presupuesto.js'), 'utf8')}`)
+  const result = await checkState(root, cargarEstado(root))
+  assert.equal(result.error, undefined)
+  assert.equal(result.catalogo.ok, true)
 })

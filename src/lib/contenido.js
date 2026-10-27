@@ -1,7 +1,7 @@
 // Build-time data for the pages. Runs in Node during `astro build` (cwd = repository root).
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cargarEstado } from '../domain/estado-node.js'
+import { cargarEstado } from '../../lib/estado-node.js'
 
 const root = process.cwd()
 

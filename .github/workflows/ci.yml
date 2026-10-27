@@ -14,10 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
+      # The tests of src/domain/ and src/features/ are code a model can write: test/sandbox.test.mjs runs them in the
+      # isolation (`npm run test:src` runs them by hand, outside it, for the people who write them).
       - run: npm test
       - run: npm run build

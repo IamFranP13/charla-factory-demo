@@ -12,7 +12,8 @@
 import { writeFileSync, mkdirSync, appendFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { runFactory, loadProfiles, initialState, applyEvent, finishState, parseState, replaceState } from '../lib/factory.js'
+import { runFactory, loadProfiles, initialState, applyEvent, finishState, replaceState } from '../lib/factory.js'
+import { updateIssueState } from '../lib/issue-state.js'
 import { providersFromEnv } from '../lib/providers.js'
 import { gh, ghJson, repoSlug } from '../lib/github.js'
 import { MAX_LENGTH } from '../lib/intake.js'
@@ -131,16 +132,6 @@ async function runIssue(number, providers) {
   comment(number, `${STATUS_ICON[result.status]} **Resultado: ${result.status}**${summary.files.length ? ` → \`${summary.files.join('`, `')}\`` : ''}\n\n<!-- factory:result ${JSON.stringify(summary)} -->`)
   console.log(`\nResult: ${result.status}`)
   output({ status: result.status, profile: task.profile, files: summary.files.join(','), attempts: result.attempts, tokens_in: result.usage.input, tokens_out: result.usage.output })
-}
-
-// Read-modify-write of the state marker in an issue body. Returns the new state, or null when there is no marker.
-export function updateIssueState(number, change) {
-  const data = ghJson(`repos/${repoSlug()}/issues/${number}`)
-  const current = parseState(data.body)
-  if (!current) return null
-  const next = change(current)
-  gh(['api', '-X', 'PATCH', `repos/${repoSlug()}/issues/${number}`, '--input', '-'], { input: JSON.stringify({ body: replaceState(data.body, next) }) })
-  return next
 }
 
 // The workflow opened pull request `pr` for the task: the task now waits at the gate (unless the gate already ruled).

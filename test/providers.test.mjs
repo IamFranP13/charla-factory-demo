@@ -1,3 +1,4 @@
+import { needsSandbox } from './sandbox-node.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
@@ -75,14 +76,14 @@ async function replay(profile, request, id = 1) {
   return { ...result, events, file: (n = 0) => JSON.parse(result.files[n].content) }
 }
 
-test('replay marketing: quoted text becomes texto and the start of it the titulo', async () => {
+needsSandbox('replay marketing: quoted text becomes texto and the start of it the titulo', async () => {
   const r = await replay('marketing', 'Una campaña que diga «Limón Verna de temporada, recién cortado»')
   assert.equal(r.status, 'ok')
   assert.equal(r.file().texto, 'Limón Verna de temporada, recién cortado')
   assert.ok(r.file().titulo.length <= 60 && r.file().titulo.length > 0)
 })
 
-test('replay marketing: colour words map onto the brand palette, olive by default', async () => {
+needsSandbox('replay marketing: colour words map onto the brand palette, olive by default', async () => {
   for (const [word, color] of [['oliva', 'oliva'], ['verde', 'oliva'], ['limón', 'limon'], ['amarilla', 'limon'], ['tierra', 'tierra'], ['blanca', 'blanco'], ['blanco', 'blanco']]) {
     const r = await replay('marketing', `Una campaña ${word} que diga «Hola mercado»`)
     assert.equal(r.file().color, color, word)
@@ -90,13 +91,13 @@ test('replay marketing: colour words map onto the brand palette, olive by defaul
   assert.equal((await replay('marketing', 'Una campaña que diga «Hola mercado»')).file().color, 'oliva')
 })
 
-test('replay marketing: no quotes still gives a valid short campaign; links are dropped', async () => {
+needsSandbox('replay marketing: no quotes still gives a valid short campaign; links are dropped', async () => {
   const r = await replay('marketing', 'Haz un banner de rebajas de primavera en https://x.com/oferta con la web www.ejemplo.com')
   assert.equal(r.status, 'ok')
   assert.doesNotMatch(JSON.stringify(r.file()), /:\/\/|www\./)
 })
 
-test('replay producto: fruit and vegetable words create a product with the right category', async () => {
+needsSandbox('replay producto: fruit and vegetable words create a product with the right category', async () => {
   const mango = await replay('producto', 'Añade mango al catálogo')
   assert.equal(mango.files[0].path, 'catalogo/productos/tarea-1.json')
   assert.deepEqual([mango.file().nombre, mango.file().categoria, mango.file().disponible], ['Mango', 'fruta', true])
@@ -104,14 +105,14 @@ test('replay producto: fruit and vegetable words create a product with the right
   assert.equal(calabacin.file().categoria, 'hortaliza')
 })
 
-test('replay producto: country and city words create a destination', async () => {
+needsSandbox('replay producto: country and city words create a destination', async () => {
   const r = await replay('producto', 'Quiero poder exportar a Italia, a Milán', 2)
   assert.equal(r.files[0].path, 'catalogo/destinos/tarea-2.json')
   assert.deepEqual([r.file().pais, r.file().ciudad], ['Italia', 'Milán'])
   assert.ok(Number.isInteger(r.file().diasTransito))
 })
 
-test('replay negocio: "precio del limón a 1,30" changes the price of a lemon, nothing else', async () => {
+needsSandbox('replay negocio: "precio del limón a 1,30" changes the price of a lemon, nothing else', async () => {
   const r = await replay('negocio', 'Pon el precio del limón a 1,30')
   assert.equal(r.status, 'ok')
   assert.deepEqual(r.files.map((f) => f.path), ['data/precios.json'])
@@ -119,16 +120,16 @@ test('replay negocio: "precio del limón a 1,30" changes the price of a lemon, n
   assert.equal(r.file()['tomate-raf'], 2.4)
 })
 
-test('replay negocio: the product is found by name, accents and case aside', async () => {
+needsSandbox('replay negocio: the product is found by name, accents and case aside', async () => {
   assert.equal((await replay('negocio', 'Sube el PRECIO del Tomate RAF a 3')).file()['tomate-raf'], 3)
   assert.equal((await replay('negocio', 'El precio de la mandarina a 1')).file()['mandarina-clemenules'], 1)
 })
 
-test('replay negocio: a relative price change ("sube un 10 %") is computed from the current price', async () => {
+needsSandbox('replay negocio: a relative price change ("sube un 10 %") is computed from the current price', async () => {
   assert.equal((await replay('negocio', 'Sube el precio del tomate un 10%')).file()['tomate-raf'], 2.64)
 })
 
-test('replay negocio: discount tiers are inserted or replaced, kept in order', async () => {
+needsSandbox('replay negocio: discount tiers are inserted or replaced, kept in order', async () => {
   const added = await replay('negocio', 'Descuento del 8% desde 2.000 kg')
   assert.deepEqual(added.files.map((f) => f.path), ['data/descuentos.json'])
   assert.deepEqual(added.file().tramos.map((t) => [t.desdeKg, t.porcentaje]), [[1000, 3], [2000, 8], [5000, 6], [20000, 10]])
@@ -136,7 +137,7 @@ test('replay negocio: discount tiers are inserted or replaced, kept in order', a
   assert.deepEqual(replaced.file().tramos.map((t) => [t.desdeKg, t.porcentaje]), [[1000, 3], [5000, 7], [20000, 10]])
 })
 
-test('replay negocio: "transporte a Alemania gratis" zeroes the tariff of that destination only', async () => {
+needsSandbox('replay negocio: "transporte a Alemania gratis" zeroes the tariff of that destination only', async () => {
   const r = await replay('negocio', 'Pon el transporte a Alemania gratis')
   assert.equal(r.status, 'ok')
   assert.deepEqual(r.files.map((f) => f.path), ['config/transporte.json'])
@@ -144,7 +145,7 @@ test('replay negocio: "transporte a Alemania gratis" zeroes the tariff of that d
   assert.deepEqual(r.file()['francia-rungis'], { eurPorKg: 0.1, minimo: 120 })
 })
 
-test('replay negocio: a numeric tariff sets eurPorKg and, when asked, the minimum', async () => {
+needsSandbox('replay negocio: a numeric tariff sets eurPorKg and, when asked, the minimum', async () => {
   const r = await replay('negocio', 'Transporte a Francia a 0,08 euros por kilo con mínimo de 100')
   assert.deepEqual(r.file()['francia-rungis'], { eurPorKg: 0.08, minimo: 100 })
 })
@@ -153,7 +154,7 @@ test('replay negocio: a request it does not understand changes nothing', async (
   assert.equal((await replay('negocio', 'Haz algo con el negocio')).status, 'unchanged')
 })
 
-test('replay seguridad: insults and destruction are rejected by the reviewer, not by the spec writer', async () => {
+needsSandbox('replay seguridad: insults and destruction are rejected by the reviewer, not by the spec writer', async () => {
   const r = await replay('marketing', 'Una campaña que diga «el jefe es un idiota»')
   assert.equal(r.status, 'rejected')
   assert.ok(r.events.some((e) => e.station === 'seguridad' && e.status === 'rejected'))
@@ -165,7 +166,7 @@ test('replay: secrets and "ignore your rules" are refused already by the spec wr
   assert.ok(r.events.some((e) => e.station === 'spec' && e.status === 'rejected'))
 })
 
-test('replay ui: a colour outside the brand palette is rejected; ux rejects a shouting text', async () => {
+needsSandbox('replay ui: a colour outside the brand palette is rejected; ux rejects a shouting text', async () => {
   const pink = await replay('marketing', 'Una campaña rosa fucsia que diga «Hola»')
   assert.equal(pink.status, 'rejected')
   assert.ok(pink.events.some((e) => e.station === 'ui' && e.status === 'rejected'))

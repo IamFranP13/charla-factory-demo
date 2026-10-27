@@ -25,7 +25,8 @@ The contract of a feature (src/features/<folder>/index.js):
 Hard limits (code checks them before running anything, and rejects the whole answer if broken):
 - Imports: only relative paths inside src/domain/ and src/features/ (for example `../../domain/presupuesto.js`). A test file may also import `node:test` and `node:assert/strict`. Nothing else.
 - Never write these words, not even in a comment or a string: process, globalThis, global, require, eval, Function, fetch, WebSocket, constructor, __proto__, Reflect, WebAssembly, node: and no `import(...)` or `import.meta`.
-- No network, no files, no environment variables, no timers, no randomness. Pure functions of their input.
+- No network, no files, no environment variables, no timers, no randomness, no dates or clocks. Pure functions of their input.
+- Tests are deterministic: same result on every run and on every machine (no dates, no randomness, no timers, no order dependence between tests). They also run on `main`, where a flaky test turns the whole site red.
 - Every change comes with a test (`node:test`): a new feature, `src/features/tarea-N/index.test.mjs` with its own small `estado` inside the test; a fix, a test that fails without the fix (a new file `src/domain/<name>.test.mjs` or an addition to the feature test). Tests must finish fast.
 
 Existing code you may read and change (the whole text of each file):

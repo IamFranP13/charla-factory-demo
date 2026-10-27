@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { validateFile } from '../lib/schemas.js'
 import { validateCatalog } from '../src/domain/catalogo.js'
 import { presupuestar } from '../src/domain/presupuesto.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 import { rehearsalCopy } from '../lib/rehearsal.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')

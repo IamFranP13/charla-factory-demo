@@ -13,7 +13,7 @@
 import { readFileSync, appendFileSync } from 'node:fs'
 import { parsePolicy, routeFor, verdict, originAllowsAuto } from '../lib/policy.js'
 import { pullRequest, pullRequestFiles, pullRequestReviews, approvalsAtHead, repoSlug } from '../lib/github.js'
-import { updateIssueState } from './factory.mjs'
+import { updateIssueState } from '../lib/issue-state.js'
 
 const args = process.argv.slice(2)
 const take = (flag) => {

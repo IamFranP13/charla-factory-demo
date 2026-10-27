@@ -202,3 +202,36 @@ test('every workflow takes Node from .node-version, and that version satisfies A
     }
   }
 })
+
+test('factory.yml: no credential is left in .git/config; the push carries an explicit token that is never echoed', () => {
+  const wf = load('factory')
+  const all = steps(wf, 'factory')
+  const checkout = all.find((s) => s.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkout.with['persist-credentials'], false, 'the factory step runs with the model key: no token persisted in .git/config')
+  const pr = all.find((s) => s.id === 'pr')
+  assert.match(pr.run, /git push "https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{REPO\}\.git" "tarea\/\$ISSUE"/)
+  assert.doesNotMatch(pr.run, /git push origin/)
+  assert.equal(pr.env.GH_TOKEN, '${{ steps.app.outputs.token }}')
+  assert.equal(pr.env.REPO, '${{ github.repository }}')
+  for (const step of all) {
+    assert.doesNotMatch(step.run ?? '', /echo[^\n]*(GH_TOKEN|x-access-token)|set -x|git remote (add|set-url)|git config[^\n]*(extraheader|credential)/, step.id ?? step.name)
+  }
+  // The guard reads the remote too, and no longer has the persisted credential: it passes the token explicitly as well.
+  const guard = all.find((s) => s.id === 'guard')
+  assert.match(guard.run, /git ls-remote --exit-code --heads "https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git" "tarea\/\$ISSUE"/)
+  assert.doesNotMatch(guard.run, /ls-remote[^\n]* origin/)
+})
+
+test('workflows: every job runs Node 26 or newer, the one with the network switch the sandbox needs', () => {
+  assert.ok(Number(readFileSync(new URL('../.node-version', import.meta.url), 'utf8').trim().split('.')[0]) >= 26)
+  assert.match(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).engines.node, /26/)
+})
+
+test('CI never runs the tests a model wrote outside the sandbox: npm test covers src/ through runSuite only', () => {
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts
+  assert.doesNotMatch(scripts.test, /src\//, 'npm test (CI, main) must not import src/domain or src/features tests directly')
+  assert.match(scripts['test:src'], /src\/domain\/\*\.test\.mjs/, 'authors can still run them by hand')
+  assert.equal(load('ci').jobs.build.steps.find((s) => s.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false)
+  const baseline = readFileSync(new URL('./sandbox.test.mjs', import.meta.url), 'utf8')
+  assert.match(baseline, /sandboxTest\('baseline: the repository suite/)
+})

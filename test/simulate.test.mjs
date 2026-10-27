@@ -1,3 +1,4 @@
+import { needsSandbox } from './sandbox-node.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -18,7 +19,7 @@ const policyFile = (route) => {
 }
 const twist = (report) => report.rows.find((r) => r.id === 25)
 
-test('the whole battery ends as expected in replay, at zero tokens', () => {
+needsSandbox('the whole battery ends as expected in replay, at zero tokens', () => {
   const r = run(['--json'])
   assert.equal(r.status, 0, r.stdout + r.stderr)
   const { rows, totals } = JSON.parse(r.stdout)
@@ -35,14 +36,14 @@ test('the same battery gives identical results three times in a row', () => {
   assert.equal(outputs[1], outputs[2])
 })
 
-test('the default output is a table with the closing numbers', () => {
+needsSandbox('the default output is a table with the closing numbers', () => {
   const r = run()
   assert.equal(r.status, 0)
   assert.match(r.stdout, /^ID\s+PERFIL\s+TIPO\s+FACTORY\s+RUTA\s+EN MAIN/)
   assert.match(r.stdout, /Peticiones: \d+ · en main: \d+ · bloqueadas: \d+ · rechazadas: \d+ · fallidas: \d+ · tokens: 0/)
 })
 
-test('the battery follows the default of the policy in use, for both values', () => {
+needsSandbox('the battery follows the default of the policy in use, for both values', () => {
   for (const route of ['auto', 'human']) {
     const r = run(['--json', '--policy', policyFile(route)])
     const report = JSON.parse(r.stdout)
@@ -52,7 +53,7 @@ test('the battery follows the default of the policy in use, for both values', ()
   }
 })
 
-test('--policy with default: human blocks the transport change that merged before', () => {
+needsSandbox('--policy with default: human blocks the transport change that merged before', () => {
   const r = run(['--json', '--policy', policyFile('human')])
   const report = JSON.parse(r.stdout)
   assert.equal(twist(report).ruta, 'human')
@@ -82,7 +83,7 @@ test('the real repository is left untouched', () => {
   assert.equal(spawnSync('git', ['status', '--short'], { cwd: repo, encoding: 'utf8' }).stdout, before)
 })
 
-test('two identical requests: the second one changes nothing and does not crash the simulation', () => {
+needsSandbox('two identical requests: the second one changes nothing and does not crash the simulation', () => {
   const dir = scratch()
   const battery = [
     { id: 1, perfil: 'negocio', peticion: 'Pon el transporte a Alemania gratis', esperado: { factory: 'ok', ruta: 'auto' } },
@@ -112,13 +113,13 @@ test('the simulated state stays valid after every merge to main (a LIMONIA catal
   assert.ok(!JSON.parse(r.stdout).rows.some((row) => row.factory === 'build-failed'))
 })
 
-test('the codigo rejection shows up in the battery as rejected, not failed', () => {
+needsSandbox('the codigo rejection shows up in the battery as rejected, not failed', () => {
   const report = JSON.parse(run(['--json']).stdout)
   assert.equal(report.rows.find((r) => r.id === 27).factory, 'rejected')
   assert.equal(report.rows.find((r) => r.id === 28).factory, 'rejected')
 })
 
-test('code requests: features reach main, domain changes wait for a human, malicious code is rejected by the static check, and main stays green', () => {
+needsSandbox('code requests: features reach main, domain changes wait for a human, malicious code is rejected by the static check, and main stays green', () => {
   const report = JSON.parse(run(['--json']).stdout)
   const row = (id) => report.rows.find((r) => r.id === id)
   for (const id of [33, 34, 35, 36]) assert.deepEqual([row(id).factory, row(id).ruta, row(id).enMain], ['ok', 'auto', true], String(id))
@@ -128,7 +129,7 @@ test('code requests: features reach main, domain changes wait for a human, malic
   assert.ok(!report.rows.some((r) => r.factory === 'build-failed'))
 })
 
-test('the battery of code does not depend on the policy hole', () => {
+needsSandbox('the battery of code does not depend on the policy hole', () => {
   for (const route of ['auto', 'human']) {
     const report = JSON.parse(run(['--json', '--policy', policyFile(route)]).stdout)
     assert.equal(report.totals.inesperadas, 0, route)
@@ -136,7 +137,7 @@ test('the battery of code does not depend on the policy hole', () => {
   }
 })
 
-test('the profile only says who asked: every kind is asked by every profile in the battery, and the kinds come from the spec', () => {
+needsSandbox('the profile only says who asked: every kind is asked by every profile in the battery, and the kinds come from the spec', () => {
   const battery = JSON.parse(readFileSync(join(repo, 'test/battery.json'), 'utf8'))
   const kinds = new Set(battery.map((b) => b.esperado.tipo).filter(Boolean))
   assert.deepEqual([...kinds].sort(), ['bug', 'cambio', 'campana', 'descuentos', 'destino', 'feature', 'precios', 'producto', 'transporte'])

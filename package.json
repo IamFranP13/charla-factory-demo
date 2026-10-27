@@ -5,7 +5,7 @@
   "description": "A tiny AI factory: the audience asks, cheap agents build, a risk gate written in code decides.",
   "type": "module",
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=26.0.0"
   },
   "scripts": {
     "build": "node scripts/validate-content.mjs && node scripts/build-features.mjs && astro build && node scripts/deploy-meta.mjs",
@@ -15,7 +15,8 @@
     "simulate": "node scripts/simulate.mjs",
     "preflight": "node scripts/preflight.mjs",
     "numbers": "node scripts/numbers.mjs",
-    "test": "node --test \"test/*.test.mjs\" \"src/domain/*.test.mjs\" \"src/features/*/index.test.mjs\"",
+    "test": "node --test \"test/*.test.mjs\"",
+    "test:src": "node --test \"src/domain/*.test.mjs\" \"src/features/*/index.test.mjs\"",
     "reset-demo": "node scripts/reset-demo.mjs"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 // The Spec writer classifies every request into a KIND; the kind (not the profile) decides what may be written.
 // The profile is only who asked: it shows in the trail and on the pages, and is the fallback when the spec names no kind.
+import { needsSandbox } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
@@ -84,7 +85,7 @@ async function run(profile, answers, id = 50) {
   return { result, events }
 }
 
-test('any profile may ask for any kind: the surface follows the kind the spec names', async () => {
+needsSandbox('any profile may ask for any kind: the surface follows the kind the spec names', async () => {
   // marketing asking for a price, producto asking for a campaign, negocio asking for a destination
   const price1 = await run('marketing', { spec: spec('precios'), build: { ficheros: [{ ruta: 'data/precios.json', contenido: Object.fromEntries(Object.entries(JSON.parse(readFileSync(join(repo, 'factory/seed/data/precios.json'), 'utf8'))).map(([k, v]) => [k, k === 'limon-verna' ? 1.31 : v])) }] }, ...approving })
   assert.equal(price1.result.status, 'ok', JSON.stringify(price1.events))
@@ -119,7 +120,7 @@ test('code enforces the surface of the kind named: nothing outside it, whoever a
   }
 })
 
-test('a kind that does not exist fails the task before building; no kind falls back to what the profile may write', async () => {
+needsSandbox('a kind that does not exist fails the task before building; no kind falls back to what the profile may write', async () => {
   const unknown = await run('marketing', { spec: spec('mejora'), build: campaign('content/campanas/tarea-50.json'), ...approving })
   assert.equal(unknown.result.status, 'failed')
   assert.match(unknown.events.find((e) => e.station === 'spec' && e.status === 'error').detail, /bug, feature, cambio|campana/)

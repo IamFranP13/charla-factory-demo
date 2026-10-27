@@ -1,3 +1,4 @@
+import { needsSandbox } from './sandbox-node.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
@@ -46,7 +47,7 @@ const liveTransporte = (root) => JSON.parse(readFileSync(join(root, 'config/tran
 
 const statuses = (events) => events.map((e) => `${e.station}:${e.status}`)
 
-test('replay: a marketing request becomes one valid campaign and every station reports', async () => {
+needsSandbox('replay: a marketing request becomes one valid campaign and every station reports', async () => {
   const events = []
   const result = await runFactory({
     task: { id: 1, profile: 'marketing', request: 'Una campaña verde que diga «Limones de temporada»' },
@@ -61,7 +62,7 @@ test('replay: a marketing request becomes one valid campaign and every station r
   assert.deepEqual(statuses(events.filter((e) => e.status !== 'en_curso')), ['spec:ok', 'build:ok', 'seguridad:ok', 'ux:ok', 'ui:ok', 'codigo:ok', 'approver:ok'])
 })
 
-test('trace: station names are exactly the diagram names, and each station announces itself before its result', async () => {
+needsSandbox('trace: station names are exactly the diagram names, and each station announces itself before its result', async () => {
   const events = []
   await runFactory({ task: { id: 1, profile: 'marketing', request: 'Una campaña oliva' }, root: scratch(), provider: replayProvider(), trace: (e) => events.push(e) })
   const names = new Set(events.map((e) => e.station))
@@ -83,7 +84,7 @@ test('replay: an injection attempt is stopped and produces no files', async () =
   assert.deepEqual(result.files, [])
 })
 
-test('producto may add a product or a destination; the builder picks the folder and the factory the file name', async () => {
+needsSandbox('producto may add a product or a destination; the builder picks the folder and the factory the file name', async () => {
   const product = await runFactory({ task: { id: 3, profile: 'producto', request: 'Añade mango al catálogo' }, root: scratch(), provider: replayProvider(), trace: () => {} })
   assert.equal(product.status, 'ok', JSON.stringify(product))
   assert.equal(product.files[0].path, 'catalogo/productos/tarea-3.json')
@@ -100,7 +101,7 @@ test('producto cannot choose its own file name or write outside its two folders'
   }
 })
 
-test('negocio modifies the transport tariffs (the folder the policy forgot): "transporte a Alemania gratis"', async () => {
+needsSandbox('negocio modifies the transport tariffs (the folder the policy forgot): "transporte a Alemania gratis"', async () => {
   const root = scratch()
   const result = await runFactory({ task: { id: 6, profile: 'negocio', request: 'Pon el transporte a Alemania gratis' }, root, provider: replayProvider(), trace: () => {} })
   assert.equal(result.status, 'ok', JSON.stringify(result))
@@ -128,14 +129,14 @@ test('a file outside the profile folders is rejected by code, retried once, then
   assert.match(events.find((e) => e.station === 'build' && e.status === 'error').detail, /not allowed|must write exactly/)
 })
 
-test('invalid JSON from the model is retried once and can recover', async () => {
+needsSandbox('invalid JSON from the model is retried once and can recover', async () => {
   const provider = scripted({ spec, build: ['not json at all', campaign('content/campanas/tarea-6.json')], ...approving })
   const result = await runFactory({ task: { id: 6, profile: 'marketing', request: 'x' }, root: scratch(), provider, trace: () => {} })
   assert.equal(result.status, 'ok', JSON.stringify(result))
   assert.equal(result.attempts, 2)
 })
 
-test('a schema violation is fed back to the builder', async () => {
+needsSandbox('a schema violation is fed back to the builder', async () => {
   const provider = scripted({ spec, build: [campaign('content/campanas/tarea-7.json', '<b>hola</b>'), campaign('content/campanas/tarea-7.json')], ...approving })
   const result = await runFactory({ task: { id: 7, profile: 'marketing', request: 'x' }, root: scratch(), provider, trace: () => {} })
   assert.equal(result.status, 'ok')
@@ -143,7 +144,7 @@ test('a schema violation is fed back to the builder', async () => {
   assert.match(provider.prompts.build[1], /plain text/)
 })
 
-test('seguridad, ux and ui run in parallel: all three start before any of them answers', async () => {
+needsSandbox('seguridad, ux and ui run in parallel: all three start before any of them answers', async () => {
   const order = []
   let release
   const gate = new Promise((resolve) => (release = resolve))
@@ -164,7 +165,7 @@ test('seguridad, ux and ui run in parallel: all three start before any of them a
   assert.deepEqual(order.slice(0, 3).sort(), ['start:seguridad', 'start:ui', 'start:ux'])
 })
 
-test('reviewers use the review provider; spec and build use the main one', async () => {
+needsSandbox('reviewers use the review provider; spec and build use the main one', async () => {
   const main = scripted({ spec, build: campaign('content/campanas/tarea-9.json') })
   const review = scripted(approving)
   const result = await runFactory({ task: { id: 9, profile: 'marketing', request: 'x' }, root: scratch(), provider: main, reviewProvider: review, trace: () => {} })
@@ -173,7 +174,7 @@ test('reviewers use the review provider; spec and build use the main one', async
   assert.deepEqual(review.calls.sort(), ['seguridad', 'ui', 'ux'])
 })
 
-test('the approver sends the work back once, with every rejection reason, and the second pass can succeed', async () => {
+needsSandbox('the approver sends the work back once, with every rejection reason, and the second pass can succeed', async () => {
   const provider = scripted({
     spec,
     build: [campaign('content/campanas/tarea-10.json'), campaign('content/campanas/tarea-10.json', 'Otro título')],
@@ -194,7 +195,7 @@ test('the approver sends the work back once, with every rejection reason, and th
   assert.equal(events.at(-1).status, 'ok')
 })
 
-test('a second negative from the approver ends the task as rejected, with no files', async () => {
+needsSandbox('a second negative from the approver ends the task as rejected, with no files', async () => {
   const provider = scripted({
     spec,
     build: [campaign('content/campanas/tarea-11.json'), campaign('content/campanas/tarea-11.json')],
@@ -305,7 +306,7 @@ test('codigo is deterministic: it never calls a model', async () => {
   assert.ok(!provider.calls.includes('codigo'))
 })
 
-test('codigo rejects a price for something that is not in the catalogue, with a Spanish reason', async () => {
+needsSandbox('codigo rejects a price for something that is not in the catalogue, with a Spanish reason', async () => {
   const root = scratch()
   const prices = JSON.parse(readFileSync(join(root, 'data/precios.json'), 'utf8'))
   const provider = scripted({ spec, build: { ficheros: [{ ruta: 'data/precios.json', contenido: { ...prices, patata: 1 } }] }, ...approving })
@@ -319,7 +320,7 @@ test('codigo rejects a price for something that is not in the catalogue, with a 
   assert.match(provider.prompts.build[1], /codigo: /)
 })
 
-test('codigo rejects a change that makes a sample order stop behaving as expected', async () => {
+needsSandbox('codigo rejects a change that makes a sample order stop behaving as expected', async () => {
   const root = scratch()
   const prices = JSON.parse(readFileSync(join(root, 'data/precios.json'), 'utf8'))
   // The "producto sin precio" sample (alcachofa) is expected to fail: pricing it flips the sample.
@@ -330,7 +331,7 @@ test('codigo rejects a change that makes a sample order stop behaving as expecte
   assert.match(events.find((e) => e.station === 'codigo' && e.status === 'rejected').detail, /Producto sin precio/)
 })
 
-test('codigo rejects a tariff that would leave a sample order without transport', async () => {
+needsSandbox('codigo rejects a tariff that would leave a sample order without transport', async () => {
   const root = scratch()
   const { 'alemania-hamburgo': _, ...rest } = liveTransporte(root)
   const provider = scripted({ spec, build: transporte(rest), ...approving })
@@ -340,7 +341,7 @@ test('codigo rejects a tariff that would leave a sample order without transport'
   assert.match(events.find((e) => e.station === 'codigo' && e.status === 'rejected').detail, /Pedido mixto/)
 })
 
-test('codigo passes a change that keeps every sample intact (free transport to Germany)', async () => {
+needsSandbox('codigo passes a change that keeps every sample intact (free transport to Germany)', async () => {
   const root = scratch()
   const provider = scripted({ spec, build: transporte({ ...liveTransporte(root), 'alemania-hamburgo': { eurPorKg: 0, minimo: 0 } }), ...approving })
   const events = []
@@ -349,7 +350,7 @@ test('codigo passes a change that keeps every sample intact (free transport to G
   assert.ok(events.some((e) => e.station === 'codigo' && e.status === 'ok'))
 })
 
-test('codigo applies the produced files to the state in memory: a new product does not touch the repository', async () => {
+needsSandbox('codigo applies the produced files to the state in memory: a new product does not touch the repository', async () => {
   const root = scratch()
   const provider = scripted({ spec, build: { ficheros: [{ ruta: 'catalogo/productos/tarea-25.json', contenido: { nombre: 'Mango', categoria: 'fruta', origen: 'Málaga', descripcion: 'Mango dulce.', emoji: '🥭', disponible: true } }] }, ...approving })
   const result = await runFactory({ task: { id: 25, profile: 'producto', request: 'x' }, root, provider, trace: () => {} })

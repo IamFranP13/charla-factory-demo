@@ -39,15 +39,18 @@ jobs:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
 
+      # The token is used to fetch and then forgotten: `persist-credentials: false` leaves nothing in .git/config for
+      # the factory step (which holds the model key and runs the sandbox) to find. The push passes the token explicitly.
       - uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
+          persist-credentials: false
 
       # Idempotency: skip if the issue is already closed or its branch already exists.
       - id: guard
         run: |
           state=$(gh issue view "$ISSUE" --json state --jq .state)
-          if [ "$state" != "OPEN" ] || git ls-remote --exit-code --heads origin "tarea/$ISSUE" >/dev/null; then
+          if [ "$state" != "OPEN" ] || git ls-remote --exit-code --heads "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "tarea/$ISSUE" >/dev/null 2>&1; then
             echo "proceed=false" >> "$GITHUB_OUTPUT"
           else
             echo "proceed=true" >> "$GITHUB_OUTPUT"
@@ -79,6 +82,7 @@ jobs:
           PROFILE: ${{ steps.factory.outputs.profile }}
           FILES: ${{ steps.factory.outputs.files }}
           BASE: ${{ github.event.repository.default_branch }}
+          REPO: ${{ github.repository }}
         run: |
           git config user.name "factory[bot]"
           git config user.email "factory[bot]@users.noreply.github.com"
@@ -87,7 +91,8 @@ jobs:
           # Commit only what the factory reported, nothing else in the working tree.
           git add -- "${files[@]}"
           git commit -m "Tarea #$ISSUE ($PROFILE)"
-          git push origin "tarea/$ISSUE"
+          # Explicit token, passed through the environment: never echoed, never written to .git/config.
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "tarea/$ISSUE"
           gh label create "perfil:$PROFILE" --force >/dev/null
           url=$(gh pr create --base "$BASE" --head "tarea/$ISSUE" \
             --title "Tarea #$ISSUE · $PROFILE" \

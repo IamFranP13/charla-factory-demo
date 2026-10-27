@@ -1,3 +1,4 @@
+import { hasSandbox, needsSandbox } from './sandbox-node.mjs'
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
@@ -7,7 +8,7 @@ import { MAX_LENGTH } from '../lib/intake.js'
 import { STATIONS, STATION_LABELS, MENSAJES } from '../lib/estado.js'
 import { NAV } from '../src/lib/nav.js'
 import { PASOS, REVISORES } from '../src/lib/diagrama.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const state = cargarEstado(repo)
@@ -17,6 +18,7 @@ let pages
 // Builds the real Astro site once into a scratch directory (inside the repo, since Astro renames
 // its cache into outDir and that fails across devices; .test-dist-* is gitignored and removed afterwards); every test reads the generated HTML.
 before(() => {
+  if (!hasSandbox) return // the build needs the sandbox; the tests below are skipped on such a Node
   out = mkdtempSync(join(repo, '.test-dist-'))
   // The pages read the feature registry that `npm run build` generates first.
   const features = spawnSync(process.execPath, [join(repo, 'scripts/build-features.mjs')], { cwd: repo, encoding: 'utf8' })
@@ -31,7 +33,7 @@ before(() => {
   pages = { home: read('index.html'), catalogo: read('catalogo/index.html'), presupuesto: read('presupuesto/index.html'), tarea: read('tarea/index.html'), factory: read('factory/index.html') }
 })
 
-after(() => rmSync(out, { recursive: true, force: true }))
+after(() => out && rmSync(out, { recursive: true, force: true }))
 
 // Astro inlines small scripts into the page and emits bigger ones as _astro/*.js: look at both.
 const clientCode = (html) =>
@@ -40,7 +42,7 @@ const clientCode = (html) =>
 const campaigns = () =>
   readdirSync(join(repo, 'content/campanas')).map((n) => JSON.parse(readFileSync(join(repo, 'content/campanas', n), 'utf8')))
 
-test('home lists every campaign with its colour class and call to action', () => {
+needsSandbox('home lists every campaign with its colour class and call to action', () => {
   for (const c of campaigns()) {
     assert.ok(pages.home.includes(c.titulo), c.titulo)
     assert.match(pages.home, new RegExp(`campana--${c.color}`))
@@ -48,20 +50,20 @@ test('home lists every campaign with its colour class and call to action', () =>
   }
 })
 
-test('the request form allows exactly the characters the intake accepts and lets nobody choose a profile', () => {
+needsSandbox('the request form allows exactly the characters the intake accepts and lets nobody choose a profile', () => {
   assert.match(pages.home, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
   assert.doesNotMatch(pages.home, /name="perfil"/)
   assert.match(pages.home, /Pídele un cambio a LIMONIA/)
   assert.match(pages.home, /al azar/)
 })
 
-test('the site copy names the three profiles, and the follow-up page shows the kind the spec writer gave the request', () => {
+needsSandbox('the site copy names the three profiles, and the follow-up page shows the kind the spec writer gave the request', () => {
   assert.match(pages.home, /Marketing, Producto o Negocio/)
   assert.doesNotMatch(pages.home, /Desarrollo/)
   assert.match(clientCode(pages.tarea), /\.tipo\b/, 'the kind of the request (campana, precios, bug, feature...)')
 })
 
-test('features written by the factory are painted by one generic component on their page, as escaped text', () => {
+needsSandbox('features written by the factory are painted by one generic component on their page, as escaped text', () => {
   assert.match(pages.catalogo, /<section[^>]*data-feature="ordenar-catalogo"/)
   assert.match(pages.catalogo, /<h2[^>]*>Del más barato al más caro<\/h2>/)
   assert.match(pages.catalogo, /<li><span>[^<]+<\/span><strong>\d+,\d\d €\/kg<\/strong><\/li>/)
@@ -69,18 +71,18 @@ test('features written by the factory are painted by one generic component on th
   assert.doesNotMatch(pages.presupuesto, /data-feature="ordenar-catalogo"/)
 })
 
-test('the Turnstile site key is read at build time', () => {
+needsSandbox('the Turnstile site key is read at build time', () => {
   assert.match(pages.home, /data-sitekey="sitekey-de-prueba"/)
 })
 
-test('the form posts to the intake endpoint and links to the task page', () => {
+needsSandbox('the form posts to the intake endpoint and links to the task page', () => {
   const bundle = clientCode(pages.home)
   assert.ok(bundle.includes('/api/peticion'))
   assert.ok(bundle.includes('/tarea/?n='))
   assert.ok(bundle.includes('Te ha tocado pedirlo como'))
 })
 
-test('the catalogue shows a price for priced products and "Precio a consultar" for the rest', () => {
+needsSandbox('the catalogue shows a price for priced products and "Precio a consultar" for the rest', () => {
   const unpriced = Object.keys(state.productos).filter((id) => !(id in state.precios))
   assert.ok(unpriced.length > 0, 'the sample data should include a product without price')
   const card = (id) => pages.catalogo.match(new RegExp(`id="producto-${id}"[\\s\\S]*?</article>`))[0]
@@ -91,14 +93,14 @@ test('the catalogue shows a price for priced products and "Precio a consultar" f
   for (const p of Object.values(state.productos)) assert.ok(pages.catalogo.includes(p.nombre), p.nombre)
 })
 
-test('the catalogue lists every destination with its transit days', () => {
+needsSandbox('the catalogue lists every destination with its transit days', () => {
   for (const d of Object.values(state.destinos)) {
     assert.ok(pages.catalogo.includes(d.ciudad), d.ciudad)
     assert.ok(pages.catalogo.includes(`${d.diasTransito} días`) || pages.catalogo.includes(`${d.diasTransito} día `))
   }
 })
 
-test('the quote page embeds the build-time state and ships the domain module', () => {
+needsSandbox('the quote page embeds the build-time state and ships the domain module', () => {
   const attr = pages.presupuesto.match(/data-estado="([^"]*)"/)[1].replaceAll('&#34;', '"').replaceAll('&quot;', '"')
   assert.deepEqual(JSON.parse(attr), JSON.parse(JSON.stringify(state)))
   const bundle = clientCode(pages.presupuesto)
@@ -106,7 +108,7 @@ test('the quote page embeds the build-time state and ships the domain module', (
   assert.match(pages.presupuesto, /Transporte/)
 })
 
-test('the quote calculator only offers products that can be priced', () => {
+needsSandbox('the quote calculator only offers products that can be priced', () => {
   const select = pages.presupuesto.match(/<select class="linea__producto">([\s\S]*?)<\/select>/)[1]
   for (const [id, p] of Object.entries(state.productos)) {
     const offered = select.includes(`value="${id}"`)
@@ -114,7 +116,7 @@ test('the quote calculator only offers products that can be priced', () => {
   }
 })
 
-test('every page has the navigation, with the factory board enabled', () => {
+needsSandbox('every page has the navigation, with the factory board enabled', () => {
   assert.equal(NAV.some((item) => item.pronto), false)
   for (const html of Object.values(pages)) {
     assert.match(html, /href="\/catalogo\/"/)
@@ -124,7 +126,7 @@ test('every page has the navigation, with the factory board enabled', () => {
   }
 })
 
-test('the form remembers the submitted task numbers (max 20) and links to the follow-up page', () => {
+needsSandbox('the form remembers the submitted task numbers (max 20) and links to the follow-up page', () => {
   const bundle = clientCode(pages.home)
   assert.ok(bundle.includes('limonia:tareas'))
   assert.ok(bundle.includes('Sigue tu petición'))
@@ -132,7 +134,7 @@ test('the form remembers the submitted task numbers (max 20) and links to the fo
   assert.match(bundle, /slice\(-?20|MAX_GUARDADAS|20/)
 })
 
-test('the home lists "Tus peticiones" from localStorage, with a link to each task', () => {
+needsSandbox('the home lists "Tus peticiones" from localStorage, with a link to each task', () => {
   assert.match(pages.home, /Tus peticiones/)
   assert.match(pages.home, /id="mis-peticiones"/)
   const bundle = clientCode(pages.home)
@@ -155,7 +157,7 @@ function assertScheme(html, name) {
   assert.match(html, /href="\/factory\/"/)
 }
 
-test('/tarea/ draws the factory scheme as a stepper and polls the status API for one task', () => {
+needsSandbox('/tarea/ draws the factory scheme as a stepper and polls the status API for one task', () => {
   const bundle = clientCode(pages.tarea)
   assertScheme(pages.tarea, '/tarea/')
   assert.ok(bundle.includes('/api/estado?tarea='))
@@ -168,7 +170,7 @@ test('/tarea/ draws the factory scheme as a stepper and polls the status API for
   assert.doesNotMatch(bundle, /innerHTML/)
 })
 
-test('/factory/ draws the stepper with counters and task chips, the queue and the totals, polling every 5 s', () => {
+needsSandbox('/factory/ draws the stepper with counters and task chips, the queue and the totals, polling every 5 s', () => {
   const bundle = clientCode(pages.factory)
   assertScheme(pages.factory, '/factory/')
   assert.match(pages.factory, /data-fichas/, 'every step has room for the task chips')
@@ -184,7 +186,7 @@ test('/factory/ draws the stepper with counters and task chips, the queue and th
   assert.doesNotMatch(bundle, /innerHTML/)
 })
 
-test('the demo mode (?demo=1) is built in, driven by a fake sequence, and only switched on by the parameter', () => {
+needsSandbox('the demo mode (?demo=1) is built in, driven by a fake sequence, and only switched on by the parameter', () => {
   for (const html of [pages.factory, pages.tarea]) {
     const bundle = clientCode(html)
     assert.match(bundle, /demo/)
@@ -192,11 +194,11 @@ test('the demo mode (?demo=1) is built in, driven by a fake sequence, and only s
   }
 })
 
-test('the stations of the pages are the ones of the factory', () => {
+needsSandbox('the stations of the pages are the ones of the factory', () => {
   assert.deepEqual(Object.keys(STATION_LABELS), STATIONS)
 })
 
-test('"bloqueada_tests" is a final state on /tarea/ and counts with the rejected ones on /factory/', () => {
+needsSandbox('"bloqueada_tests" is a final state on /tarea/ and counts with the rejected ones on /factory/', () => {
   assert.match(clientCode(pages.tarea), /\[[^\]]*['"`]bloqueada_tests['"`][^\]]*\]/, 'listed among the final states')
   assert.match(clientCode(pages.factory), /bloqueadas_tests/)
 })

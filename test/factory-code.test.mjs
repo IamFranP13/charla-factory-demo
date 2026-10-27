@@ -1,3 +1,4 @@
+import { needsSandbox } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
@@ -7,7 +8,7 @@ import { runFactory } from '../lib/factory.js'
 import { rehearsalCopy } from '../lib/rehearsal.js'
 import { replayProvider } from '../lib/providers.js'
 import { runSuite, staticCheck, evaluateFeatures } from '../lib/sandbox.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const scratches = []
@@ -68,7 +69,7 @@ const featureFiles = (id, index = goodFeature(id), spec = goodTest) => [
 
 // --- the profile ---
 
-test('code is not a profile: whoever asks, a code request gets the same patch and the same route', async () => {
+needsSandbox('code is not a profile: whoever asks, a code request gets the same patch and the same route', async () => {
   const request = 'Enseña el precio medio por kilo del catálogo'
   const results = []
   for (const profile of ['marketing', 'producto', 'negocio']) {
@@ -83,7 +84,7 @@ test('code is not a profile: whoever asks, a code request gets the same patch an
 
 // --- replay: the prepared patches ---
 
-test('replay: a new feature is two files in the folder the factory names, with its own test, and the spec says "feature"', async () => {
+needsSandbox('replay: a new feature is two files in the folder the factory names, with its own test, and the spec says "feature"', async () => {
   const { result, events } = await dev('Muestra el producto más barato de cada categoría')
   assert.equal(result.status, 'ok', JSON.stringify(events))
   assert.deepEqual(result.files.map((f) => f.path), ['src/features/tarea-41/index.js', 'src/features/tarea-41/index.test.mjs'])
@@ -94,7 +95,7 @@ test('replay: a new feature is two files in the folder the factory names, with i
   assert.equal(event(events, 'approver', 'ok').detail.startsWith('4/4'), true)
 })
 
-test('replay: the new feature really shows the cheapest product of each category once applied', async () => {
+needsSandbox('replay: the new feature really shows the cheapest product of each category once applied', async () => {
   const { result, root } = await dev('Muestra el producto más barato de cada categoría')
   apply(root, result.files)
   const { features } = await evaluateFeatures(root, cargarEstado(root))
@@ -109,7 +110,7 @@ test('replay: the new feature really shows the cheapest product of each category
   }
 })
 
-test('replay: transit days of each destination and the average price per kilo are features too', async () => {
+needsSandbox('replay: transit days of each destination and the average price per kilo are features too', async () => {
   const transit = await dev('Una sección con los días de tránsito de cada destino', { id: 42 })
   assert.equal(transit.result.status, 'ok', JSON.stringify(transit.events))
   apply(transit.root, transit.result.files)
@@ -125,7 +126,7 @@ test('replay: transit days of each destination and the average price per kilo ar
   assert.match(b.resultado.texto, /^Precio medio: \d+,\d\d €\/kg/)
 })
 
-test('replay: the ordering bug is fixed in the existing feature and a test pins it', async () => {
+needsSandbox('replay: the ordering bug is fixed in the existing feature and a test pins it', async () => {
   const { result, events, root } = await dev('El listado «Del más barato al más caro» sale al revés, arréglalo')
   assert.equal(result.status, 'ok', JSON.stringify(events))
   assert.equal(event(events, 'spec', 'ok').tipo, 'bug')
@@ -137,7 +138,7 @@ test('replay: the ordering bug is fixed in the existing feature and a test pins 
   assert.equal((await runSuite(root, [])).ok, true)
 })
 
-test('replay: the discount bug at the exact kilos of a tier is fixed and a boundary test is added', async () => {
+needsSandbox('replay: the discount bug at the exact kilos of a tier is fixed and a boundary test is added', async () => {
   const { result, events, root } = await dev('Con 1.000 kg exactos no se aplica el descuento por volumen, es un bug')
   assert.equal(result.status, 'ok', JSON.stringify(events))
   assert.equal(event(events, 'spec', 'ok').tipo, 'bug')
@@ -148,7 +149,7 @@ test('replay: the discount bug at the exact kilos of a tier is fixed and a bound
   assert.equal((await runSuite(root, [])).ok, true)
 })
 
-test('replay: the discount rule change touches the domain and adds its test', async () => {
+needsSandbox('replay: the discount rule change touches the domain and adds its test', async () => {
   const { result, events, root } = await dev('Cambia la regla: descuento del 15 % a partir de 50.000 kg')
   assert.equal(result.status, 'ok', JSON.stringify(events))
   assert.equal(event(events, 'spec', 'ok').tipo, 'cambio')
@@ -162,7 +163,7 @@ test('replay: the discount rule change touches the domain and adds its test', as
   assert.equal(order(100000).descuento.porcentaje, 15)
 })
 
-test('replay: asking for a fix that is already there ends as "unchanged", with no review and no files', async () => {
+needsSandbox('replay: asking for a fix that is already there ends as "unchanged", with no review and no files', async () => {
   const first = await dev('El listado «Del más barato al más caro» sale al revés, arréglalo')
   apply(first.root, first.result.files)
   const again = await dev('El listado «Del más barato al más caro» sale al revés, arréglalo', { root: first.root, id: 44 })
@@ -201,7 +202,7 @@ test('code that reaches for the machine is refused by the static check BEFORE an
   }
 })
 
-test('a patch whose test never ends is killed by the time limit and the task is rejected', async () => {
+needsSandbox('a patch whose test never ends is killed by the time limit and the task is rejected', async () => {
   const forever = "import { test } from 'node:test'\ntest('para siempre', () => { while (true) {} })\n"
   const model = scripted({ spec: specOf(), build: patch(featureFiles('tarea-41', goodFeature('tarea-41'), forever)), ...approving })
   const started = Date.now()
@@ -212,7 +213,7 @@ test('a patch whose test never ends is killed by the time limit and the task is 
   assert.ok(Date.now() - started < 30000)
 })
 
-test('a patch that eats all the memory is stopped by the memory limit and rejected, with its own reason', async () => {
+needsSandbox('a patch that eats all the memory is stopped by the memory limit and rejected, with its own reason', async () => {
   const hog = "import { test } from 'node:test'\ntest('memoria', () => { const a = []; while (true) a.push(new Array(1e6).fill(1)) })\n"
   const model = scripted({ spec: specOf(), build: patch(featureFiles('tarea-41', goodFeature('tarea-41'), hog)), ...approving })
   const { result, events } = await dev('Una funcionalidad cualquiera', { provider: model })
@@ -220,7 +221,7 @@ test('a patch that eats all the memory is stopped by the memory limit and reject
   assert.match(event(events, 'codigo', 'rejected').detail, /límite de memoria/)
 })
 
-test('failing tests go back to the Builder with their output, once; a fixed second try passes', async () => {
+needsSandbox('failing tests go back to the Builder with their output, once; a fixed second try passes', async () => {
   const failing = "import { test } from 'node:test'\nimport assert from 'node:assert/strict'\ntest('falla', () => assert.equal(1, 2, 'marcador-de-fallo'))\n"
   const model = scripted({ spec: specOf(), build: [patch(featureFiles('tarea-41', goodFeature('tarea-41'), failing)), patch(featureFiles('tarea-41'))], ...approving })
   const { result, events } = await dev('Una funcionalidad cualquiera', { provider: model })
@@ -263,7 +264,7 @@ test('the paths of a code request are checked by code: nothing outside the featu
   }
 })
 
-test('each code kind has its own scope: a feature stays in src/features, a rule change in src/domain, a bug in either', async () => {
+needsSandbox('each code kind has its own scope: a feature stays in src/features, a rule change in src/domain, a bug in either', async () => {
   const inFeatures = featureFiles('tarea-41')
   const inDomain = [{ ruta: 'src/domain/tarea-41-regla.test.mjs', contenido: "import { test } from 'node:test'\ntest('regla', () => {})\n" }]
   const matrix = [
@@ -278,7 +279,7 @@ test('each code kind has its own scope: a feature stays in src/features, a rule 
   }
 })
 
-test('edits are applied by code: "cambios" replace exactly one match, "contenido" creates a file', async () => {
+needsSandbox('edits are applied by code: "cambios" replace exactly one match, "contenido" creates a file', async () => {
   const model = scripted({
     spec: specOf('cambio'),
     build: patch([
@@ -313,7 +314,7 @@ test('the spec must name a kind that exists; one that does not fails the task, a
   }
 })
 
-test('the Builder of code may use FACTORY_CODE_MODEL (more output room); the rest keep the usual model', async () => {
+needsSandbox('the Builder of code may use FACTORY_CODE_MODEL (more output room); the rest keep the usual model', async () => {
   const main = scripted({ spec: specOf(), ...approving })
   const code = scripted({ build: patch(featureFiles('tarea-41')) })
   const { result } = await dev('Una funcionalidad cualquiera', { provider: main, codeProvider: code })
@@ -345,7 +346,7 @@ test('the prompts of a code request show the existing code, the contract and the
   for (const station of ['seguridad', 'ux', 'ui']) assert.match(model.prompts[station][0], /src\/features\/tarea-41\/index\.js/)
 })
 
-test('a data profile is unaffected: marketing still runs without ever touching the sandbox', async () => {
+needsSandbox('a data profile is unaffected: marketing still runs without ever touching the sandbox', async () => {
   const s = spy()
   const events = []
   const result = await runFactory({ task: { id: 3, profile: 'marketing', request: 'Una campaña verde que diga «Limones»' }, root: scratch(), provider: replayProvider(), sandbox: { run: s.run }, trace: (e) => events.push(e) })

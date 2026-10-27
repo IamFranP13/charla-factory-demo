@@ -1,5 +1,6 @@
 // Code kinds (bug, feature, cambio) around the factory: policy, providers, task state, the planted bugs,
 // the feature registry and the reset. (The factory run itself is in factory-code.test.mjs, the isolation in sandbox.test.mjs.)
+import { needsSandbox } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
@@ -14,7 +15,7 @@ import { rehearsalCopy } from '../lib/rehearsal.js'
 import { resetFiles } from '../scripts/reset-demo.mjs'
 import { buildFeatures } from '../scripts/build-features.mjs'
 import { paraPagina } from '../src/lib/features.js'
-import { cargarEstado } from '../src/domain/estado-node.js'
+import { cargarEstado } from '../lib/estado-node.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const scratches = []
@@ -130,7 +131,7 @@ test('the planted bugs are in the seed, byte for byte (the reset puts them back)
   assert.match(sorted, /\.sort\(\(a, b\) => b\.precio - a\.precio\)/, 'the cheapest-to-dearest list is reversed')
 })
 
-test('with the bugs, the calculator shows no discount at exactly 1.000 kg and the list puts the dearest first', async () => {
+needsSandbox('with the bugs, the calculator shows no discount at exactly 1.000 kg and the list puts the dearest first', async () => {
   const root = scratch()
   const estado = cargarEstado(root)
   const { presupuestar } = await import(join(root, 'src/domain/presupuesto.js'))
@@ -198,7 +199,7 @@ test('rehearsal copies leave out the audience features and start from the seeded
 
 const feature = (id, body) => `export default { id: '${id}', titulo: 'Sección ${id}', donde: 'catalogo', calcular(estado) { return ${body} } }\n`
 
-test('buildFeatures: every feature is computed in the isolation; a broken one is skipped, not fatal', async () => {
+needsSandbox('buildFeatures: every feature is computed in the isolation; a broken one is skipped, not fatal', async () => {
   const root = scratch()
   write(root, 'src/features/tarea-1/index.js', feature('tarea-1', "{ tipo: 'lista', items: [{ texto: 'a', valor: 1 }] }"))
   write(root, 'src/features/tarea-2/index.js', feature('tarea-2', "(() => { throw new Error('roto') })()"))
@@ -208,7 +209,7 @@ test('buildFeatures: every feature is computed in the isolation; a broken one is
   assert.deepEqual(omitidas.map((o) => o.id), ['tarea-2', 'tarea-3'])
 })
 
-test('build-features script: writes the generated registry as data, reports what it skipped and never fails the build', () => {
+needsSandbox('build-features script: writes the generated registry as data, reports what it skipped and never fails the build', () => {
   const root = scratch()
   write(root, 'src/features/tarea-2/index.js', feature('tarea-2', "(() => { throw new Error('roto') })()"))
   const run = spawnSync(process.execPath, [join(repo, 'scripts/build-features.mjs'), '--root', root], { encoding: 'utf8' })
