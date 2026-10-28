@@ -18,11 +18,11 @@ Branch: `feat/factory-estilo`. Earlier work in this branch: `design/system.md` r
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
 | T0 ✅ | S1 | inline: design system synced, ux/ui read `design/system.md`, `design/**` human (earlier in this session) | 94b51de |
-| T1 ✅ | S1 | inline: usability, contrast and layout rules in `design/system.md` | e74e6ce |
-| T2 ✅ | S2 | inline: hero files in `factory/seed/`, so `reset-demo` restores the broken hero | e74e6ce |
+| T1 ✅ | S1 | inline: usability, contrast and layout rules in `design/system.md` | 1cdffc0 |
+| T2 ✅ | S2 | inline: hero files in `factory/seed/`, so `reset-demo` restores the broken hero | 1cdffc0 |
 | T3 ✅ | S3-S5 | worker: kind `estilo` (CSS + visual components), static check in code, gate routes, replay fix | 6040853 |
-| T4 ✅ | S3, S6 | worker: render the candidate site and give screenshots to the ux and ui reviewers; factory workflow | |
-| T5 | S1-S6 | inline: docs (README, AGENTS), full suite, simulated run of the example request | |
+| T4 ✅ | S3, S6 | worker: render the candidate site and give screenshots to the ux and ui reviewers; factory workflow | dd832da |
+| T5 ✅ | S1-S6 | inline: docs (README, AGENTS), full suite, simulated run of the example request | |
 
 ## Log
 
@@ -34,3 +34,4 @@ Branch: `feat/factory-estilo`. Earlier work in this branch: `design/system.md` r
 - **L5** Reference of the expected fix: `design/hero-inicio/01-franja-inferior.html` (artboards made earlier; the user chose to keep the hero broken instead of fixing it by hand).
 - **L7** Evidence (T3): independent verify could not run bypass probes (stopped by its safety classifier); the parent probed `checkEstilo` and confirmed two bypasses: (1) an expression could move into another context (`<p style={campana.texto}>`: audience campaign text, which auto-merges and whose schema accepts `javascript:alert(1)` and `background:red`, would become CSS); (2) an estilo change could add text (`content: "Envío gratis…"` in CSS, a new `<p>` in the footer) guarded only by models. Fixed in `lib/estilo.js` (expressions keep their context; no new CSS strings; same words in components), with RED→GREEN tests. Suite 409 pass, 0 fail, 1 skipped.
 - **L8** Evidence (T4): `lib/render.js` builds the candidate site in a scratch copy (empty env: PATH, HOME/TMPDIR in the scratch dir), serves it on 127.0.0.1 and takes 6 headless shots (home before/after desktop and mobile, catalogue and quote after); ux/ui get them as a multimodal message, a site that does not build goes back to the Builder, a render failure fails closed (allowed only with replay). Local Brave ignores `--screenshot`; Playwright's Chromium works (`FACTORY_BROWSER=~/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`): suite 426 pass, 0 fail, 1 skipped (pre-existing). The parent looked at the real shots: the first replay fix (band height + sun moved) left the hill cut flat and the sun half hidden; replaced by a CSS-only fix (`.paisaje` `height: auto; aspect-ratio: 10 / 3`, `.hero` bottom padding `max(9rem, 17vw)`): text and buttons clear, sun whole, hills complete at 1280 and 390. Not verified: Google Chrome on GitHub's ubuntu-latest (may need `--no-sandbox`; fails closed if so), and a real vision model.
+- **L9** Evidence (T5): end to end in a scratch copy, `node scripts/factory.mjs --profile marketing --request "el botón del hero no se ve bien"` (replay, Playwright's Chromium): spec ok (estilo) → build ok `src/styles/global.css · 6 capturas` → seguridad, ux, ui, codigo ok → approver 4/4 → Result ok; `gate.mjs` routes `src/styles/global.css` auto; `reset-demo` (dry run) restores `src/styles/global.css`. Docs (README, AGENTS) updated in T3/T4. Not done: an `estilo` entry in `test/battery.json` (simulate.test pins ids 46 and 47).
