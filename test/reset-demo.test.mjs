@@ -50,6 +50,18 @@ test('resetFiles removes audience files, restores the seed data and reopens the 
   ])
 })
 
+test('resetFiles puts the planted hero bug back after the factory fixed it', () => {
+  const root = afterTalk()
+  const hero = ['src/styles/global.css', 'src/components/Paisaje.astro']
+  for (const path of hero) writeFileSync(join(root, path), `${readFileSync(join(root, path), 'utf8')}\n/* arreglado */\n`)
+  const changes = resetFiles(root)
+  for (const path of hero) {
+    assert.equal(readFileSync(join(root, path), 'utf8'), readFileSync(join(repo, 'factory/seed', path), 'utf8'), path)
+    assert.ok(changes.includes(path), path)
+  }
+  assert.match(readFileSync(join(root, 'factory/seed/src/styles/global.css'), 'utf8'), /\.paisaje \{ position: absolute; inset: auto 0 0 0; width: 100%; height: 100%;/, 'the seed keeps the landscape over the whole hero')
+})
+
 test('resetFiles on a clean repository changes nothing', () => {
   const root = afterTalk()
   resetFiles(root)

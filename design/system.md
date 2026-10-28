@@ -60,3 +60,39 @@ Scale: `h1` `clamp(2.2rem, 5vw, 3.6rem)`; `h2` `clamp(1.5rem, 3vw, 2.1rem)`; `h3
 - Use only these tokens; a change never introduces a new colour, font or component.
 - Text is plain and sentence case: no shouting in capitals (overlines are styled by CSS, not written in capitals).
 - Motion respects `prefers-reduced-motion`; focus is always visible (`3px solid --oliva`).
+
+## Contrast (WCAG 2.2 AA)
+
+Every text and control is judged against what is really behind it on screen (an illustration, a gradient, a hill), not against the page background.
+
+- Body text and small text: at least **4.5:1**. Large text (24px, or 18.66px bold) and the borders and icons of controls: at least **3:1**.
+- Pairs that pass (measured): `--tinta` on `--blanco` 12.89 · `--tinta-suave` on `--blanco` 6.02 · `--tinta-suave` on `--limon-suave` 5.53 · white on `--oliva` 5.85 · white on `--oliva-oscuro` 9.96 · `--oliva-oscuro` on `--limon-suave` 8.63 · `--tinta` on `--limon` 9.42 · white on `--tierra` 4.60.
+- Pairs that fail, never use them for text or a control: `--oliva-oscuro` on `--oliva` 1.70 · `--tinta-suave` on `--oliva-claro` 2.83 · `--oliva-oscuro` on `--oliva-claro` 4.41 (large text only).
+- Text never sits on an illustration or a photo without a solid surface (`#fff`, `--blanco` or `--crema`) between them.
+
+## Layout
+
+- **Text and controls never overlap an illustration.** In the hero, the landscape (`src/components/Paisaje.astro`) is decoration: it lives in a band below the text and the buttons, at every width; the sun and the trees are shown whole, not cut by the edges.
+- Nothing overflows sideways: no horizontal scroll from 360px to 1440px wide.
+- Readable lines: at most about 75 characters (`.lead` 60ch, `.hero__texto` 38rem).
+- Touch targets at least **44 × 44 px** (buttons, menu links, form controls); at least `.8rem` between two of them.
+- One primary button (`.boton`) per block; the secondary action is `.boton--borde`. On a phone, buttons wrap and stay full size.
+- The order on screen is the reading order: the page reads top to bottom without the illustration.
+
+## Usability
+
+- Every page shows what it is for in its first screen: title, one sentence, the main action.
+- Links and buttons say where they go ("Calcular presupuesto", "Ver catálogo"), never "click here".
+- State is never shown by colour alone: a badge or a step also has a word or a mark (✓, !).
+- Errors say what happened and how to fix it, next to the field they belong to.
+
+## How the ux and ui reviewers use this file
+
+- `ui` judges the look: tokens, contrast, layout and the component rules above, on the screenshots when there are any.
+- `ux` judges the experience: the copy, the reading order, the usability rules, whether the change does what was asked.
+- A change is judged by what it changes. A deviation that was already there and that the change does not touch is not a reason to refuse it.
+
+## Known deviations
+
+- **The home hero breaks the layout and contrast rules** (`src/components/Paisaje.astro`, `.hero` and `.paisaje` in `src/styles/global.css`): the landscape fills the whole hero, so the hills climb behind the text and the buttons ("Ver catálogo", `--oliva-oscuro` on `--oliva`, 1.70), and the sun and the trees are cut. It is a planted bug of the demo, left on purpose for the factory to fix; `npm run reset-demo` puts it back.
+- The overline (`.sobretitulo`, `--tierra`, .8rem bold) is 4.34 on `--blanco` and 3.98 on `--limon-suave`, under 4.5.
