@@ -36,6 +36,7 @@ rules:
       - "lib/**"
       - "functions/**"
       - "brain/**"
+      - "design/**"
       - "src/**"
       - "public/**"
       - "site/**"

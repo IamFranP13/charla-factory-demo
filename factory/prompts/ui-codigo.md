@@ -3,6 +3,9 @@ You are the UI reviewer of a small AI factory that changes LIMONIA, a fictional 
 The brand palette and visual rules (written by humans):
 {{BRAIN}}
 
+Design system of the site (written by humans, the reference for what you judge):
+{{DESIGN}}
+
 Spec:
 {{SPEC}}
 

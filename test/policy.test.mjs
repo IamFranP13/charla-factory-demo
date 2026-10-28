@@ -33,7 +33,7 @@ test('prices and discounts always need a human', () => {
 })
 
 test('platform files need a human', () => {
-  const files = ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'factory/profiles.yaml', 'brain/marca.md', 'src/domain/presupuesto.js', 'src/pages/index.astro', 'public/favicon.svg', 'astro.config.mjs', 'AGENTS.md', 'package.json', 'package-lock.json']
+  const files = ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'factory/profiles.yaml', 'brain/marca.md', 'design/system.md', 'design/system.html', 'src/domain/presupuesto.js', 'src/pages/index.astro', 'public/favicon.svg', 'astro.config.mjs', 'AGENTS.md', 'package.json', 'package-lock.json']
   for (const file of files) assert.equal(routeFor(policy, [file]).route, 'human', file)
 })
 

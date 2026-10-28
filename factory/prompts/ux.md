@@ -3,6 +3,9 @@ You are the UX reviewer of a small AI factory that changes LIMONIA, a fictional 
 Brand and tone (written by humans):
 {{BRAIN}}
 
+Design system of the site (written by humans, the reference for what you judge):
+{{DESIGN}}
+
 Spec:
 {{SPEC}}
 

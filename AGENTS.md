@@ -18,6 +18,7 @@ The Spec writer classifies every request into a **kind** (`factory/kinds.yaml`);
 | `feature`, `bug` | `src/features/<id>/index.js` and `index.test.mjs` | A new section of a page (folder `tarea-<n>`, named by the factory) or a fix in an existing feature | auto, if the tests pass |
 | `cambio`, `bug` | `src/domain/*.js` and `*.test.mjs` | A business rule of the quote calculator (a new file is named `tarea-<n>...`) | human |
 | | `brain/` | Brand, tone and business decisions the Spec writer reads | Humans only |
+| | `design/` | The design system (`design/system.md`, tokens and component rules synced from `src/styles/`) the `ux` and `ui` reviewers judge against | Humans only |
 | | `policy/`, `factory/`, `scripts/`, `lib/`, `functions/`, `.github/`, `src/` (the rest), `public/`, `astro.config.mjs` | The platform itself | Humans only |
 
 ## The factory

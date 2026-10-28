@@ -1,7 +1,7 @@
 import { needsSandbox } from './sandbox-node.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { runFactory, isAudienceFile } from '../lib/factory.js'
@@ -244,6 +244,15 @@ test('the ui reviewer sees the brand palette from the brain', async () => {
   await runFactory({ task: { id: 14, profile: 'marketing', request: 'x' }, root: scratch(), provider, trace: () => {} })
   assert.match(provider.prompts.ui[0], /oliva/i)
   assert.match(provider.prompts.ui[0], /limón/i)
+})
+
+test('the ux and ui reviewers see the design system from design/system.md', async () => {
+  const root = scratch()
+  mkdirSync(join(root, 'design'), { recursive: true })
+  writeFileSync(join(root, 'design/system.md'), 'SISTEMA-DE-DISEÑO-DE-PRUEBA')
+  const provider = scripted({ spec, build: campaign('content/campanas/tarea-19.json'), ...approving })
+  await runFactory({ task: { id: 19, profile: 'marketing', request: 'x' }, root, provider, trace: () => {} })
+  for (const station of ['ux', 'ui']) assert.match(provider.prompts[station][0], /SISTEMA-DE-DISEÑO-DE-PRUEBA/, station)
 })
 
 test('a provider error fails the task instead of crashing, and is traced', async () => {

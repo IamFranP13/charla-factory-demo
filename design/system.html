@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIMONIA · Sistema de diseño</title>
+<style>
+  :root {
+    --oliva: #5b6b2e; --oliva-oscuro: #3b4720; --oliva-claro: #a7b36a;
+    --limon: #f2d643; --limon-suave: #fbf0b0;
+    --blanco: #fbf8f1; --crema: #f3ecdc;
+    --tierra: #9a6b46; --tierra-suave: #ead9c4;
+    --tinta: #2a301a; --tinta-suave: #5c6245; --borde: #e2d9c3;
+    --radio: 18px;
+    --sombra: 0 1px 2px rgb(42 48 26 / 6%), 0 8px 24px rgb(42 48 26 / 8%);
+    --fuente: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --fuente-titulo: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--fuente); font-size: 1.0625rem; line-height: 1.6; color: var(--tinta); background: var(--blanco); }
+  h1, h2, h3 { font-family: var(--fuente-titulo); line-height: 1.15; color: var(--oliva-oscuro); margin: 0 0 .5em; }
+  h1 { font-size: 3.6rem; letter-spacing: -.02em; }
+  h2 { font-size: 2.1rem; }
+  h3 { font-size: 1.25rem; }
+  p { margin: 0 0 1em; }
+  :focus-visible { outline: 3px solid var(--oliva); outline-offset: 3px; border-radius: 6px; }
+  main { width: 1120px; margin-inline: auto; padding-block: 3rem; }
+  section { padding-block: 2.5rem; border-top: 1px solid var(--borde); }
+  .sobretitulo { text-transform: uppercase; letter-spacing: .14em; font-size: .8rem; font-weight: 700; color: var(--tierra); margin-bottom: .6rem; }
+  .lead { font-size: 1.15rem; color: var(--tinta-suave); max-width: 60ch; }
+  .nota { color: var(--tinta-suave); font-size: .9rem; }
+  .rejilla { display: grid; gap: 1.25rem; }
+  .r4 { grid-template-columns: repeat(4, 1fr); }
+  .r3 { grid-template-columns: repeat(3, 1fr); }
+  .muestra { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+  .muestra__color { height: 84px; border-bottom: 1px solid var(--borde); }
+  .muestra__texto { padding: .7rem 1rem; font-size: .9rem; }
+  .muestra__texto code { font-weight: 700; color: var(--oliva-oscuro); }
+  .escala > div { display: flex; align-items: baseline; gap: 2rem; padding: .6rem 0; border-bottom: 1px dashed var(--borde); }
+  .escala code { width: 14rem; flex: none; color: var(--tinta-suave); font-size: .85rem; }
+  .caja { background: #fff; border: 1px solid var(--borde); padding: 1.4rem; }
+  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra); padding: 1.4rem; }
+  .boton { display: inline-block; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; background: var(--oliva); color: #fff; border: 2px solid var(--oliva); border-radius: 999px; padding: .7rem 1.5rem; }
+  .boton:hover { background: var(--oliva-oscuro); border-color: var(--oliva-oscuro); }
+  .boton--borde { background: transparent; color: var(--oliva-oscuro); }
+  .boton--borde:hover { color: #fff; }
+  .boton--suave { background: rgb(255 255 255 / 70%); color: var(--oliva-oscuro); border-color: transparent; padding: .5rem 1.1rem; }
+  .insignia { font-size: .78rem; font-weight: 700; padding: .2rem .65rem; border-radius: 999px; }
+  .insignia--ok { background: #e3ecc2; color: #33401a; }
+  .insignia--no { background: var(--tierra-suave); color: #5c3a1f; }
+  .fila { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .campana { display: flex; flex-direction: column; align-items: flex-start; border: 0; }
+  .campana p { flex: 1; }
+  .campana__emoji { font-size: 2rem; margin-bottom: .4rem; }
+  .campana--oliva { background: var(--oliva); color: #fff; } .campana--oliva h3 { color: #fff; }
+  .campana--limon { background: var(--limon); color: var(--tinta); }
+  .campana--tierra { background: var(--tierra); color: #fff; } .campana--tierra h3 { color: #fff; }
+  .campana--blanco { background: #fff; border: 1px solid var(--borde); }
+  .producto__cabecera { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+  .producto__emoji { font-size: 2.2rem; }
+  .producto__precio strong { font-family: var(--fuente-titulo); font-size: 1.4rem; color: var(--oliva); }
+  .feature__lista { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .5rem; }
+  .feature__lista li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; background: #fff; border: 1px solid var(--borde); border-radius: 10px; }
+  .feature__tabla table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--borde); margin-top: 1rem; }
+  .feature__tabla th, .feature__tabla td { text-align: left; padding: .55rem .9rem; border-bottom: 1px solid var(--borde); }
+  .feature__tabla th { background: var(--crema); color: var(--oliva-oscuro); }
+  .feature__texto { margin: 1rem 0 0; font-size: 1.15rem; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="sobretitulo">Sistema de diseño</p>
+    <h1>LIMONIA</h1>
+    <p class="lead">Tokens y componentes de la web, sacados de <code>src/styles/global.css</code> y <code>src/components/</code>. Los revisores UX y UI de la factory juzgan cada cambio contra este sistema.</p>
+  </header>
+
+  <section aria-labelledby="colores">
+    <h2 id="colores">Colores</h2>
+    <div class="rejilla r4">
+      <div class="muestra"><div class="muestra__color" style="background:#5b6b2e"></div><div class="muestra__texto"><code>--oliva</code> #5b6b2e<br>Color principal</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#3b4720"></div><div class="muestra__texto"><code>--oliva-oscuro</code> #3b4720<br>Títulos, pie</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#a7b36a"></div><div class="muestra__texto"><code>--oliva-claro</code> #a7b36a<br>Paso terminado</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#f2d643"></div><div class="muestra__texto"><code>--limon</code> #f2d643<br>Ofertas y novedades</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fbf0b0"></div><div class="muestra__texto"><code>--limon-suave</code> #fbf0b0<br>Hero, avisos</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fbf8f1"></div><div class="muestra__texto"><code>--blanco</code> #fbf8f1<br>Fondo de página</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#f3ecdc"></div><div class="muestra__texto"><code>--crema</code> #f3ecdc<br>Superficies tranquilas</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#9a6b46"></div><div class="muestra__texto"><code>--tierra</code> #9a6b46<br>Sobretítulos, detalles</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#ead9c4"></div><div class="muestra__texto"><code>--tierra-suave</code> #ead9c4<br>«No disponible»</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#2a301a"></div><div class="muestra__texto"><code>--tinta</code> #2a301a<br>Texto</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#5c6245"></div><div class="muestra__texto"><code>--tinta-suave</code> #5c6245<br>Texto secundario</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#e2d9c3"></div><div class="muestra__texto"><code>--borde</code> #e2d9c3<br>Bordes</div></div>
+    </div>
+    <p class="nota">Solo para estados de error de la plataforma: #fbe6dc · #7a2b0e · #c4511f. Nunca como color de campaña.</p>
+  </section>
+
+  <section aria-labelledby="tipografia">
+    <h2 id="tipografia">Tipografía</h2>
+    <div class="escala">
+      <div><code>h1 · --fuente-titulo · 3.6rem</code><span style="font-family:var(--fuente-titulo);font-size:3.6rem;color:var(--oliva-oscuro);line-height:1.15">Huerta de Murcia</span></div>
+      <div><code>h2 · --fuente-titulo · 2.1rem</code><span style="font-family:var(--fuente-titulo);font-size:2.1rem;color:var(--oliva-oscuro)">Catálogo de temporada</span></div>
+      <div><code>h3 · --fuente-titulo · 1.25rem</code><span style="font-family:var(--fuente-titulo);font-size:1.25rem;color:var(--oliva-oscuro)">Limón Verna</span></div>
+      <div><code>lead · --fuente · 1.15rem</code><span class="lead" style="margin:0">Fruta y hortaliza de origen para almacenes y cadenas de Europa.</span></div>
+      <div><code>body · --fuente · 1.0625rem</code><span>Te preparamos el presupuesto por kilos y destino.</span></div>
+      <div><code>sobretítulo · .8rem · 700</code><span class="sobretitulo" style="margin:0">Temporada</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="forma">
+    <h2 id="forma">Espaciado, radio y sombra</h2>
+    <div class="rejilla r4">
+      <div class="caja" style="border-radius:18px;box-shadow:var(--sombra)"><strong>--radio 18px</strong><br><span class="nota">Tarjetas y paneles, con --sombra</span></div>
+      <div class="caja" style="border-radius:12px"><strong>12px</strong><br><span class="nota">Campos de formulario</span></div>
+      <div class="caja" style="border-radius:999px;text-align:center"><strong>999px</strong><br><span class="nota">Botones, insignias</span></div>
+      <div class="caja" style="border-radius:18px"><strong>Ancho 1120px</strong><br><span class="nota">Separación 1.25rem · relleno 1.4rem</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="componentes">
+    <h2 id="componentes">Componentes</h2>
+    <h3>Botones e insignias</h3>
+    <div class="fila" style="margin-bottom:2rem">
+      <a class="boton" href="#componentes">Pide presupuesto</a>
+      <a class="boton boton--borde" href="#componentes">Ver catálogo</a>
+      <span class="insignia insignia--ok">Disponible</span>
+      <span class="insignia insignia--no">No disponible</span>
+    </div>
+
+    <h3>Tarjeta de campaña: oliva, limon, tierra, blanco</h3>
+    <div class="rejilla r4" style="margin-bottom:2rem">
+      <article class="tarjeta campana campana--oliva"><span class="campana__emoji" aria-hidden="true">🫒</span><h3>Aceituna de la vega</h3><p>Llega la nueva cosecha. Reserva tu volumen de otoño.</p><a class="boton boton--suave" href="#componentes">Pedir precio</a></article>
+      <article class="tarjeta campana campana--limon"><span class="campana__emoji" aria-hidden="true">🍋</span><h3>Limón Verna</h3><p>Temporada abierta hasta junio, con calibres para cadenas.</p></article>
+      <article class="tarjeta campana campana--tierra"><span class="campana__emoji" aria-hidden="true">🥔</span><h3>Patata nueva</h3><p>Origen Cartagena, lavada y en saco de 25 kg.</p></article>
+      <article class="tarjeta campana campana--blanco"><span class="campana__emoji" aria-hidden="true">🥬</span><h3>Lechuga iceberg</h3><p>Disponible toda la semana para salida a Francia.</p></article>
+    </div>
+    <p class="nota">Título hasta 60 caracteres, texto hasta 160, emoji hasta 8, botón hasta 30 (siempre a /presupuesto/).</p>
+
+    <h3>Tarjeta de producto</h3>
+    <div class="rejilla r3" style="margin-bottom:2rem">
+      <article class="tarjeta"><div class="producto__cabecera"><span class="producto__emoji" aria-hidden="true">🍋</span><span class="insignia insignia--ok">Disponible</span></div><h3>Limón Fino</h3><p class="producto__precio"><strong>0,85 €</strong> / kg</p></article>
+      <article class="tarjeta"><div class="producto__cabecera"><span class="producto__emoji" aria-hidden="true">🍉</span><span class="insignia insignia--no">No disponible</span></div><h3>Sandía sin pepitas</h3><p class="producto__precio"><span style="color:var(--tinta-suave);font-style:italic">Precio a consultar</span></p></article>
+    </div>
+
+    <h3>Feature (pintada por la web, nunca por la feature)</h3>
+    <div class="rejilla r3">
+      <div class="tarjeta"><p class="sobretitulo">tipo: lista · hasta 40</p><h3>Lo más barato por categoría</h3><ul class="feature__lista"><li><span>Fruta: Limón Fino</span><strong>0,85 €/kg</strong></li><li><span>Hortaliza: Patata nueva</span><strong>0,40 €/kg</strong></li></ul></div>
+      <div class="tarjeta feature__tabla"><p class="sobretitulo">tipo: tabla · 1 a 6 columnas</p><h3>Días de tránsito</h3><table><thead><tr><th scope="col">Destino</th><th scope="col">Días</th></tr></thead><tbody><tr><td>Rotterdam</td><td>3</td></tr><tr><td>Hamburgo</td><td>4</td></tr></tbody></table></div>
+      <div class="tarjeta"><p class="sobretitulo">tipo: texto</p><h3>Precio medio por kilo</h3><p class="feature__texto">El precio medio del catálogo es 0,72 €/kg.</p></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
