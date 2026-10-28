@@ -22,7 +22,7 @@ const scratch = () => {
 }
 after(() => scratches.forEach((dir) => rmSync(dir, { recursive: true, force: true })))
 
-const ALL = ['campana', 'producto', 'destino', 'precios', 'descuentos', 'transporte', 'bug', 'feature', 'cambio']
+const ALL = ['campana', 'producto', 'destino', 'precios', 'descuentos', 'transporte', 'estilo', 'bug', 'feature', 'cambio']
 
 test('there are exactly three profiles (who asked) and no profile writes code', () => {
   const profiles = loadProfiles(repo)
@@ -34,7 +34,7 @@ test('there are exactly three profiles (who asked) and no profile writes code', 
   }
 })
 
-test('the kinds are the nine of the contract, each with the surface the code enforces', () => {
+test('the kinds are the ten of the contract, each with the surface the code enforces', () => {
   const kinds = loadKinds(repo)
   assert.deepEqual(Object.keys(kinds), ALL)
   assert.deepEqual(TIPOS, ALL)
@@ -44,6 +44,7 @@ test('the kinds are the nine of the contract, each with the surface the code enf
   assert.deepEqual([kinds.precios.files, kinds.precios.newFile], [['data/precios.json'], false])
   assert.deepEqual([kinds.descuentos.files, kinds.descuentos.newFile], [['data/descuentos.json'], false])
   assert.deepEqual([kinds.transporte.files, kinds.transporte.newFile], [['config/transporte.json'], false])
+  assert.deepEqual([kinds.estilo.files.length, kinds.estilo.newFile, kinds.estilo.visual], [6, false, true])
   for (const code of ['bug', 'feature', 'cambio']) assert.equal(kinds[code].code, true, code)
   assert.deepEqual([kinds.bug.scope, kinds.feature.scope, kinds.cambio.scope], [['features', 'domain'], ['features'], ['domain']])
   for (const data of ['campana', 'producto', 'destino', 'precios', 'descuentos', 'transporte']) assert.notEqual(kinds[data].code, true, data)
@@ -171,6 +172,8 @@ const CLASSIFIED = [
   ['Quiero ver los días de tránsito de cada destino', 'feature'],
   ['Enseña el precio medio por kilo del catálogo', 'feature'],
   ['Cambia la regla: descuento del 15 % a partir de 50.000 kg', 'cambio'],
+  ['el botón del hero no se ve bien', 'estilo'],
+  ['El paisaje tapa el texto de la portada', 'estilo'],
 ]
 
 test('replay: the same request gets the same kind from every profile', async () => {

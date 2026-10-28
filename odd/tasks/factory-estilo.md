@@ -17,10 +17,10 @@ Branch: `feat/factory-estilo`. Earlier work in this branch: `design/system.md` r
 
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
-| T0 | S1 | inline: design system synced, ux/ui read `design/system.md`, `design/**` human (earlier in this session) | |
-| T1 | S1 | inline: usability, contrast and layout rules in `design/system.md` | |
-| T2 | S2 | inline: hero files in `factory/seed/`, so `reset-demo` restores the broken hero | |
-| T3 | S3-S5 | inline: kind `estilo` (CSS + visual components), static check in code, gate routes, replay fix | |
+| T0 ✅ | S1 | inline: design system synced, ux/ui read `design/system.md`, `design/**` human (earlier in this session) | 94b51de |
+| T1 ✅ | S1 | inline: usability, contrast and layout rules in `design/system.md` | e74e6ce |
+| T2 ✅ | S2 | inline: hero files in `factory/seed/`, so `reset-demo` restores the broken hero | e74e6ce |
+| T3 ✅ | S3-S5 | worker: kind `estilo` (CSS + visual components), static check in code, gate routes, replay fix | |
 | T4 | S3, S6 | inline: render the candidate site and give screenshots to the ux and ui reviewers; factory workflow | |
 | T5 | S1-S6 | inline: docs (README, AGENTS), full suite, simulated run of the example request | |
 
@@ -30,4 +30,6 @@ Branch: `feat/factory-estilo`. Earlier work in this branch: `design/system.md` r
 - **L2** Decisions: surface "CSS + componentes visuales"; gate "Auto si pasa los checks"; visual check "Solo capturas a modelo".
 - **L3** Platform invariant (AGENTS.md, "Code is never trusted"): an `.astro` file is code (its frontmatter runs at build time, a `<script>` or `set:html` reaches the visitor). The `estilo` surface is guarded in code: frontmatter and template expressions unchanged, no `<script>`, `set:html`, event handlers, imports or URLs; CSS without `@import` or external `url()`. The site is rendered for screenshots only after that check passes, with an empty environment.
 - **L4** Evidence: GitHub's `ubuntu-latest` ships Google Chrome; headless Chrome takes screenshots (`--screenshot`), so no new dependency. The factory job installs with `npm ci --omit=dev` (no Astro): rendering needs the dev dependencies there.
+- **L6** Evidence (T1): the planted bug is measurable: "Ver catálogo" (`--oliva-oscuro`) over the `--oliva` hill is 1.70:1. The overline (`--tierra`) is 4.34 on `--blanco`: recorded as a known deviation, not fixed.
 - **L5** Reference of the expected fix: `design/hero-inicio/01-franja-inferior.html` (artboards made earlier; the user chose to keep the hero broken instead of fixing it by hand).
+- **L7** Evidence (T3): independent verify could not run bypass probes (stopped by its safety classifier); the parent probed `checkEstilo` and confirmed two bypasses: (1) an expression could move into another context (`<p style={campana.texto}>`: audience campaign text, which auto-merges and whose schema accepts `javascript:alert(1)` and `background:red`, would become CSS); (2) an estilo change could add text (`content: "Envío gratis…"` in CSS, a new `<p>` in the footer) guarded only by models. Fixed in `lib/estilo.js` (expressions keep their context; no new CSS strings; same words in components), with RED→GREEN tests. Suite 409 pass, 0 fail, 1 skipped.

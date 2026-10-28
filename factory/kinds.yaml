@@ -5,6 +5,10 @@
 #   folders / newFile:  each request creates exactly ONE new file in one of these folders; the model picks the
 #                       folder, the factory picks the name: tarea-<n>.json
 #   files:              the only existing files the request may modify (at most 2)
+#   visual:             the request changes the look of the site (the stylesheet and presentational components, at most 2
+#                       existing files, from `files`). The answer is like a code answer (whole text or exact edits) and
+#                       lib/estilo.js checks it as text: an .astro file is code, so only markup, classes and literal
+#                       attributes may change. Nothing runs: there are no tests for it
 #   code / scope:       the request writes code (at most 3 files). `scope` says where: `features`
 #                       (src/features/<id>/index.js and its test) and/or `domain` (src/domain/*.js and its tests).
 #                       See lib/sandbox.js for the exact paths, the static check and the isolated run of its tests
@@ -38,6 +42,18 @@ descuentos:
 transporte:
   description: Change the transport tariffs of existing destinations.
   files: ["config/transporte.json"]
+  newFile: false
+
+estilo:
+  description: The look of the site is wrong or should change (layout, spacing, sizes, contrast, how the illustration sits), fixed in the stylesheet or a visual component using only the design system.
+  visual: true
+  files:
+    - "src/styles/global.css"
+    - "src/components/Paisaje.astro"
+    - "src/components/CampanaCard.astro"
+    - "src/components/ProductoCard.astro"
+    - "src/components/Header.astro"
+    - "src/components/Footer.astro"
   newFile: false
 
 bug:
