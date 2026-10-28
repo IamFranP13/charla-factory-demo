@@ -158,9 +158,12 @@ const ok = { aprobado: true, motivo: 'bien' }
 const answers = (build) => ({ spec: { tipo: 'estilo', resumen: 'x', criterios: [] }, build, seguridad: ok, ux: ok, ui: ok })
 const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'width: 100%; height: 100%; z-index: 0;', reemplazar: 'width: 100%; height: clamp(8rem, 17vw, 12rem); z-index: 0;' }] }] }
 
+// The screenshots of the candidate are the subject of test/render.test.mjs: here the renderer is a stub with none.
+const noShots = async () => []
+
 async function run(build, { profile = 'marketing', request = 'x' } = {}) {
   const events = []
-  const result = await runFactory({ task: { id: 70, profile, request }, root: scratch(), provider: scripted(answers(build)), trace: (e) => events.push(e) })
+  const result = await runFactory({ task: { id: 70, profile, request }, root: scratch(), provider: scripted(answers(build)), render: noShots, trace: (e) => events.push(e) })
   return { result, events }
 }
 
@@ -218,7 +221,7 @@ test('the prompts of estilo carry the design system, the files as data and the r
   const model = scripted(answers(FIX))
   const seen = {}
   const spy = { ...model, async complete(call) { seen[call.station] = call.messages[0].content; return model.complete(call) } }
-  await runFactory({ task: { id: 71, profile: 'marketing', request: 'REQUEST-TEXT' }, root: scratch(), provider: spy, trace: () => {} })
+  await runFactory({ task: { id: 71, profile: 'marketing', request: 'REQUEST-TEXT' }, root: scratch(), provider: spy, render: noShots, trace: () => {} })
   assert.match(seen.build, /LIMONIA design system/)
   assert.match(seen.build, /REQUEST-TEXT/)
   assert.match(seen.build, /src\/styles\/global\.css:/)
@@ -254,15 +257,16 @@ test('policy: the six files of the look go auto; the pages, the other components
   assert.equal(routeFor(policy, [CSS, 'data/precios.json']).route, 'human')
 })
 
-test('replay: "el botón del hero no se ve bien" becomes an ok estilo task that fixes the hero in global.css and Paisaje.astro', async () => {
+test('replay: "el botón del hero no se ve bien" becomes an ok estilo task that fixes the hero in global.css alone', async () => {
   for (const profile of ['marketing', 'producto', 'negocio']) {
     const events = []
     const result = await runFactory({ task: { id: 73, profile, request: 'el botón del hero no se ve bien' }, root: scratch(), provider: replayProvider(), trace: (e) => events.push(e) })
     assert.equal(result.status, 'ok', `${profile}: ${JSON.stringify(events)}`)
     assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
-    assert.deepEqual(result.files.map((f) => f.path).sort(), [PAISAJE, CSS].sort())
+    assert.deepEqual(result.files.map((f) => f.path), [CSS])
     const css = result.files.find((f) => f.path === CSS).content
-    assert.match(css, /\.paisaje \{[^}]*height: clamp\(8rem, 17vw, 12rem\)/)
+    assert.match(css, /\.paisaje \{[^}]*height: auto; aspect-ratio: 10 \/ 3;/, 'the landscape keeps its own shape: nothing is cut')
+    assert.match(css, /\.hero \{[^}]*padding-block: clamp\(3rem, 8vw, 6rem\) max\(9rem, 17vw\);/, 'the hero keeps room for it below the buttons')
     assert.equal(checkEstilo(result.files, current).ok, true)
   }
 })
