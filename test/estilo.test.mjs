@@ -110,6 +110,11 @@ test('astro: an expression keeps its context: it may not move from the text into
   const header = current[HEADER]
   const [, attr, expr] = header.match(/ ([\w:-]+)=(\{[^{}]*\})/)
   assert.equal(check(HEADER, header.replace(`${attr}=${expr}`, `data-x=${expr}`)).ok, false, `from ${attr} to another attribute`)
+  // a template literal attribute is code too: the expression would land in `style` with a `$` before its brace
+  const literal = check(CARD, current[CARD].replace('<p>{campana.texto}</p>', '<p style=`${campana.texto}`></p>'))
+  assert.equal(literal.ok, false, 'audience text in a template literal attribute')
+  assert.equal(check(CARD, current[CARD].replace('<p>{campana.texto}</p>', '<p title=`x`>{campana.texto}</p>')).ok, false, 'any template literal outside the expressions')
+  assert.equal(check(CARD, current[CARD].replace('<p>{campana.texto}</p>', '<p {campana.texto}></p>')).ok, false, 'an expression inside a tag, not after =')
 })
 
 test('estilo changes how the site looks, never what it says: no new text in the CSS or in a component', () => {
