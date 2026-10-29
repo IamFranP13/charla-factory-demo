@@ -14,7 +14,7 @@ side panel on the projector. Same data (/api/estado, and the demo mode `?demo=1`
 
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
-| T1 | S1-S4 | worker: implement the board in `src/pages/factory.astro` (+ its client script and styles), keep `/tarea/` working, tests, screenshots of the real page in demo mode | done (not committed) |
+| T1 ✅ | S1-S4 | worker: implement the board in `src/pages/factory.astro` (+ its client script and styles), keep `/tarea/` working, tests, screenshots of the real page in demo mode | f5b04da |
 
 ## Log
 
