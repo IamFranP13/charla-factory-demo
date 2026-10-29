@@ -5,262 +5,492 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LIMONIA editorial · Sistema de diseño</title>
 <style>
-  :root {
-    --oliva: #5b6b2e; --oliva-oscuro: #3b4720; --oliva-claro: #a7b36a;
-    --limon: #f2d643; --limon-suave: #fbf0b0;
-    --blanco: #fbf8f1; --crema: #f3ecdc;
-    --tierra: #9a6b46; --tierra-suave: #ead9c4;
-    --tinta: #2a301a; --tinta-suave: #5c6245; --borde: #e2d9c3;
-    --acento-tinte: rgb(91 107 46 / 10%);
-    --radio: 8px; --radio-control: 6px;
-    --fuente: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-    --fuente-titulo: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-    --motion-fast: 160ms; --motion-step: 480ms; --motion-hold: 720ms;
-    --ease: cubic-bezier(.2, .8, .2, 1);
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: var(--fuente); font-size: 1.0625rem; line-height: 1.6; color: var(--tinta); background: var(--blanco); }
-  h1, h2, h3 { font-family: var(--fuente-titulo); line-height: 1.15; color: var(--oliva-oscuro); margin: 0 0 .5em; font-weight: 600; }
-  h1 { font-size: 3.6rem; letter-spacing: -.02em; }
-  h2 { font-size: 2.1rem; }
-  h3 { font-size: 1.25rem; }
-  p { margin: 0 0 1em; }
-  code { font-family: var(--mono); font-size: .88em; }
-  a { color: var(--oliva-oscuro); }
-  :focus-visible { outline: 3px solid var(--oliva); outline-offset: 2px; border-radius: 6px; }
-  main { width: 1120px; margin-inline: auto; padding-block: 3rem; }
-  section { padding-block: 2.5rem; border-top: 1px solid var(--borde); }
-  .eyebrow { font-family: var(--mono); text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 500; color: var(--tinta-suave); margin: 0 0 .6rem; }
-  .lead { font-size: 1.15rem; color: var(--tinta-suave); max-width: 60ch; }
-  .nota { color: var(--tinta-suave); font-size: .9rem; }
-  .rejilla { display: grid; gap: 1.25rem; }
-  .r4 { grid-template-columns: repeat(4, 1fr); }
-  .r3 { grid-template-columns: repeat(3, 1fr); }
-  .r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .papel { background-color: var(--blanco); background-image: radial-gradient(circle, rgb(42 48 26 / 10%) 1px, transparent 1.2px); background-size: 22px 22px; border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.25rem; }
-  .muestra { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
-  .muestra__color { height: 64px; border-bottom: 1px solid var(--borde); }
-  .muestra__texto { padding: .6rem .9rem .7rem; font-size: .88rem; line-height: 1.4; }
-  .muestra__texto b { display: block; font-family: var(--mono); font-size: .72rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-suave); }
-  .muestra__texto code { color: var(--oliva-oscuro); font-weight: 600; }
-  .escala > div { display: flex; align-items: baseline; gap: 2rem; padding: .6rem 0; border-bottom: 1px solid var(--borde); }
-  .escala code { width: 18rem; flex: none; color: var(--tinta-suave); font-size: .8rem; }
-  .caja { background: #fff; border: 1px solid var(--borde); padding: 1.1rem; }
-  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.25rem; }
-  .boton { display: inline-block; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; background: var(--oliva); color: #fff; border: 1px solid var(--oliva); border-radius: var(--radio-control); padding: .65rem 1.3rem; min-height: 44px; transition: background var(--motion-fast) var(--ease); }
-  .boton:hover { background: var(--oliva-oscuro); border-color: var(--oliva-oscuro); }
-  .boton--borde { background: transparent; color: var(--oliva-oscuro); border-color: var(--tinta-suave); }
-  .boton--borde:hover { color: #fff; }
-  .boton--suave { background: rgb(255 255 255 / 70%); color: var(--oliva-oscuro); border-color: transparent; padding: .5rem 1.1rem; }
-  .insignia { font-size: .78rem; font-weight: 700; padding: .2rem .65rem; border-radius: 999px; }
-  .insignia--ok { background: #e3ecc2; color: #33401a; }
-  .insignia--no { background: var(--tierra-suave); color: #5c3a1f; }
-  .fila { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  .campana { display: flex; flex-direction: column; align-items: flex-start; border: 0; }
-  .campana p { flex: 1; }
-  .campana__emoji { font-size: 2rem; margin-bottom: .4rem; }
-  .campana--oliva { background: var(--oliva); color: #fff; } .campana--oliva h3 { color: #fff; }
-  .campana--limon { background: var(--limon); color: var(--tinta); }
-  .campana--tierra { background: var(--tierra); color: #fff; } .campana--tierra h3 { color: #fff; }
-  .campana--blanco { background: #fff; border: 1px solid var(--borde); }
-  .producto__cabecera { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
-  .producto__emoji { font-size: 2.2rem; }
-  .producto__precio strong { font-family: var(--fuente-titulo); font-size: 1.4rem; color: var(--oliva); }
-  .feature__lista { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .5rem; }
-  .feature__lista li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; background: #fff; border: 1px solid var(--borde); border-radius: var(--radio-control); }
-  .feature__tabla table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--borde); margin-top: 1rem; }
-  .feature__tabla th, .feature__tabla td { text-align: left; padding: .55rem .9rem; border-bottom: 1px solid var(--borde); }
-  .feature__tabla th { background: var(--crema); color: var(--oliva-oscuro); font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
-  .feature__texto { margin: 1rem 0 0; font-size: 1.15rem; }
-  table.contraste { border-collapse: collapse; width: 100%; font-size: .88rem; background: #fff; border: 1px solid var(--borde); }
-  table.contraste th { text-align: left; background: var(--crema); font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; color: var(--tinta-suave); padding: .5rem .8rem; }
-  table.contraste td { padding: .4rem .8rem; border-top: 1px solid var(--borde); }
-  table.contraste td.n { font-family: var(--mono); text-align: right; white-space: nowrap; width: 15rem; }
-  table.contraste td.m { font-family: var(--mono); width: 10rem; white-space: nowrap; color: var(--oliva-oscuro); font-weight: 600; }
-  .m-ok::before { content: "✓ "; } .m-no::before { content: "! "; color: #7a2b0e; }
-  .ficha { display: inline-block; padding: .1rem .6rem; border-radius: 4px; font-family: var(--mono); font-size: .8rem; border: 1px solid var(--borde); }
-  .ficha--ink { background: #fff; color: var(--tinta); } .ficha--muted { background: #fff; color: var(--tinta-suave); }
-  .ficha--accent { background: #fff; color: var(--oliva); } .ficha--lim { background: var(--limon); color: var(--tinta); }
-  .ficha--w { background: var(--oliva); color: #fff; } .ficha--err { background: #fbe6dc; color: #7a2b0e; border-color: #c4511f; }
-  .chip { display: inline-flex; align-items: center; gap: .4rem; min-height: 28px; padding: 0 .7rem; border-radius: 999px; background: #fff; border: 1px solid var(--tinta-suave); font-family: var(--mono); font-size: .8rem; font-weight: 600; color: var(--tinta); }
-  .chip--sigue { background: var(--oliva); border-color: var(--oliva); color: #fff; }
-  .chip--curso { background: var(--limon); border-color: var(--tinta); }
-  .chip--no { background: #fbe6dc; border-color: #c4511f; color: #7a2b0e; }
-  .chip--espera { background: var(--limon-suave); border-color: var(--tinta-suave); }
-  .reloj { height: 10px; background: var(--oliva); border-radius: 2px; margin: .3rem 0 .2rem; }
-  .leyenda { display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--borde); padding-top: .9rem; margin-top: 1rem; font-size: .88rem; color: var(--tinta-suave); }
-  .leyenda span { display: inline-flex; gap: .5rem; align-items: center; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@font-face{font-family:League Spartan;src:url(web-limonia/assets/fonts/league-spartan-latin.woff2) format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:Figtree;src:url(web-limonia/assets/fonts/figtree-latin.woff2) format('woff2');font-weight:300 900;font-style:normal;font-display:swap}
+:root{
+  --oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;
+  --blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;
+  --control:#7d835f;--ok-fondo:#e3ecc2;--ok-texto:#33401a;--no-texto:#5c3a1f;--error-fondo:#fbe6dc;--error-texto:#7a2b0e;--error-borde:#c4511f;
+  --fuente:Figtree,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,sans-serif;
+  --fuente-titulo:League Spartan,Figtree,ui-sans-serif,system-ui,sans-serif;
+  --t-peq:clamp(.875rem,.8rem + .2vw,1.125rem);
+  --t-cuerpo:clamp(1.0625rem,.95rem + .4vw,1.5rem);
+  --t-lead:clamp(1.25rem,1rem + 1vw,2.25rem);
+  --t-titulo:clamp(2.1rem,1rem + 3.1vw,5.25rem);
+  --t-display:clamp(2.75rem,1rem + 4vw,6.5rem);
+  --margen:clamp(20px,2.2vw,32px);
+  --hueco:12px;
+  --cuarto:clamp(44px,6vw,104px);
+  --motion-fast:160ms;--motion-step:480ms;--motion-hold:720ms;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;font-family:var(--fuente);font-size:var(--t-cuerpo);line-height:1.55;color:var(--tinta);background:var(--blanco);-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+h1,h2,h3{font-family:var(--fuente-titulo);font-weight:700;letter-spacing:-.035em;line-height:.95;margin:0;color:var(--tinta)}
+h1{font-size:var(--t-display)}
+h2{font-size:var(--t-titulo)}
+h3{font-size:var(--t-lead);letter-spacing:-.02em;line-height:1.05}
+p{margin:0 0 1em}
+a{color:var(--oliva-oscuro);text-underline-offset:4px;text-decoration-thickness:2px}
+a:hover{color:var(--oliva)}
+:focus-visible{outline:3px solid var(--oliva-oscuro);outline-offset:3px}
+.saltar{position:absolute;left:-999px;top:0;background:var(--oliva-oscuro);color:#fff;padding:.7rem 1.1rem;z-index:100}
+.saltar:focus{left:var(--margen);top:8px}
+.peq{font-size:var(--t-peq);color:var(--tinta);line-height:1.45}
+
+/* Header: wordmark, four links, one action */
+.cab{position:sticky;top:0;z-index:50;background:var(--blanco)}
+.cab__fila{display:flex;align-items:center;gap:20px;min-height:72px;padding-inline:var(--margen)}
+.marca{display:inline-flex;align-items:center;gap:10px;font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.01em;color:var(--oliva-oscuro);text-decoration:none;margin-right:auto}
+.marca svg{display:block}
+.menu ul{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.menu a{display:flex;align-items:center;min-height:44px;padding:0 14px;font-size:var(--t-cuerpo);font-weight:600;color:var(--tinta);text-decoration:none;transition:color var(--motion-fast)}
+.menu a:hover{color:var(--oliva)}
+.menu a[aria-current=page]{text-decoration:underline;text-decoration-color:var(--limon);text-decoration-thickness:4px;text-underline-offset:9px}
+.menu-boton{display:none;min-height:44px;padding:0 20px;font:inherit;font-size:var(--t-cuerpo);font-weight:600;color:var(--tinta);background:var(--crema);border:0;border-radius:999px;cursor:pointer}
+
+/* Buttons: one shape, the pill (the disc family) */
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;font:inherit;font-size:var(--t-cuerpo);font-weight:600;line-height:1;text-decoration:none;text-align:center;color:#fff;background:var(--oliva);border:0;border-radius:999px;cursor:pointer;transition:background var(--motion-fast),color var(--motion-fast),transform var(--motion-fast) var(--ease)}
+.btn:hover{background:var(--oliva-oscuro);color:#fff;transform:translateY(-2px)}
+.btn:active{transform:scale(.97)}
+.btn--paso{background:var(--crema);color:var(--tinta)}
+.btn--paso:hover{background:var(--tierra-suave);color:var(--tinta)}
+.btn--blanco{background:#fff;color:var(--tinta)}
+.btn--blanco:hover{background:var(--limon);color:var(--tinta)}
+.btn--limon{background:var(--limon);color:var(--tinta)}
+.btn--limon:hover{background:var(--limon-suave);color:var(--tinta)}
+.btn:disabled{opacity:1;background:var(--tierra-suave);color:var(--no-texto);cursor:not-allowed;transform:none}
+
+/* The one shape: a quarter of the cut lemon, one corner */
+.cuarto{border-top-right-radius:var(--cuarto)}
+.bola{display:block;flex:none;width:28px;height:28px;margin-top:.15em;border-radius:50%;background:var(--limon)}
+.bola--verde{background:var(--oliva-claro)}
+.punto{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--limon);vertical-align:baseline;margin-right:.5em}
+
+/* Frame */
+.pag{padding-inline:var(--margen)}
+.sec{padding-block:clamp(80px,8vw,120px)}
+.rej{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco)}
+.fig{margin:0}
+.fig img{width:100%;height:100%;object-fit:cover}
+.fig figcaption{font-size:var(--t-peq);color:var(--tinta);margin-top:10px}
+.fig--chip{position:relative}
+.fig--chip figcaption{position:absolute;left:0;bottom:0;margin:0;padding:10px 16px;background:var(--blanco);color:var(--tinta)}
+.campo-crema{background:var(--crema)}
+.campo-oliva{background:var(--oliva-oscuro);color:#fff}
+.campo-oliva h2,.campo-oliva p{color:#fff}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:var(--hueco);padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px)}
+.hero__tarjeta{display:flex;flex-direction:column;background:var(--crema);border-top-right-radius:var(--cuarto);overflow:hidden}
+.tira{display:flex;height:40px;flex:none;overflow:hidden}
+.tira i{flex:none;width:28px;height:100%;background:var(--oliva-oscuro)}
+.tira i:nth-child(even){background:var(--limon)}
+.hero__cuerpo{display:flex;flex-direction:column;flex:1;padding:clamp(28px,4vw,64px)}
+.hero h1{max-width:11ch;margin-bottom:clamp(20px,2.4vw,32px)}
+.hero__texto{font-size:var(--t-cuerpo);line-height:1.5;max-width:40ch;margin-bottom:clamp(24px,3vw,40px)}
+.hero__acciones{display:flex;flex-wrap:wrap;gap:12px}
+.hero .btn--paso{background:var(--blanco)}
+.hero .btn--paso:hover{background:var(--limon)}
+.hero__origen{margin-top:auto;padding-top:clamp(28px,4vw,56px);margin-bottom:0}
+.hero__origen p{margin:0 0 8px;font-weight:600}
+.hero__origen li{font-size:var(--t-cuerpo)}
+.hero__origen ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 28px}
+.hero__campo{position:relative;background:var(--limon);overflow:hidden;min-height:420px;border-top-left-radius:0}
+.hero__disco{position:absolute;top:50%;right:-24%;width:min(118%,calc(100svh + 120px));aspect-ratio:1;translate:0 -50%;border-radius:50%;overflow:hidden;z-index:0}
+.hero__disco img{width:100%;height:100%;object-fit:cover;scale:1.32;animation:gira 160s linear infinite}
+.hero__vega{position:absolute;left:clamp(16px,2.4vw,36px);bottom:clamp(16px,2.4vw,36px);width:min(46%,320px);border-top-right-radius:calc(var(--cuarto) * .5);overflow:hidden;background:var(--blanco);z-index:1}
+.hero__vega img{aspect-ratio:4/3;height:auto}
+.hero__vega figcaption{margin:0;padding:10px 14px;font-size:var(--t-peq);color:var(--tinta)}
+@keyframes gira{to{rotate:360deg}}
+
+/* Figures: stepped tiles */
+.cifras{align-items:start}
+.cifras__titulo{grid-column:7 / span 6;margin-bottom:20px;align-self:end}
+.cifras__titulo h2{font-size:var(--t-lead);letter-spacing:-.02em;line-height:1.1}
+.cifra{display:flex;flex-direction:column;justify-content:space-between;padding:clamp(20px,2vw,32px);margin:0;border-top-right-radius:calc(var(--cuarto) * .8)}
+.cifra strong{font-family:var(--fuente-titulo);font-size:var(--t-display);font-weight:700;letter-spacing:-.04em;line-height:.9}
+.cifra span{font-size:var(--t-lead);line-height:1.2;max-width:14ch}
+.cifra--1{grid-column:1 / span 6;grid-row:1 / span 2;min-height:clamp(260px,32vw,620px);background:var(--limon)}
+.cifra--2{grid-column:7 / span 3;grid-row:2;margin-top:clamp(0px,10vw,190px);min-height:clamp(220px,22vw,430px);background:var(--oliva-oscuro);color:#fff}
+.cifra--3{grid-column:10 / span 3;grid-row:2;margin-top:clamp(0px,17vw,330px);min-height:clamp(200px,15vw,290px);background:var(--tierra);color:#fff}
+.cifras{grid-template-rows:auto 1fr;row-gap:var(--hueco)}
+
+/* Campaigns */
+.cab-sec{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:clamp(28px,4vw,56px)}
+.campanas{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--hueco);list-style:none;margin:0;padding:0}
+.campana{display:flex;flex-direction:column;align-items:flex-start;gap:20px;min-height:clamp(280px,28vw,400px);padding:clamp(28px,4.2vw,40px);grid-column:span 6;border-top-right-radius:var(--cuarto)}
+.campana:nth-child(4n+1),.campana:nth-child(4n){grid-column:span 7}
+.campana:nth-child(4n+2),.campana:nth-child(4n+3){grid-column:span 5}
+.campana:last-child:nth-child(odd){grid-column:1 / -1;min-height:0;flex-direction:row;align-items:center;gap:clamp(20px,4vw,64px);flex-wrap:wrap}
+.campana h3{font-size:var(--t-titulo);line-height:.95;max-width:12ch}
+.campana p{max-width:34ch;margin:0}
+.campana__texto{flex:1}
+.campana .btn{margin-top:auto}
+.campana:last-child:nth-child(odd) .btn{margin-top:0}
+.campana--oliva{background:var(--oliva);color:#fff}
+.campana--oliva h3{color:#fff}
+.campana--oliva .bola{background:var(--limon);}
+.campana--limon{background:var(--limon);color:var(--tinta)}
+.campana--limon .bola{background:var(--limon-suave)}
+.campana--tierra{background:var(--tierra);color:#fff}
+.campana--tierra h3{color:#fff}
+.campana--tierra .bola{background:var(--tierra-suave)}
+.campana--blanco{background:#fff;color:var(--tinta)}
+
+/* Menu lists with disc bullets */
+.carta{list-style:none;margin:0;padding:0;display:grid;gap:36px 64px}
+.carta--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.carta li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:20px;align-items:start}
+.carta__nombre{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.carta h3{letter-spacing:-.02em}
+.carta__precio{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;margin:0}
+.carta__precio small{font-family:inherit;font-weight:700;font-size:var(--t-peq);letter-spacing:0;color:var(--tinta)}
+.carta__consultar{font-family:var(--fuente);font-weight:600;font-size:var(--t-cuerpo);color:var(--tinta)}
+.carta p.d{margin:6px 0 8px;max-width:38ch}
+.carta .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;font-size:var(--t-cuerpo);color:var(--tinta)}
+.ins{display:inline-block;padding:2px 12px;border-radius:999px;font-size:var(--t-peq);font-weight:600;line-height:1.5}
+.ins--ok{background:var(--ok-fondo);color:var(--ok-texto)}
+.ins--no{background:var(--tierra-suave);color:var(--no-texto)}
+
+.partido{align-items:center}
+.partido__fig{grid-column:1 / span 5}
+.partido .fig{border-top-right-radius:var(--cuarto);overflow:hidden}
+.partido .fig img{aspect-ratio:4/5}
+.partido__texto{grid-column:7 / span 6;display:flex;flex-direction:column;gap:clamp(28px,3vw,44px)}
+
+/* Process accordion */
+.proceso__intro{margin-bottom:clamp(32px,5vw,64px);align-items:end}
+.proceso__intro h2{grid-column:1 / span 6}
+.proceso__intro p{grid-column:8 / span 5;margin:0;font-size:var(--t-cuerpo);line-height:1.5}
+.fases{display:flex;height:clamp(420px,36vw,520px);border-top-right-radius:var(--cuarto);overflow:hidden}
+.fase{position:relative;flex:0 0 clamp(150px,13vw,200px);min-width:0;border:0;margin:0;padding:0;font:inherit;text-align:left;cursor:pointer;color:inherit;transition:flex-grow var(--motion-step) var(--ease),background var(--motion-fast);overflow:hidden;display:block}
+.fase:hover{filter:none}
+.fase[aria-expanded=true]{flex:1 1 clamp(150px,13vw,200px);cursor:default}
+.fase__nombre{position:absolute;left:clamp(20px,2vw,28px);top:clamp(20px,2vw,28px);font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-cuerpo);line-height:1;letter-spacing:-.01em;white-space:nowrap;transition:font-size var(--motion-step) var(--ease)}
+.fase[aria-expanded=true] .fase__nombre{font-size:var(--t-titulo)}
+.fase__texto{position:absolute;left:clamp(20px,2.4vw,36px);bottom:clamp(20px,2.4vw,36px);width:min(36ch,calc(100% - 48px));margin:0;font-size:var(--t-cuerpo);display:none}
+.fase[aria-expanded=true] .fase__texto{display:block;animation:aparece var(--motion-step) var(--ease) 120ms both}
+@keyframes aparece{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.fase--1{background:var(--oliva-oscuro);color:#fff}
+.fase--2{background:var(--oliva);color:#fff}
+.fase--3{background:var(--oliva-claro);color:var(--tinta)}
+.fase--4{background:#cdd69b;color:var(--tinta)}
+.fase--5{background:var(--ok-fondo);color:var(--tinta)}
+.proceso__enlace{margin-top:clamp(24px,3vw,40px)}
+
+/* Request: the object returns */
+.pide{position:relative;background:var(--limon);overflow:hidden;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco);align-items:center;min-height:clamp(560px,72svh,760px);padding:clamp(48px,6vw,96px) var(--margen)}
+.pide__disco{position:absolute;left:-14vw;bottom:-18vw;width:min(54vw,800px);aspect-ratio:1;border-radius:50%;overflow:hidden}
+.pide__disco img{width:100%;height:100%;object-fit:cover;scale:1.1}
+.pide__form{position:relative;grid-column:7 / span 6;background:var(--blanco);padding:clamp(24px,3vw,48px);border-top-right-radius:var(--cuarto)}
+.pide__form h2{font-size:var(--t-titulo);margin-bottom:16px}
+.pide__form p{max-width:46ch}
+.campo{display:flex;flex-direction:column;gap:8px;margin:20px 0}
+.campo label{font-weight:600;font-size:var(--t-cuerpo)}
+textarea,select,input{font:inherit;color:var(--tinta);background:#fff;border:1px solid var(--control);border-radius:0;padding:12px 14px;width:100%}
+textarea{min-height:112px;resize:vertical;line-height:1.45}
+::placeholder{color:var(--tinta-suave);opacity:1}
+textarea:hover,select:hover,input:hover{border-color:var(--tinta-suave)}
+textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--oliva-oscuro);outline-offset:0;border-color:var(--oliva-oscuro)}
+.contador{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-peq);color:var(--tinta);font-variant-numeric:tabular-nums;margin:0}
+.contador--lleno strong{color:var(--error-texto)}
+.pide__estado{min-height:1.6em;margin:14px 0 0;font-weight:600}
+.mis{margin-top:clamp(40px,5vw,72px)}
+.mis__lista{list-style:none;padding:0;margin:24px 0 0;display:grid;gap:4px}
+.mis__lista a{display:inline-flex;align-items:center;gap:14px;min-height:56px;color:var(--tinta);font-weight:600;text-decoration:none;transition:color var(--motion-fast),transform var(--motion-fast) var(--ease)}
+.mis__lista a::before{content:'';flex:none;width:20px;height:20px;border-radius:50%;background:var(--limon)}
+.mis__lista a:hover{color:var(--oliva);transform:translateX(4px)}
+.mis__lista .n{font-family:var(--fuente-titulo);font-size:var(--t-lead);letter-spacing:-.02em}
+
+/* Footer: the mark built large */
+.pie{background:var(--oliva-oscuro);color:#fff;padding:clamp(40px,5vw,72px) var(--margen) 28px}
+.pie a{color:#fff}
+.pie a:hover{color:var(--limon)}
+.pie .btn--limon,.pie .btn--limon:hover{color:var(--tinta)}
+.pie .btn--limon:hover{background:var(--limon-suave)}
+.pie__marca{display:flex;gap:4px;height:clamp(120px,24vw,340px);align-items:flex-end;margin-bottom:clamp(36px,4vw,56px)}
+.pie__marca span{flex:1 1 0;display:grid;place-items:center;font-family:var(--fuente-titulo);font-weight:700;font-size:clamp(4.25rem,15.5vw,15.5rem);line-height:1;color:var(--oliva-oscuro);overflow:hidden;padding-top:.02em}
+.pie__marca span:nth-child(1){background:var(--limon);height:100%}
+.pie__marca span:nth-child(2){background:var(--crema);height:72%;flex-grow:.55}
+.pie__marca span:nth-child(3){background:var(--oliva-claro);height:92%;flex-grow:1.25}
+.pie__marca span:nth-child(4){background:var(--limon-suave);height:80%}
+.pie__marca span:nth-child(5){background:var(--tierra-suave);height:100%}
+.pie__marca span:nth-child(6){background:var(--crema);height:64%;flex-grow:.55}
+.pie__marca span:nth-child(7){background:var(--limon);height:86%}
+.pie__cols{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco);row-gap:28px}
+.pie__links{grid-column:1 / span 8;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;list-style:none;margin:0;padding:0}
+.pie__links a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-cuerpo)}
+.pie__contacto{grid-column:9 / span 4}
+.pie__contacto p{margin:0 0 .5em;font-size:var(--t-cuerpo)}
+.pie__fin{grid-column:1 / -1;display:flex;justify-content:flex-start;align-items:center;gap:20px 40px;flex-wrap:wrap;margin-top:12px}
+.pie__fin p{margin:0;font-size:var(--t-cuerpo);max-width:40ch;color:#fff}
+.pie__creditos{grid-column:1 / span 8;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 20px;font-size:var(--t-peq);color:#fff}
+.pie__fin .btn{min-height:44px;padding:0 22px}
+
+/* Entrances */
+.js [data-sube]{opacity:0;transform:translateY(28px);transition:opacity 620ms var(--ease),transform 620ms var(--ease);transition-delay:calc(var(--i,0) * 80ms)}
+.js [data-sube].dentro{opacity:1;transform:none}
+
+@media (max-width:1100px){
+  .cifras__titulo{grid-column:1 / -1}
+  .cifra--1{grid-column:1 / -1;grid-row:auto;min-height:260px}
+  .cifra--2{grid-column:1 / span 6;grid-row:auto;margin-top:0}
+  .cifra--3{grid-column:7 / span 6;grid-row:auto;margin-top:32px}
+  .cifra--2,.cifra--3{min-height:260px}
+  .cifras__titulo{order:-1}
+  .cifra--1{order:0}
+}
+@media (max-width:1100px){
+  .fases{flex-direction:column;height:auto}
+  .fase,.fase[aria-expanded=true]{flex:none;width:auto;transition:height var(--motion-step) var(--ease)}
+  .fase{height:64px}
+  .fase__nombre{left:20px;top:18px}
+  .fase[aria-expanded=true] .fase__nombre{font-size:var(--t-lead)}
+  .fase[aria-expanded=true]{height:268px}
+  .fase__texto{left:20px;right:20px;bottom:20px;width:auto;top:68px}
+}
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;min-height:0}
+  .hero__tarjeta{min-height:0}
+  .hero h1{max-width:12ch}
+  .hero__origen{margin-top:32px;padding-top:0}
+  .hero__campo{min-height:min(96vw,520px)}
+  .hero__disco{right:-18%;width:112%}
+  .partido .fig{grid-column:1 / -1}
+  .partido__fig{grid-column:1 / -1}
+  .partido__texto{grid-column:1 / -1;margin-top:88px}
+  .carta--2{grid-template-columns:1fr;gap:32px}
+  .campana,.campana:nth-child(n){grid-column:span 6;min-height:260px}
+  .campana:last-child:nth-child(odd){grid-column:1 / -1;flex-direction:column;align-items:flex-start;min-height:260px}
+  .proceso__intro h2,.proceso__intro p{grid-column:1 / -1}
+  .proceso__intro p{margin-top:20px}
+  .pide{grid-template-columns:1fr;align-content:end;padding-top:min(70vw,420px);min-height:0}
+  .pide__disco{left:50%;translate:-50% 0;top:-16vw;bottom:auto;width:84vw}
+  .pide__form{grid-column:1 / -1}
+  .pie__links{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pie__contacto{grid-column:1 / -1}
+  .pie__creditos{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .campana,.campana:nth-child(n){grid-column:1 / -1}
+  .campana h3{max-width:none}
+}
+@media (max-width:900px){
+  .menu-boton{display:inline-block}
+  .cab__fila .btn{display:none}
+  .menu{display:none;position:absolute;left:0;right:0;top:72px;background:var(--crema);padding:12px var(--margen) 24px;z-index:60}
+  .menu--abierto{display:block}
+  .menu ul{flex-direction:column;gap:0}
+  .menu a{font-family:var(--fuente-titulo);font-size:var(--t-titulo);letter-spacing:-.02em;min-height:60px;padding:0}
+  .menu a[aria-current=page]{text-underline-offset:6px}
+  .menu .menu__accion{display:flex;margin-top:12px}
+  .menu .menu__accion a{font-family:var(--fuente);font-size:var(--t-cuerpo);letter-spacing:0;color:#fff;min-height:48px;padding:0 28px;justify-content:center}
+}
+@media (max-width:720px){
+  .cifra--1{min-height:58vw}
+  .cifra--2{grid-column:1 / span 6;min-height:50vw;padding:16px}
+  .cifra--3{grid-column:7 / span 6;margin-top:32px;min-height:50vw;padding:16px}
+  .cifra--1 strong{font-size:clamp(3.4rem,15vw,4.5rem)}
+  .cifra--2 strong,.cifra--3 strong{font-size:clamp(2.2rem,10.5vw,3rem);white-space:nowrap}
+  .cifra--2 span,.cifra--3 span{font-size:var(--t-cuerpo)}
+}
+@media (min-width:901px){.menu .menu__accion{display:none}}
+@media (min-width:1500px){
+  :root{--margen:32px}
+  .carta--2{gap:44px 96px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;transition-delay:0ms !important;scroll-behavior:auto !important}
+  .js [data-sube]{opacity:1;transform:none}
+  .hero__disco img{animation:none}
+}
+
+
+:root{--mono:ui-monospace,SF Mono,Menlo,Consolas,Liberation Mono,monospace}
+.campo-crema .btn--paso{background:var(--blanco)}
+.campo-crema .tabla-s td{border-top-color:#d9cfb6}
+.intro{padding-block:clamp(24px,4vw,56px) clamp(56px,7vw,104px)}
+.disco-s{grid-column:9 / span 4;position:relative;background:var(--limon);overflow:hidden;border-top-right-radius:var(--cuarto);min-height:300px}
+.disco-s img{position:absolute;right:-30%;top:50%;translate:0 -50%;width:130%;max-width:none;aspect-ratio:1;border-radius:50%;object-fit:cover;scale:1.14}
+.lead{font-size:var(--t-lead);line-height:1.35;max-width:36ch;margin:24px 0 0}
+.nota-s{max-width:62ch;margin:28px 0 0}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+h4{font-family:var(--fuente-titulo);font-size:var(--t-lead);letter-spacing:-.02em;margin:0 0 16px}
+h4 small{font-family:var(--fuente);font-size:var(--t-peq);font-weight:600;letter-spacing:0}
+code{font-family:var(--mono);font-size:.85em}
+.mus{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--hueco);margin-top:40px}
+.mu__c{height:96px;border-top-right-radius:36px}
+.mu p{margin:10px 0 0;font-size:var(--t-peq)}
+.tabla-s table{width:100%;border-collapse:collapse;font-size:var(--t-peq)}
+.tabla-s th{text-align:left;font-weight:600;padding:0 12px 10px 0}
+.tabla-s td{padding:10px 12px 10px 0;border-top:1px solid var(--borde);font-variant-numeric:tabular-nums}
+.tabla-s{margin-top:32px}
+.tip{row-gap:6px;margin-top:32px}
+.tip>*{grid-column:1 / -1;margin:0}
+.t-d{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-display);letter-spacing:-.035em;line-height:.95}
+.t-t{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-titulo);letter-spacing:-.035em;line-height:.95;margin-top:28px !important}
+.t-l{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.02em;margin-top:28px !important}
+.t-l span{margin-left:24px}
+.t-c{margin-top:28px !important;max-width:62ch}
+.t-p{margin-top:28px !important;font-size:var(--t-peq)}
+.t-n{font-size:var(--t-peq);margin-bottom:8px !important}
+.gram{row-gap:32px;margin-top:40px}
+.gram>div{grid-column:span 3}
+.gram p{margin:12px 0 0;font-size:var(--t-peq)}
+.g-disco{width:100%;aspect-ratio:1;border-radius:50%;overflow:hidden}
+.g-disco img{width:100%;height:100%;object-fit:cover;scale:1.14}
+.g-cuarto{height:0;padding-bottom:100%;background:var(--oliva);border-top-right-radius:50%}
+.g3 .tira{height:60px}
+.reglas{margin:32px 0 0;padding-left:1.2em;max-width:70ch}
+.reglas li{margin-bottom:.5em}
+.fila{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px}
+.feat{row-gap:32px;margin-top:20px}
+.feat>div{grid-column:span 4}
+.feat .tabla-s{margin:0}
+.muestra-form{max-width:46ch;margin-top:20px;background:var(--blanco);padding:clamp(20px,3vw,36px);border-top-right-radius:var(--cuarto)}
+.prog{align-items:center;margin-top:20px}
+.dial-s{grid-column:1 / span 5;margin:0}
+.dial-s svg{width:100%;height:auto;display:block}
+.dial-s text{font-family:var(--fuente-titulo);font-weight:700}
+.estados{grid-column:7 / span 5;list-style:none;margin:0;padding:0;display:grid;gap:16px}
+.estados li{display:flex;align-items:center;gap:16px;font-weight:600}
+.estacion__marca{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--limon-suave);color:var(--tinta);font-weight:700}
+.comun{row-gap:32px;margin-top:20px}
+.comun>div{grid-column:span 6}
+@media (max-width:900px){
+  .disco-s{grid-column:1 / -1;margin-top:32px}
+  .mus{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gram>div,.feat>div,.comun>div{grid-column:1 / -1}
+  .dial-s,.estados{grid-column:1 / -1}
+  .campanas li{grid-column:1 / -1 !important}
+  .carta--2{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <p class="eyebrow">Sistema de diseño · LIMONIA editorial</p>
-    <h1>LIMONIA</h1>
-    <p class="lead">La marca de siempre (oliva, limón, tierra, papel cálido) con la gramática editorial de <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a> (MIT): plano, filetes de 1px, papel de puntos, mono para el detalle, etiquetas en mayúsculas espaciadas, un solo acento y leyenda. Los revisores UX y UI de la factory juzgan cada cambio contra este sistema.</p>
-    <p class="nota">La web se está migrando: <code>src/styles/global.css</code> aún conserva el aspecto anterior (botones en píldora, radio 18px, sombra). Aquí se ve el destino.</p>
-  </header>
+<main id="contenido">
 
-  <section aria-labelledby="colores">
-    <h2 id="colores">Colores y roles</h2>
-    <div class="rejilla r4">
-      <div class="muestra"><div class="muestra__color" style="background:#fbf8f1"></div><div class="muestra__texto"><b>paper</b><code>--blanco</code> #fbf8f1<br>Fondo de página</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#f3ecdc"></div><div class="muestra__texto"><b>paper-2</b><code>--crema</code> #f3ecdc<br>Cabeceras, chips</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#fff"></div><div class="muestra__texto"><b>surface</b><code>#fff</code><br>Nodos, tarjetas, paneles</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#2a301a"></div><div class="muestra__texto"><b>ink</b><code>--tinta</code> #2a301a<br>Texto, trazos</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#5c6245"></div><div class="muestra__texto"><b>muted · soft</b><code>--tinta-suave</code> #5c6245<br>Texto secundario, conectores</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#e2d9c3"></div><div class="muestra__texto"><b>rule</b><code>--borde</code> #e2d9c3<br>Filetes (decorativo)</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#a7b36a"></div><div class="muestra__texto"><b>rule-solid</b><code>--oliva-claro</code> #a7b36a<br>Marca de paso terminado</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#5b6b2e"></div><div class="muestra__texto"><b>accent</b><code>--oliva</code> #5b6b2e<br>El único foco</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#3b4720"></div><div class="muestra__texto"><b>accent-ink · link</b><code>--oliva-oscuro</code> #3b4720<br>Títulos, enlaces, pie</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#f2d643"></div><div class="muestra__texto"><b>highlight</b><code>--limon</code> #f2d643<br>Relleno «ahora», con tinta</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#fbf0b0"></div><div class="muestra__texto"><b>highlight-soft</b><code>--limon-suave</code> #fbf0b0<br>Esperando a una persona</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#9a6b46"></div><div class="muestra__texto"><b>earth</b><code>--tierra</code> #9a6b46<br>Campaña, marcas; texto grande</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#ead9c4"></div><div class="muestra__texto"><b>earth-soft</b><code>--tierra-suave</code> #ead9c4<br>«No disponible»</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#efefea"></div><div class="muestra__texto"><b>accent-tint</b>oliva al 10%<br>Nodo focal (≈ #efefea)</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#fbe6dc;border-bottom:3px solid #c4511f"></div><div class="muestra__texto"><b>error</b>#fbe6dc · #7a2b0e · #c4511f<br>Solo errores y rechazos</div></div>
+<section class="pag intro" aria-labelledby="titulo">
+  <div class="rej" style="align-items:end">
+    <div style="grid-column:1 / span 8">
+      <h1 id="titulo">LIMONIA editorial</h1>
+      <p class="lead">Un limón cortado es un disco que lo recorre todo. El tablero conserva la gramática de diagram-design.</p>
     </div>
-    <p class="nota" style="margin-top:1rem">Un solo acento: <code>accent</code> (oliva) es lo que hay que mirar. El limón no es un acento, es un relleno que dice «ahora» y siempre lleva texto en tinta. Colores de campaña, exactamente: <code>oliva</code>, <code>limon</code>, <code>tierra</code>, <code>blanco</code>.</p>
-  </section>
+    <div class="disco-s" aria-hidden="true"><img src="web-limonia/assets/limon-cortado.webp" width="800" height="800" alt=""></div>
+  </div>
+</section>
 
-  <section aria-labelledby="contraste">
-    <h2 id="contraste">Contraste (WCAG AA), calculado</h2>
-    <p class="nota">Ratio contra la superficie sobre la que está de verdad; los rellenos translúcidos se componen antes de medir. Texto ≥ 4,5 · marcas esenciales (conectores, bordes, foco) ≥ 3.</p>
-    <table class="contraste">
-      <thead><tr><th>Muestra</th><th>Primer plano sobre superficie</th><th style="text-align:right">Ratio</th><th>AA</th></tr></thead>
-      <tbody>
-        <tr><td><span class="ficha ficha--ink">Aa 12</span></td><td>ink sobre paper · paper-2 · surface</td><td class="n">12,89 · 11,62 · 13,67</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--muted">Aa 12</span></td><td>muted · soft sobre paper · paper-2 · surface</td><td class="n">6,02 · 5,43 · 6,39</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--accent">Aa 12</span></td><td>accent sobre paper · paper-2 · surface · accent-tint</td><td class="n">5,52 · 4,97 · 5,85 · 4,84</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--ink" style="color:#3b4720">Aa 12</span></td><td>accent-ink / link sobre paper · limon-suave · limon</td><td class="n">9,39 · 8,63 · 6,87</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--w">Aa 12</span></td><td>blanco sobre accent · accent-ink</td><td class="n">5,85 · 9,96</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--lim">Aa 12</span></td><td>ink sobre highlight (limón) · highlight-soft</td><td class="n">9,42 · 11,84</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha ficha--err">Aa 12</span></td><td>#7a2b0e sobre #fbe6dc · borde #c4511f sobre paper</td><td class="n">8,01 · 4,36</td><td class="m m-ok">texto · marca</td></tr>
-        <tr><td><span class="ficha" style="background:#e3ecc2;color:#33401a">Aa 12</span></td><td>#33401a sobre #e3ecc2 (insignia OK)</td><td class="n">9,02</td><td class="m m-ok">texto</td></tr>
-        <tr><td><span class="ficha" style="color:#9a6b46;background:#fff">Aa 12</span></td><td>earth sobre paper · surface · paper-2</td><td class="n">4,34 · 4,60 · 3,91</td><td class="m m-no">solo grande</td></tr>
-        <tr><td><span class="ficha" style="background:#fff;color:#a7b36a">●</span></td><td>rule-solid sobre paper · surface (marca con ✓ y palabra)</td><td class="n">2,13 · 2,26</td><td class="m m-no">no esencial</td></tr>
-        <tr><td><span class="ficha" style="background:#f2d643;color:#f2d643">●</span></td><td>highlight sobre paper (solo relleno)</td><td class="n">1,37</td><td class="m m-no">no texto ni línea</td></tr>
-      </tbody>
-    </table>
-  </section>
+<section class="sec pag" aria-labelledby="colores">
+  <h2 id="colores">Colores y roles</h2>
+  <p class="lead">Los colores de marca no cambian. Cada uno tiene un papel; los componentes dicen el papel.</p>
+  <div class="mus">
+    <div class="mu"><div class="mu__c" style="background:#fbf8f1;"></div><p><strong>ground</strong><br><code>--blanco</code> #fbf8f1<br>Fondo de página</p></div><div class="mu"><div class="mu__c" style="background:#f3ecdc;"></div><p><strong>step</strong><br><code>--crema</code> #f3ecdc<br>Un escalón de tono</p></div><div class="mu"><div class="mu__c" style="background:#ffffff;"></div><p><strong>surface</strong><br><code>literal</code> #ffffff<br>Campos, hoja de la calculadora</p></div><div class="mu"><div class="mu__c" style="background:#2a301a;color:#fff"></div><p><strong>ink</strong><br><code>--tinta</code> #2a301a<br>Todo el texto</p></div>
+    <div class="mu"><div class="mu__c" style="background:#5b6b2e;color:#fff"></div><p><strong>accent</strong><br><code>--oliva</code> #5b6b2e<br>El botón y la marca «aquí»</p></div><div class="mu"><div class="mu__c" style="background:#3b4720;color:#fff"></div><p><strong>deep</strong><br><code>--oliva-oscuro</code> #3b4720<br>Banda oscura, pie, enlaces</p></div><div class="mu"><div class="mu__c" style="background:#a7b36a;"></div><p><strong>fresh</strong><br><code>--oliva-claro</code> #a7b36a<br>Panel, bola de hortaliza</p></div><div class="mu"><div class="mu__c" style="background:#f2d643;"></div><p><strong>lemon</strong><br><code>--limon</code> #f2d643<br>El motivo: campo y disco</p></div>
+    <div class="mu"><div class="mu__c" style="background:#fbf0b0;"></div><p><strong>lemon-soft</strong><br><code>--limon-suave</code> #fbf0b0<br>Segmentos pendientes</p></div><div class="mu"><div class="mu__c" style="background:#9a6b46;color:#fff"></div><p><strong>earth</strong><br><code>--tierra</code> #9a6b46<br>Campaña tierra</p></div><div class="mu"><div class="mu__c" style="background:#ead9c4;"></div><p><strong>earth-soft</strong><br><code>--tierra-suave</code> #ead9c4<br>No disponible</p></div><div class="mu"><div class="mu__c" style="background:#7d835f;color:#fff"></div><p><strong>control</strong><br><code>literal</code> #7d835f<br>Borde de un campo</p></div>
+  </div>
+  <p class="nota-s">Las campañas son exactamente <strong>oliva, limon, tierra y blanco</strong>. Los rojos de error son solo del propio sistema (una petición rechazada, un error de formulario).</p>
+</section>
 
-  <section aria-labelledby="tipografia">
-    <h2 id="tipografia">Tipografía</h2>
-    <div class="escala">
-      <div><code>title · serif · 3.6rem</code><span style="font-family:var(--fuente-titulo);font-size:3.6rem;color:var(--oliva-oscuro);line-height:1.15">Huerta de Murcia</span></div>
-      <div><code>h2 · serif · 2.1rem</code><span style="font-family:var(--fuente-titulo);font-size:2.1rem;color:var(--oliva-oscuro)">Catálogo de temporada</span></div>
-      <div><code>node-name · sans · 600</code><span style="font-weight:600">Spec writer</span></div>
-      <div><code>body · sans · 1.0625rem</code><span>Te preparamos el presupuesto por kilos y destino.</span></div>
-      <div><code>sublabel · mono · .8rem</code><span style="font-family:var(--mono);font-size:.8rem;color:var(--tinta-suave)">tarea-43 · estilo · PR #12</span></div>
-      <div><code>eyebrow · mono · uppercase · .14em</code><span class="eyebrow" style="margin:0">Revisión en paralelo</span></div>
-      <div><code>edge-label · mono · uppercase · .06em</code><span style="font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave)">auto → main</span></div>
-    </div>
-    <p class="nota" style="margin-top:1rem">Mono: <code>ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace</code> (solo fuentes del sistema). Mono para datos técnicos (números, ids, estados); los nombres, en sans; los títulos, en serif.</p>
-  </section>
+<section class="sec campo-crema pag" aria-labelledby="contraste">
+  <h2 id="contraste">Contraste (WCAG AA), calculado</h2>
+  <p class="lead">Texto normal 4,5:1; texto grande y controles 3:1. Se mide contra lo que hay detrás de verdad.</p>
+  <div class="tabla-s"><table><caption class="sr">Ratios de contraste calculados</caption>
+    <thead><tr><th scope="col">Texto</th><th scope="col">Sobre</th><th scope="col">Ratio</th><th scope="col">Uso</th></tr></thead>
+    <tbody><tr><td>ink</td><td>ground</td><td>12.89</td><td>Body text</td></tr><tr><td>ink</td><td>step</td><td>11.62</td><td>Hero card, secondary button</td></tr><tr><td>ink</td><td>surface #fff</td><td>13.67</td><td>Fields, calculator</td></tr><tr><td>ink</td><td>lemon</td><td>9.42</td><td>Figures tile, total, lemon button</td></tr><tr><td>ink</td><td>lemon-soft</td><td>11.84</td><td>Final message, pending segment</td></tr><tr><td>ink</td><td>fresh #a7b36a</td><td>6.05</td><td>Strip panel, footer block</td></tr><tr><td>ink</td><td>#cdd69b</td><td>8.91</td><td>Strip panel</td></tr><tr><td>ink</td><td>#e3ecc2</td><td>11.09</td><td>Strip panel</td></tr><tr><td>soft #5c6245</td><td>ground / surface</td><td>6.02 / 6.39</td><td>Placeholder only</td></tr><tr><td>accent #5b6b2e</td><td>ground</td><td>5.52</td><td>Hover of a link</td></tr><tr><td>white</td><td>accent</td><td>5.85</td><td>Primary button, oliva campaign</td></tr><tr><td>white</td><td>deep #3b4720</td><td>9.96</td><td>Process band, footer</td></tr><tr><td>white</td><td>earth #9a6b46</td><td>4.60</td><td>tierra campaign, figures tile</td></tr><tr><td>deep</td><td>ground</td><td>9.39</td><td>Links, wordmark</td></tr><tr><td>lemon</td><td>deep</td><td>6.87</td><td>Footer link hover</td></tr><tr><td>deep</td><td>fresh</td><td>4.41</td><td>Footer mark letters (huge, ≥ 3)</td></tr><tr><td>#33401a</td><td>#e3ecc2</td><td>9.02</td><td>Available badge</td></tr><tr><td>#5c3a1f</td><td>earth-soft</td><td>7.32</td><td>Not available badge</td></tr><tr><td>#7a2b0e</td><td>#fbe6dc</td><td>8.01</td><td>Errors</td></tr><tr><td>--control #7d835f</td><td>surface / ground</td><td>3.97 / 3.75</td><td>Field border (≥ 3)</td></tr><tr><td>deep (focus ring)</td><td>ground / lemon</td><td>9.39 / 6.87</td><td>Focus</td></tr></tbody></table></div>
+  <p class="nota-s">Fallan, nunca como texto: deep sobre accent 1,70 · soft sobre fresh 2,83 · ink sobre accent 2,34 · limón como texto · tierra como texto pequeño (4,34 sobre ground).</p>
+</section>
 
-  <section aria-labelledby="gramatica">
-    <h2 id="gramatica">Gramática: plano, filetes, papel de puntos</h2>
-    <div class="rejilla r2">
-      <div>
-        <h3>Nodos y conectores</h3>
-        <div class="papel">
-          <svg viewBox="0 0 500 210" width="100%" role="img" aria-labelledby="g-t g-d" font-family="ui-sans-serif, system-ui, sans-serif">
-            <title id="g-t">Nodos y conectores</title>
-            <desc id="g-d">Un paso, un paso focal, una decisión en rombo con una salida etiquetada y un retorno punteado.</desc>
-            <defs>
-              <marker id="a1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#5c6245"/></marker>
-              <marker id="a2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#5b6b2e"/></marker>
-            </defs>
-            <path d="M140 52H176" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
-            <path d="M296 52H332" stroke="#5b6b2e" stroke-width="2" fill="none" marker-end="url(#a2)"/>
-            <path d="M392 76V104" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
-            <path d="M332 148H296" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
-            <path d="M392 28V12H236V28" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4" fill="none" marker-end="url(#a1)"/>
-            <rect x="20" y="28" width="120" height="48" rx="24" fill="#f3ecdc" stroke="#5c6245"/>
-            <text x="80" y="57" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Entrada</text>
-            <rect x="176" y="28" width="120" height="48" rx="6" fill="#fff" stroke="#5c6245"/>
-            <text x="236" y="50" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Builder</text>
-            <text x="236" y="66" text-anchor="middle" font-size="9" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">tarea-43</text>
-            <rect x="332" y="28" width="120" height="48" rx="6" fill="rgb(91 107 46 / 10%)" stroke="#5b6b2e" stroke-width="1.5"/>
-            <text x="392" y="50" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Approver</text>
-            <text x="392" y="66" text-anchor="middle" font-size="9" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">4/4 · foco</text>
-            <path d="M392 104L452 148L392 192L332 148Z" fill="#fff" stroke="#2a301a"/>
-            <text x="392" y="152" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">¿Humano?</text>
-            <rect x="176" y="124" width="120" height="48" rx="6" fill="#fff" stroke="#5c6245"/>
-            <text x="236" y="152" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Main</text>
-            <rect x="300" y="126" width="28" height="14" fill="#fbf8f1"/>
-            <text x="314" y="136" text-anchor="middle" font-size="8" letter-spacing=".06em" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">AUTO</text>
-            <rect x="262" y="5" width="104" height="14" fill="#fbf8f1"/>
-            <text x="314" y="15" text-anchor="middle" font-size="8" letter-spacing=".06em" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">VUELVE A BUILD</text>
-          </svg>
-        </div>
-      </div>
-      <div>
-        <h3>Fichas de petición (tokens)</h3>
-        <div class="papel" style="display:grid;gap:.9rem;grid-template-columns:minmax(0,1fr)">
-          <div class="fila" style="gap:.6rem"><span class="chip">#41</span><span class="chip chip--curso">● #42</span><span class="chip chip--espera">– #44</span><span class="chip chip--no">! #45</span><span class="chip chip--sigue">✓ #43</span></div>
-          <div class="nota">Pastilla mono con el número; relleno limón = ahora, limón suave = espera a una persona, rojo de error = rechazada, oliva = la que sigues. Siempre con una marca (✓ ● ! –) además del color.</div>
-          <div class="eyebrow" style="margin:0">Reloj de movimiento</div>
-          <div><div class="reloj" style="width:160px"></div><span class="nota"><code>--motion-fast</code> 160 ms · hover, foco, fundidos</span></div>
-          <div><div class="reloj" style="width:480px;max-width:100%"></div><span class="nota"><code>--motion-step</code> 480 ms · una petición avanza una estación</span></div>
-          <div><div class="reloj" style="width:720px;max-width:100%"></div><span class="nota"><code>--motion-hold</code> 720 ms · pausa para que el ojo alcance · sin rebotes ni muelles · <code>prefers-reduced-motion</code>: mismos estados sin viaje</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="leyenda" role="group" aria-label="Leyenda de ejemplo">
-      <span class="eyebrow" style="margin:0">Leyenda</span>
-      <span><svg width="34" height="14" aria-hidden="true"><rect x=".5" y=".5" width="33" height="13" rx="3" fill="#fff" stroke="#5c6245"/></svg>Paso</span>
-      <span><svg width="34" height="14" aria-hidden="true"><path d="M17 .5L33 7L17 13.5L1 7Z" fill="#fff" stroke="#2a301a"/></svg>Decisión</span>
-      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5c6245" stroke-width="1.2"/><polygon points="26 3.5,34 7,26 10.5" fill="#5c6245"/></svg>Flujo</span>
-      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5b6b2e" stroke-width="2"/><polygon points="26 3.5,34 7,26 10.5" fill="#5b6b2e"/></svg>Camino activo</span>
-      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4"/><polygon points="26 3.5,34 7,26 10.5" fill="#5c6245"/></svg>Vuelta</span>
-    </div>
-  </section>
+<section class="sec campo-crema pag" aria-labelledby="tipografia">
+  <h2 id="tipografia">Tipografía</h2>
+  <div class="rej tip">
+    <p class="t-d">Fruta de Murcia en tu almacén</p>
+    <p class="t-n">League Spartan 700 · <code>--t-display</code> · titulares y cifras</p>
+    <p class="t-t">Productos destacados</p>
+    <p class="t-n">League Spartan 700 · <code>--t-titulo</code> · <code>h2</code></p>
+    <p class="t-l">Limón Verna <span>1,15 € / kg</span></p>
+    <p class="t-n">League Spartan 700 · <code>--t-lead</code> · <code>h3</code> y precios</p>
+    <p class="t-c">Limón de piel lisa y mucho zumo, cosechado en la Vega del Segura. Texto corrido en tinta, a 62 caracteres como máximo.</p>
+    <p class="t-n">Figtree 400 · <code>--t-cuerpo</code> · texto, botones, menús</p>
+    <p class="t-p">Pie de foto, insignias, contadores · nunca bajo 14 px</p>
+    <p class="t-n">Figtree · <code>--t-peq</code></p>
+  </div>
+  <p class="nota-s">Ambas SIL OFL, servidas desde el propio sitio. Sin monoespaciada, sin mayúsculas espaciadas, sin cursiva, sin numeración 01/02. Cinco tamaños por página.</p>
+</section>
 
-  <section aria-labelledby="forma">
-    <h2 id="forma">Espaciado, radio y relieve</h2>
-    <div class="rejilla r4">
-      <div class="caja" style="border-radius:8px"><strong>Radio 8px</strong><br><span class="nota">Tarjetas y paneles. Sin sombra</span></div>
-      <div class="caja" style="border-radius:6px"><strong>Radio 6px</strong><br><span class="nota">Nodos, botones, campos</span></div>
-      <div class="caja" style="border-radius:999px;text-align:center"><strong>999px</strong><br><span class="nota">Solo chips y fichas</span></div>
-      <div class="caja" style="border-radius:8px"><strong>Filete 1px</strong><br><span class="nota">Ancho 1120px · separación 1.25rem · múltiplos de 4</span></div>
-    </div>
-  </section>
+<section class="sec pag" aria-labelledby="gramatica">
+  <h2 id="gramatica">El motivo y la gramática</h2>
+  <div class="rej gram">
+    <div class="g1"><div class="g-disco"><img src="web-limonia/assets/limon-cortado.webp" width="800" height="800" alt="Un limón cortado por la mitad"></div><p>El disco: el limón cortado, a tres o cuatro escalas.</p></div>
+    <div class="g2"><div class="g-cuarto"></div><p>Una esquina: arriba a la derecha es un cuarto de círculo en toda tarjeta, campo y foto.</p></div>
+    <div class="g3"><div class="tira"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><p>La franja: el único adorno, una vez en el hero.</p></div>
+    <div class="g4"><div class="pie__marca" style="height:110px;margin:0" aria-hidden="true"><span style="font-size:3.4rem">L</span><span style="font-size:3.4rem">I</span><span style="font-size:3.4rem">M</span><span style="font-size:3.4rem">O</span><span style="font-size:3.4rem">N</span><span style="font-size:3.4rem">I</span><span style="font-size:3.4rem">A</span></div><p>La marca del pie, construida con bloques.</p></div>
+  </div>
+  <ul class="reglas"><li>Plano: sin sombras, sin degradados, sin cristal.</li><li>Sin filetes: espacio, escalón de tono o una forma rellena.</li><li>Un solo radio de esquina y un solo botón: la píldora.</li><li>Márgenes iguales (<code>--margen</code>) y una rejilla de 12 columnas con 12 px de hueco.</li></ul>
+</section>
 
-  <section aria-labelledby="componentes">
-    <h2 id="componentes">Componentes</h2>
-    <h3>Botones e insignias</h3>
-    <div class="fila" style="margin-bottom:2rem">
-      <a class="boton" href="#componentes">Pide presupuesto</a>
-      <a class="boton boton--borde" href="#componentes">Ver catálogo</a>
-      <span class="insignia insignia--ok">Disponible</span>
-      <span class="insignia insignia--no">No disponible</span>
-    </div>
+<section class="sec campo-crema pag" aria-labelledby="componentes">
+  <h2 id="componentes">Componentes</h2>
+  <h3>Botones e insignias</h3>
+  <p class="fila"><a class="btn" href="#componentes">Calcular presupuesto</a><a class="btn btn--paso" href="#componentes">Ver catálogo</a><a class="btn btn--limon" href="#componentes">Pedir un cambio</a><button class="btn" disabled>Enviando…</button><span class="ins ins--ok">Disponible</span><span class="ins ins--no">No disponible</span></p>
+  <h3 style="margin-top:56px">Tarjeta de campaña: oliva, limon, tierra, blanco</h3>
+  <ul class="campanas" style="margin-top:20px">
+    <li class="campana campana--oliva" style="grid-column:span 6"><div class="campana__texto"><h3>Más kilos, mejor precio</h3></div><p>Descuentos automáticos desde 1.000 kg. A partir de 20.000 kg, el mejor tramo.</p><a class="btn btn--blanco" href="#componentes">Calcular presupuesto</a></li>
+    <li class="campana campana--limon" style="grid-column:span 6"><div class="campana__texto"><h3>Temporada de limón Verna</h3></div><p>Ya cortamos el Verna en la Vega del Segura. Pídelo en palés completos para toda Europa.</p><a class="btn" href="#componentes">Ver el catálogo</a></li>
+    <li class="campana campana--tierra" style="grid-column:span 6"><div class="campana__texto"><h3>Desde la huerta de Murcia</h3></div><p>Fruta y hortaliza de la huerta de Europa, en tu almacén en menos de cinco días.</p></li>
+    <li class="campana campana--blanco" style="grid-column:span 6"><div class="campana__texto"><h3>Alcachofa tierna</h3></div><p>De la Vega Baja, de octubre a abril. Muestra de la tarjeta blanca.</p><a class="btn" href="#componentes">Ver el catálogo</a></li>
+  </ul>
+  <h3 style="margin-top:56px">Fila de producto</h3>
+  <ul class="carta carta--2" style="margin-top:20px">
+    <li><span class="bola"></span><div><div class="carta__nombre"><h3>Limón Fino</h3><p class="carta__precio">0,95 € <small>/ kg</small></p></div><p class="d">Limón fino de temporada, aromático y de piel fina.</p><p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p></div></li>
+    <li><span class="bola bola--verde"></span><div><div class="carta__nombre"><h3>Alcachofa</h3><p class="carta__precio carta__consultar">Precio a consultar</p></div><p class="d">Alcachofa tierna de la Vega Baja, de octubre a abril.</p><p class="meta"><span class="ins ins--ok">Disponible</span> Vega del Segura</p></div></li>
+  </ul>
+  <h3 style="margin-top:56px">Feature: lista, tabla, texto</h3>
+  <div class="rej feat">
+    <div><h4>Lo más barato por categoría <small>lista</small></h4><ul class="carta" style="gap:14px"><li><span class="bola"></span><div class="carta__nombre"><span>Fruta: Naranja Navel</span><strong class="carta__precio">0,78 €/kg</strong></div></li><li><span class="bola bola--verde"></span><div class="carta__nombre"><span>Hortaliza: Lechuga Iceberg</span><strong class="carta__precio">0,65 €/kg</strong></div></li></ul></div>
+    <div class="tabla-s"><h4>Días de tránsito <small>tabla</small></h4><table><thead><tr><th scope="col">Destino</th><th scope="col">Días</th></tr></thead><tbody><tr><td>Róterdam</td><td>3</td></tr><tr><td>Hamburgo</td><td>3</td></tr></tbody></table></div>
+    <div><h4>Precio medio por kilo <small>texto</small></h4><p>El precio medio del catálogo es 1,15 €/kg.</p></div>
+  </div>
+  <h3 style="margin-top:56px">Formulario</h3>
+  <form class="muestra-form" onsubmit="return false"><div class="campo"><label for="m-texto">¿Qué quieres cambiar en LIMONIA?</label><textarea id="m-texto" maxlength="150" placeholder="Ej.: una campaña verde sobre el limón de temporada"></textarea><p class="contador"><span>Máximo 150 caracteres</span><span><strong>0</strong> / 150</span></p></div><button class="btn" type="submit">Enviar a la factory</button></form>
+  <h3 style="margin-top:56px">Progreso de una petición</h3>
+  <div class="rej prog"><figure class="dial-s"><svg id="dial" viewBox="0 0 440 440" role="img" aria-labelledby="dial-t"><title id="dial-t">Progreso de la petición</title></svg></figure>
+    <ul class="estados">
+      <li><span class="estacion__marca" style="background:var(--oliva);color:#fff"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Hecho</li>
+      <li><span class="estacion__marca" style="background:var(--limon);color:var(--tinta)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg></span> En curso</li>
+      <li><span class="estacion__marca" style="background:#7a2b0e;color:#fff"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span> Se detuvo aquí</li>
+      <li><span class="estacion__marca">5</span> Pendiente</li>
+    </ul></div>
+</section>
 
-    <h3>Tarjeta de campaña: oliva, limon, tierra, blanco</h3>
-    <div class="rejilla r4" style="margin-bottom:2rem">
-      <article class="tarjeta campana campana--oliva"><span class="campana__emoji" aria-hidden="true">🫒</span><h3>Aceituna de la vega</h3><p>Llega la nueva cosecha. Reserva tu volumen de otoño.</p><a class="boton boton--suave" href="#componentes">Pedir precio</a></article>
-      <article class="tarjeta campana campana--limon"><span class="campana__emoji" aria-hidden="true">🍋</span><h3>Limón Verna</h3><p>Temporada abierta hasta junio, con calibres para cadenas.</p></article>
-      <article class="tarjeta campana campana--tierra"><span class="campana__emoji" aria-hidden="true">🥔</span><h3>Patata nueva</h3><p>Origen Cartagena, lavada y en saco de 25 kg.</p></article>
-      <article class="tarjeta campana campana--blanco"><span class="campana__emoji" aria-hidden="true">🥬</span><h3>Lechuga iceberg</h3><p>Disponible toda la semana para salida a Francia.</p></article>
-    </div>
-    <p class="nota">Título hasta 60 caracteres, texto hasta 160, emoji hasta 8, botón hasta 30 (siempre a /presupuesto/).</p>
+<section class="sec pag" aria-labelledby="comun">
+  <h2 id="comun">Qué comparten el sitio y el tablero</h2>
+  <div class="rej comun">
+    <div><h3>Compartido</h3><ul class="reglas"><li>Los colores de marca y sus papeles.</li><li>La cabecera y el pie: el tablero va bajo la misma barra.</li><li>Figtree como texto; el reloj de movimiento (160 / 480 / 720 ms); el anillo de foco.</li><li>«El estado nunca es solo color»; un solo acento por pantalla.</li></ul></div>
+    <div><h3>Solo del tablero (<code>.fd</code>)</h3><ul class="reglas"><li>Monoespaciada y etiquetas en mayúscula espaciada.</li><li>Filetes de 1 px, papel de puntos, conectores SVG.</li><li>Es la interfaz del propio producto: su gramática viene de diagram-design y cambia con su propia tarea.</li></ul></div>
+  </div>
+</section>
 
-    <h3>Tarjeta de producto</h3>
-    <div class="rejilla r3" style="margin-bottom:2rem">
-      <article class="tarjeta"><div class="producto__cabecera"><span class="producto__emoji" aria-hidden="true">🍋</span><span class="insignia insignia--ok">Disponible</span></div><h3>Limón Fino</h3><p class="producto__precio"><strong>0,85 €</strong> / kg</p></article>
-      <article class="tarjeta"><div class="producto__cabecera"><span class="producto__emoji" aria-hidden="true">🍉</span><span class="insignia insignia--no">No disponible</span></div><h3>Sandía sin pepitas</h3><p class="producto__precio"><span style="color:var(--tinta-suave);font-style:italic">Precio a consultar</span></p></article>
-    </div>
-
-    <h3>Feature (pintada por la web, nunca por la feature)</h3>
-    <div class="rejilla r3">
-      <div class="tarjeta"><p class="eyebrow">tipo: lista · hasta 40</p><h3>Lo más barato por categoría</h3><ul class="feature__lista"><li><span>Fruta: Limón Fino</span><strong>0,85 €/kg</strong></li><li><span>Hortaliza: Patata nueva</span><strong>0,40 €/kg</strong></li></ul></div>
-      <div class="tarjeta feature__tabla"><p class="eyebrow">tipo: tabla · 1 a 6 columnas</p><h3>Días de tránsito</h3><table><thead><tr><th scope="col">Destino</th><th scope="col">Días</th></tr></thead><tbody><tr><td>Rotterdam</td><td>3</td></tr><tr><td>Hamburgo</td><td>4</td></tr></tbody></table></div>
-      <div class="tarjeta"><p class="eyebrow">tipo: texto</p><h3>Precio medio por kilo</h3><p class="feature__texto">El precio medio del catálogo es 0,72 €/kg.</p></div>
-    </div>
-  </section>
+<section class="sec campo-crema pag" aria-labelledby="desviaciones">
+  <h2 id="desviaciones">Desviaciones conocidas</h2>
+  <ul class="reglas"><li><strong>El hero de inicio está roto a propósito</strong> (el error visual de la demo): el campo del limón pierde su recorte y su sitio en la rejilla, y el disco gigante sube por detrás del titular, la frase y los botones. Se arregla solo con CSS (<code>.hero__campo</code> de nuevo en su celda con <code>overflow: hidden</code>, la tarjeta sobre su propio fondo). <code>npm run reset-demo</code> lo devuelve.</li><li>El sitio sigue con el aspecto anterior hasta migrar <code>src/styles/global.css</code>.</li><li>Los fragmentos <code>[data-ui]</code> (la calculadora) conservan sus convenciones de aplicación.</li><li>El campo <code>emoji</code> de campañas y productos se conserva en los datos pero no se pinta.</li></ul>
+</section>
 </main>
+<script>
+
+(function(){var E=['Entrada','Spec writer','Builder','Revisión','Approver','Puerta','Producción'],idx=3,N=7,NS='http://www.w3.org/2000/svg',cx=220,cy=220,R=212,r=64,gap=3.2,span=360/N;
+var pt=function(a,rad){var t=(a-90)*Math.PI/180;return[cx+rad*Math.cos(t),cy+rad*Math.sin(t)]};var svg=document.getElementById('dial');
+var rind=document.createElementNS(NS,'circle');rind.setAttribute('cx',cx);rind.setAttribute('cy',cy);rind.setAttribute('r',R+8);rind.setAttribute('fill','#f2d643');svg.append(rind);
+var OK='<svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',DOT='<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>';
+E.forEach(function(s,i){var a0=i*span+gap/2,a1=(i+1)*span-gap/2,p=[pt(a0,R),pt(a1,R),pt(a1,r),pt(a0,r)],st=i<idx?'h':i===idx?'a':'p';
+var d='M'+p[0]+'A'+R+' '+R+' 0 0 1 '+p[1]+'L'+p[2]+'A'+r+' '+r+' 0 0 0 '+p[3]+'Z',path=document.createElementNS(NS,'path');path.setAttribute('d',d);path.setAttribute('fill',{h:'#5b6b2e',a:'#fff',p:'#fbf0b0'}[st]);svg.append(path);
+var m=pt((a0+a1)/2,(R+r)/2);if(st==='p'){var t=document.createElementNS(NS,'text');t.setAttribute('x',m[0]);t.setAttribute('y',m[1]+10);t.setAttribute('text-anchor','middle');t.setAttribute('font-size','30');t.setAttribute('fill','#2a301a');t.textContent=String(i+1);svg.append(t)}else{var g=document.createElementNS(NS,'g');g.setAttribute('transform','translate('+(m[0]-18)+' '+(m[1]-18)+') scale(1.5)');g.setAttribute('color',st==='h'?'#fff':'#2a301a');g.innerHTML=st==='h'?OK:DOT;svg.append(g)}});
+var hub=document.createElementNS(NS,'circle');hub.setAttribute('cx',cx);hub.setAttribute('cy',cy);hub.setAttribute('r',r-6);hub.setAttribute('fill','#fbf8f1');svg.append(hub);
+var b=document.createElementNS(NS,'text');b.setAttribute('x',cx);b.setAttribute('y',cy+14);b.setAttribute('text-anchor','middle');b.setAttribute('font-size','52');b.setAttribute('fill','#2a301a');b.textContent='4';svg.append(b);
+var s=document.createElementNS(NS,'text');s.setAttribute('x',cx);s.setAttribute('y',cy+36);s.setAttribute('text-anchor','middle');s.setAttribute('font-size','17');s.setAttribute('fill','#2a301a');s.textContent='de 7';svg.append(s);
+document.getElementById('dial-t').textContent='Estación 4 de 7: Revisión'})();
+</script>
 </body>
 </html>

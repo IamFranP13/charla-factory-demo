@@ -1,0 +1,50 @@
+{
+  "title": "La web de LIMONIA (inicio, catálogo, presupuesto, petición)",
+  "feature": "odd/tasks/diseno-editorial.md",
+  "brief": "Rediseñar todo el sitio de LIMONIA con el método de taste-skill (leonxlnx, MIT): «para el diseño tienes esta skill que puedes usar para inspirarte en cómo tiene que ser el diseño de la web, diséñala como veas con lo que sabes de la demo, el system design que tenemos también lo puedes cambiar o quedarte solo con los colores». Dirección elegida: «one motif» (otras dos repartidas en la segunda mano: borrowed-category y type-only-statement; en la primera, page-is-the-object). La idea, en una frase: en esta web, el limón de LIMONIA cortado por la mitad se convierte en un único disco que lo recorre todo (el campo gigante del hero, la esquina en cuarto de círculo de cada tarjeta y foto, la píldora de los botones, la bola de cada lista, el dial de una petición y la marca del pie hecha de bloques). Se mantienen solo los colores de marca (oliva, limón, tierra, blanco cálido); tipografía (League Spartan + Figtree, OFL, autoalojadas), espaciado, componentes y movimiento son nuevos. Contenido real de catalogo/, content/, data/ y config/. Cero recursos de otros servidores: fotos de Wikimedia Commons descargadas (assets/CREDITS.md) y fuentes woff2 propias. El tablero /factory/ no cambia: comparte cabecera, pie, colores y reloj de movimiento.",
+  "direction": {
+    "tool": "taste-skill v2 (MIT), scripts/draw.mjs",
+    "chosen": "one-motif",
+    "dealt": ["borrowed-category", "one-motif", "type-only-statement"],
+    "firstDeal": ["one-motif", "page-is-the-object"],
+    "idea": "El limón cortado de LIMONIA es el único disco que recorre toda la web.",
+    "appStyle": "Framed sheet (draw.mjs --app --kind commerce), solo para el fragmento de la calculadora ([data-ui]) y el seguimiento de la petición"
+  },
+  "artboards": [
+    {
+      "file": "01-inicio.html",
+      "title": "Inicio",
+      "tradeoff": "Hero partido en dos campos (tarjeta crema con franja de etiqueta de caja, titular «Fruta de Murcia en tu almacén» en dos líneas, dos botones y los tres orígenes; a la derecha el campo limón con el limón cortado gigante recortado por su propio borde, que gira una vuelta cada 160 s, y una foto de la Vega del Segura) y debajo cifras escalonadas, campañas en mosaico 7/5, productos como carta con bolas, la fábrica como acordeón de cinco estaciones oscuro→claro, el formulario sobre el disco que vuelve y «Tus peticiones». Coste: es una página larga (6 pantallas) y el hero ocupa una pantalla entera, así que las cifras quedan bajo el pliegue; el titular cambia respecto al actual («De la huerta de Murcia a las mesas de Europa») para caber en dos líneas con el tamaño del hero; el disco es una foto real de un limón cortado, no un dibujo, y el campo `emoji` de campañas y productos no se pinta.",
+      "width": 1440,
+      "height": 6854
+    },
+    {
+      "file": "01-inicio.html",
+      "title": "Inicio · móvil",
+      "tradeoff": "El mismo archivo a 390 px: la tarjeta va primero (titular, frase, botones, orígenes) y el campo del limón debajo; cifras con las dos pequeñas lado a lado y la derecha 32 px más baja; carta en una columna; el acordeón pasa a barras verticales; menú de píldora «Menú» con hoja a pantalla completa. Sin scroll horizontal. Es larga (≈7.200 px).",
+      "width": 390,
+      "height": 7213
+    },
+    {
+      "file": "02-catalogo.html",
+      "title": "Catálogo",
+      "tradeoff": "Titular y frase a la izquierda y la huerta de Murcia a la derecha; Fruta (5) a dos columnas con bola limón, banda a todo ancho con naranjos, Hortaliza (5) con la Vega del Segura pegada a la derecha, y Destinos sobre fondo crema con el puerto de Cartagena y filas «n días · ciudad · tarifa». Precio a consultar y No disponible usan palabra además del color. Coste: la carta a dos columnas deja una fila huérfana con 5 productos y sin foto por producto (no existen), así que las bolas sustituyen a las fotos recortadas del bloque original.",
+      "width": 1440,
+      "height": 5434
+    },
+    {
+      "file": "03-presupuesto.html",
+      "title": "Presupuesto",
+      "tradeoff": "La calculadora vive en una hoja blanca sobre un marco crema ([data-ui], reglas de pantalla de aplicación del propio taste-skill): líneas producto + kilos a la izquierda, resumen fijo a la derecha con el total en una franja limón. Calcula de verdad con los precios, tramos y tarifas reales (misma regla que src/domain/presupuesto.js) y muestra el error «Los kilos deben ser un número entero entre 1 y 100.000». Debajo, un Feature de tipo tabla con los tramos de descuento. Coste: el título del h1 (93 px a 1920) es de página, no de pantalla de aplicación, y el inspector lo avisa; el selector usa un chevron SVG como fondo (fuera de la superficie de `estilo`, es Calculadora.astro).",
+      "width": 1440,
+      "height": 2451
+    },
+    {
+      "file": "04-tarea.html",
+      "title": "Seguimiento de una petición",
+      "tradeoff": "El limón cortado como dial de siete segmentos (hecho / en curso / se detuvo / pendiente) junto al titular «Petición #43», el mensaje final y la lista de estaciones con los cuatro revisores; debajo, los cuatro finales posibles. Acepta ?e=en_curso|esperando_persona|desplegada|rechazada para ver cada estado. Coste: el dial y la lista duplican la información a propósito (el dial se ve de lejos, la lista se lee); los marcadores son SVG propios porque los glifos ✓ ✕ se miden como emoji.",
+      "width": 1440,
+      "height": 3382
+    }
+  ]
+}

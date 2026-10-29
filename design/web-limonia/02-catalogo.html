@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo · LIMONIA</title>
+<style>
+@font-face{font-family:League Spartan;src:url(assets/fonts/league-spartan-latin.woff2) format('woff2');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:Figtree;src:url(assets/fonts/figtree-latin.woff2) format('woff2');font-weight:300 900;font-style:normal;font-display:swap}
+:root{
+  --oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;
+  --blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;
+  --control:#7d835f;--ok-fondo:#e3ecc2;--ok-texto:#33401a;--no-texto:#5c3a1f;--error-fondo:#fbe6dc;--error-texto:#7a2b0e;--error-borde:#c4511f;
+  --fuente:Figtree,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,sans-serif;
+  --fuente-titulo:League Spartan,Figtree,ui-sans-serif,system-ui,sans-serif;
+  --t-peq:clamp(.875rem,.8rem + .2vw,1.125rem);
+  --t-cuerpo:clamp(1.0625rem,.95rem + .4vw,1.5rem);
+  --t-lead:clamp(1.25rem,1rem + 1vw,2.25rem);
+  --t-titulo:clamp(2.1rem,1rem + 3.1vw,5.25rem);
+  --t-display:clamp(2.75rem,1rem + 4vw,6.5rem);
+  --margen:clamp(20px,2.2vw,32px);
+  --hueco:12px;
+  --cuarto:clamp(44px,6vw,104px);
+  --motion-fast:160ms;--motion-step:480ms;--motion-hold:720ms;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;font-family:var(--fuente);font-size:var(--t-cuerpo);line-height:1.55;color:var(--tinta);background:var(--blanco);-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+h1,h2,h3{font-family:var(--fuente-titulo);font-weight:700;letter-spacing:-.035em;line-height:.95;margin:0;color:var(--tinta)}
+h1{font-size:var(--t-display)}
+h2{font-size:var(--t-titulo)}
+h3{font-size:var(--t-lead);letter-spacing:-.02em;line-height:1.05}
+p{margin:0 0 1em}
+a{color:var(--oliva-oscuro);text-underline-offset:4px;text-decoration-thickness:2px}
+a:hover{color:var(--oliva)}
+:focus-visible{outline:3px solid var(--oliva-oscuro);outline-offset:3px}
+.saltar{position:absolute;left:-999px;top:0;background:var(--oliva-oscuro);color:#fff;padding:.7rem 1.1rem;z-index:100}
+.saltar:focus{left:var(--margen);top:8px}
+.peq{font-size:var(--t-peq);color:var(--tinta);line-height:1.45}
+
+/* Header: wordmark, four links, one action */
+.cab{position:sticky;top:0;z-index:50;background:var(--blanco)}
+.cab__fila{display:flex;align-items:center;gap:20px;min-height:72px;padding-inline:var(--margen)}
+.marca{display:inline-flex;align-items:center;gap:10px;font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.01em;color:var(--oliva-oscuro);text-decoration:none;margin-right:auto}
+.marca svg{display:block}
+.menu ul{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.menu a{display:flex;align-items:center;min-height:44px;padding:0 14px;font-size:var(--t-cuerpo);font-weight:600;color:var(--tinta);text-decoration:none;transition:color var(--motion-fast)}
+.menu a:hover{color:var(--oliva)}
+.menu a[aria-current=page]{text-decoration:underline;text-decoration-color:var(--limon);text-decoration-thickness:4px;text-underline-offset:9px}
+.menu-boton{display:none;min-height:44px;padding:0 20px;font:inherit;font-size:var(--t-cuerpo);font-weight:600;color:var(--tinta);background:var(--crema);border:0;border-radius:999px;cursor:pointer}
+
+/* Buttons: one shape, the pill (the disc family) */
+.btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 28px;font:inherit;font-size:var(--t-cuerpo);font-weight:600;line-height:1;text-decoration:none;text-align:center;color:#fff;background:var(--oliva);border:0;border-radius:999px;cursor:pointer;transition:background var(--motion-fast),color var(--motion-fast),transform var(--motion-fast) var(--ease)}
+.btn:hover{background:var(--oliva-oscuro);color:#fff;transform:translateY(-2px)}
+.btn:active{transform:scale(.97)}
+.btn--paso{background:var(--crema);color:var(--tinta)}
+.btn--paso:hover{background:var(--tierra-suave);color:var(--tinta)}
+.btn--blanco{background:#fff;color:var(--tinta)}
+.btn--blanco:hover{background:var(--limon);color:var(--tinta)}
+.btn--limon{background:var(--limon);color:var(--tinta)}
+.btn--limon:hover{background:var(--limon-suave);color:var(--tinta)}
+.btn:disabled{opacity:1;background:var(--tierra-suave);color:var(--no-texto);cursor:not-allowed;transform:none}
+
+/* The one shape: a quarter of the cut lemon, one corner */
+.cuarto{border-top-right-radius:var(--cuarto)}
+.bola{display:block;flex:none;width:28px;height:28px;margin-top:.15em;border-radius:50%;background:var(--limon)}
+.bola--verde{background:var(--oliva-claro)}
+.punto{display:inline-block;width:.6em;height:.6em;border-radius:50%;background:var(--limon);vertical-align:baseline;margin-right:.5em}
+
+/* Frame */
+.pag{padding-inline:var(--margen)}
+.sec{padding-block:clamp(80px,8vw,120px)}
+.rej{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco)}
+.fig{margin:0}
+.fig img{width:100%;height:100%;object-fit:cover}
+.fig figcaption{font-size:var(--t-peq);color:var(--tinta);margin-top:10px}
+.fig--chip{position:relative}
+.fig--chip figcaption{position:absolute;left:0;bottom:0;margin:0;padding:10px 16px;background:var(--blanco);color:var(--tinta)}
+.campo-crema{background:var(--crema)}
+.campo-oliva{background:var(--oliva-oscuro);color:#fff}
+.campo-oliva h2,.campo-oliva p{color:#fff}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:var(--hueco);padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px)}
+.hero__tarjeta{display:flex;flex-direction:column;background:var(--crema);border-top-right-radius:var(--cuarto);overflow:hidden}
+.tira{display:flex;height:40px;flex:none;overflow:hidden}
+.tira i{flex:none;width:28px;height:100%;background:var(--oliva-oscuro)}
+.tira i:nth-child(even){background:var(--limon)}
+.hero__cuerpo{display:flex;flex-direction:column;flex:1;padding:clamp(28px,4vw,64px)}
+.hero h1{max-width:11ch;margin-bottom:clamp(20px,2.4vw,32px)}
+.hero__texto{font-size:var(--t-cuerpo);line-height:1.5;max-width:40ch;margin-bottom:clamp(24px,3vw,40px)}
+.hero__acciones{display:flex;flex-wrap:wrap;gap:12px}
+.hero .btn--paso{background:var(--blanco)}
+.hero .btn--paso:hover{background:var(--limon)}
+.hero__origen{margin-top:auto;padding-top:clamp(28px,4vw,56px);margin-bottom:0}
+.hero__origen p{margin:0 0 8px;font-weight:600}
+.hero__origen li{font-size:var(--t-cuerpo)}
+.hero__origen ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 28px}
+.hero__campo{position:relative;background:var(--limon);overflow:hidden;min-height:420px;border-top-left-radius:0}
+.hero__disco{position:absolute;top:50%;right:-24%;width:min(118%,calc(100svh + 120px));aspect-ratio:1;translate:0 -50%;border-radius:50%;overflow:hidden;z-index:0}
+.hero__disco img{width:100%;height:100%;object-fit:cover;scale:1.32;animation:gira 160s linear infinite}
+.hero__vega{position:absolute;left:clamp(16px,2.4vw,36px);bottom:clamp(16px,2.4vw,36px);width:min(46%,320px);border-top-right-radius:calc(var(--cuarto) * .5);overflow:hidden;background:var(--blanco);z-index:1}
+.hero__vega img{aspect-ratio:4/3;height:auto}
+.hero__vega figcaption{margin:0;padding:10px 14px;font-size:var(--t-peq);color:var(--tinta)}
+@keyframes gira{to{rotate:360deg}}
+
+/* Figures: stepped tiles */
+.cifras{align-items:start}
+.cifras__titulo{grid-column:7 / span 6;margin-bottom:20px;align-self:end}
+.cifras__titulo h2{font-size:var(--t-lead);letter-spacing:-.02em;line-height:1.1}
+.cifra{display:flex;flex-direction:column;justify-content:space-between;padding:clamp(20px,2vw,32px);margin:0;border-top-right-radius:calc(var(--cuarto) * .8)}
+.cifra strong{font-family:var(--fuente-titulo);font-size:var(--t-display);font-weight:700;letter-spacing:-.04em;line-height:.9}
+.cifra span{font-size:var(--t-lead);line-height:1.2;max-width:14ch}
+.cifra--1{grid-column:1 / span 6;grid-row:1 / span 2;min-height:clamp(260px,32vw,620px);background:var(--limon)}
+.cifra--2{grid-column:7 / span 3;grid-row:2;margin-top:clamp(0px,10vw,190px);min-height:clamp(220px,22vw,430px);background:var(--oliva-oscuro);color:#fff}
+.cifra--3{grid-column:10 / span 3;grid-row:2;margin-top:clamp(0px,17vw,330px);min-height:clamp(200px,15vw,290px);background:var(--tierra);color:#fff}
+.cifras{grid-template-rows:auto 1fr;row-gap:var(--hueco)}
+
+/* Campaigns */
+.cab-sec{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:clamp(28px,4vw,56px)}
+.campanas{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--hueco);list-style:none;margin:0;padding:0}
+.campana{display:flex;flex-direction:column;align-items:flex-start;gap:20px;min-height:clamp(280px,28vw,400px);padding:clamp(28px,4.2vw,40px);grid-column:span 6;border-top-right-radius:var(--cuarto)}
+.campana:nth-child(4n+1),.campana:nth-child(4n){grid-column:span 7}
+.campana:nth-child(4n+2),.campana:nth-child(4n+3){grid-column:span 5}
+.campana:last-child:nth-child(odd){grid-column:1 / -1;min-height:0;flex-direction:row;align-items:center;gap:clamp(20px,4vw,64px);flex-wrap:wrap}
+.campana h3{font-size:var(--t-titulo);line-height:.95;max-width:12ch}
+.campana p{max-width:34ch;margin:0}
+.campana__texto{flex:1}
+.campana .btn{margin-top:auto}
+.campana:last-child:nth-child(odd) .btn{margin-top:0}
+.campana--oliva{background:var(--oliva);color:#fff}
+.campana--oliva h3{color:#fff}
+.campana--oliva .bola{background:var(--limon);}
+.campana--limon{background:var(--limon);color:var(--tinta)}
+.campana--limon .bola{background:var(--limon-suave)}
+.campana--tierra{background:var(--tierra);color:#fff}
+.campana--tierra h3{color:#fff}
+.campana--tierra .bola{background:var(--tierra-suave)}
+.campana--blanco{background:#fff;color:var(--tinta)}
+
+/* Menu lists with disc bullets */
+.carta{list-style:none;margin:0;padding:0;display:grid;gap:36px 64px}
+.carta--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.carta li{display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:20px;align-items:start}
+.carta__nombre{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.carta h3{letter-spacing:-.02em}
+.carta__precio{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.02em;white-space:nowrap;font-variant-numeric:tabular-nums;margin:0}
+.carta__precio small{font-family:inherit;font-weight:700;font-size:var(--t-peq);letter-spacing:0;color:var(--tinta)}
+.carta__consultar{font-family:var(--fuente);font-weight:600;font-size:var(--t-cuerpo);color:var(--tinta)}
+.carta p.d{margin:6px 0 8px;max-width:38ch}
+.carta .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0;font-size:var(--t-cuerpo);color:var(--tinta)}
+.ins{display:inline-block;padding:2px 12px;border-radius:999px;font-size:var(--t-peq);font-weight:600;line-height:1.5}
+.ins--ok{background:var(--ok-fondo);color:var(--ok-texto)}
+.ins--no{background:var(--tierra-suave);color:var(--no-texto)}
+
+.partido{align-items:center}
+.partido__fig{grid-column:1 / span 5}
+.partido .fig{border-top-right-radius:var(--cuarto);overflow:hidden}
+.partido .fig img{aspect-ratio:4/5}
+.partido__texto{grid-column:7 / span 6;display:flex;flex-direction:column;gap:clamp(28px,3vw,44px)}
+
+/* Process accordion */
+.proceso__intro{margin-bottom:clamp(32px,5vw,64px);align-items:end}
+.proceso__intro h2{grid-column:1 / span 6}
+.proceso__intro p{grid-column:8 / span 5;margin:0;font-size:var(--t-cuerpo);line-height:1.5}
+.fases{display:flex;height:clamp(420px,36vw,520px);border-top-right-radius:var(--cuarto);overflow:hidden}
+.fase{position:relative;flex:0 0 clamp(150px,13vw,200px);min-width:0;border:0;margin:0;padding:0;font:inherit;text-align:left;cursor:pointer;color:inherit;transition:flex-grow var(--motion-step) var(--ease),background var(--motion-fast);overflow:hidden;display:block}
+.fase:hover{filter:none}
+.fase[aria-expanded=true]{flex:1 1 clamp(150px,13vw,200px);cursor:default}
+.fase__nombre{position:absolute;left:clamp(20px,2vw,28px);top:clamp(20px,2vw,28px);font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-cuerpo);line-height:1;letter-spacing:-.01em;white-space:nowrap;transition:font-size var(--motion-step) var(--ease)}
+.fase[aria-expanded=true] .fase__nombre{font-size:var(--t-titulo)}
+.fase__texto{position:absolute;left:clamp(20px,2.4vw,36px);bottom:clamp(20px,2.4vw,36px);width:min(36ch,calc(100% - 48px));margin:0;font-size:var(--t-cuerpo);display:none}
+.fase[aria-expanded=true] .fase__texto{display:block;animation:aparece var(--motion-step) var(--ease) 120ms both}
+@keyframes aparece{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.fase--1{background:var(--oliva-oscuro);color:#fff}
+.fase--2{background:var(--oliva);color:#fff}
+.fase--3{background:var(--oliva-claro);color:var(--tinta)}
+.fase--4{background:#cdd69b;color:var(--tinta)}
+.fase--5{background:var(--ok-fondo);color:var(--tinta)}
+.proceso__enlace{margin-top:clamp(24px,3vw,40px)}
+
+/* Request: the object returns */
+.pide{position:relative;background:var(--limon);overflow:hidden;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco);align-items:center;min-height:clamp(560px,72svh,760px);padding:clamp(48px,6vw,96px) var(--margen)}
+.pide__disco{position:absolute;left:-14vw;bottom:-18vw;width:min(54vw,800px);aspect-ratio:1;border-radius:50%;overflow:hidden}
+.pide__disco img{width:100%;height:100%;object-fit:cover;scale:1.1}
+.pide__form{position:relative;grid-column:7 / span 6;background:var(--blanco);padding:clamp(24px,3vw,48px);border-top-right-radius:var(--cuarto)}
+.pide__form h2{font-size:var(--t-titulo);margin-bottom:16px}
+.pide__form p{max-width:46ch}
+.campo{display:flex;flex-direction:column;gap:8px;margin:20px 0}
+.campo label{font-weight:600;font-size:var(--t-cuerpo)}
+textarea,select,input{font:inherit;color:var(--tinta);background:#fff;border:1px solid var(--control);border-radius:0;padding:12px 14px;width:100%}
+textarea{min-height:112px;resize:vertical;line-height:1.45}
+::placeholder{color:var(--tinta-suave);opacity:1}
+textarea:hover,select:hover,input:hover{border-color:var(--tinta-suave)}
+textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--oliva-oscuro);outline-offset:0;border-color:var(--oliva-oscuro)}
+.contador{display:flex;justify-content:space-between;gap:12px;font-size:var(--t-peq);color:var(--tinta);font-variant-numeric:tabular-nums;margin:0}
+.contador--lleno strong{color:var(--error-texto)}
+.pide__estado{min-height:1.6em;margin:14px 0 0;font-weight:600}
+.mis{margin-top:clamp(40px,5vw,72px)}
+.mis__lista{list-style:none;padding:0;margin:24px 0 0;display:grid;gap:4px}
+.mis__lista a{display:inline-flex;align-items:center;gap:14px;min-height:56px;color:var(--tinta);font-weight:600;text-decoration:none;transition:color var(--motion-fast),transform var(--motion-fast) var(--ease)}
+.mis__lista a::before{content:'';flex:none;width:20px;height:20px;border-radius:50%;background:var(--limon)}
+.mis__lista a:hover{color:var(--oliva);transform:translateX(4px)}
+.mis__lista .n{font-family:var(--fuente-titulo);font-size:var(--t-lead);letter-spacing:-.02em}
+
+/* Footer: the mark built large */
+.pie{background:var(--oliva-oscuro);color:#fff;padding:clamp(40px,5vw,72px) var(--margen) 28px}
+.pie a{color:#fff}
+.pie a:hover{color:var(--limon)}
+.pie .btn--limon,.pie .btn--limon:hover{color:var(--tinta)}
+.pie .btn--limon:hover{background:var(--limon-suave)}
+.pie__marca{display:flex;gap:4px;height:clamp(120px,24vw,340px);align-items:flex-end;margin-bottom:clamp(36px,4vw,56px)}
+.pie__marca span{flex:1 1 0;display:grid;place-items:center;font-family:var(--fuente-titulo);font-weight:700;font-size:clamp(4.25rem,15.5vw,15.5rem);line-height:1;color:var(--oliva-oscuro);overflow:hidden;padding-top:.02em}
+.pie__marca span:nth-child(1){background:var(--limon);height:100%}
+.pie__marca span:nth-child(2){background:var(--crema);height:72%;flex-grow:.55}
+.pie__marca span:nth-child(3){background:var(--oliva-claro);height:92%;flex-grow:1.25}
+.pie__marca span:nth-child(4){background:var(--limon-suave);height:80%}
+.pie__marca span:nth-child(5){background:var(--tierra-suave);height:100%}
+.pie__marca span:nth-child(6){background:var(--crema);height:64%;flex-grow:.55}
+.pie__marca span:nth-child(7){background:var(--limon);height:86%}
+.pie__cols{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--hueco);row-gap:28px}
+.pie__links{grid-column:1 / span 8;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;list-style:none;margin:0;padding:0}
+.pie__links a{display:inline-flex;align-items:center;min-height:44px;font-size:var(--t-cuerpo)}
+.pie__contacto{grid-column:9 / span 4}
+.pie__contacto p{margin:0 0 .5em;font-size:var(--t-cuerpo)}
+.pie__fin{grid-column:1 / -1;display:flex;justify-content:flex-start;align-items:center;gap:20px 40px;flex-wrap:wrap;margin-top:12px}
+.pie__fin p{margin:0;font-size:var(--t-cuerpo);max-width:40ch;color:#fff}
+.pie__creditos{grid-column:1 / span 8;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 20px;font-size:var(--t-peq);color:#fff}
+.pie__fin .btn{min-height:44px;padding:0 22px}
+
+/* Entrances */
+.js [data-sube]{opacity:0;transform:translateY(28px);transition:opacity 620ms var(--ease),transform 620ms var(--ease);transition-delay:calc(var(--i,0) * 80ms)}
+.js [data-sube].dentro{opacity:1;transform:none}
+
+@media (max-width:1100px){
+  .cifras__titulo{grid-column:1 / -1}
+  .cifra--1{grid-column:1 / -1;grid-row:auto;min-height:260px}
+  .cifra--2{grid-column:1 / span 6;grid-row:auto;margin-top:0}
+  .cifra--3{grid-column:7 / span 6;grid-row:auto;margin-top:32px}
+  .cifra--2,.cifra--3{min-height:260px}
+  .cifras__titulo{order:-1}
+  .cifra--1{order:0}
+}
+@media (max-width:1100px){
+  .fases{flex-direction:column;height:auto}
+  .fase,.fase[aria-expanded=true]{flex:none;width:auto;transition:height var(--motion-step) var(--ease)}
+  .fase{height:64px}
+  .fase__nombre{left:20px;top:18px}
+  .fase[aria-expanded=true] .fase__nombre{font-size:var(--t-lead)}
+  .fase[aria-expanded=true]{height:268px}
+  .fase__texto{left:20px;right:20px;bottom:20px;width:auto;top:68px}
+}
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;min-height:0}
+  .hero__tarjeta{min-height:0}
+  .hero h1{max-width:12ch}
+  .hero__origen{margin-top:32px;padding-top:0}
+  .hero__campo{min-height:min(96vw,520px)}
+  .hero__disco{right:-18%;width:112%}
+  .partido .fig{grid-column:1 / -1}
+  .partido__fig{grid-column:1 / -1}
+  .partido__texto{grid-column:1 / -1;margin-top:88px}
+  .carta--2{grid-template-columns:1fr;gap:32px}
+  .campana,.campana:nth-child(n){grid-column:span 6;min-height:260px}
+  .campana:last-child:nth-child(odd){grid-column:1 / -1;flex-direction:column;align-items:flex-start;min-height:260px}
+  .proceso__intro h2,.proceso__intro p{grid-column:1 / -1}
+  .proceso__intro p{margin-top:20px}
+  .pide{grid-template-columns:1fr;align-content:end;padding-top:min(70vw,420px);min-height:0}
+  .pide__disco{left:50%;translate:-50% 0;top:-16vw;bottom:auto;width:84vw}
+  .pide__form{grid-column:1 / -1}
+  .pie__links{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pie__contacto{grid-column:1 / -1}
+  .pie__creditos{grid-column:1 / -1;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .campana,.campana:nth-child(n){grid-column:1 / -1}
+  .campana h3{max-width:none}
+}
+@media (max-width:900px){
+  .menu-boton{display:inline-block}
+  .cab__fila .btn{display:none}
+  .menu{display:none;position:absolute;left:0;right:0;top:72px;background:var(--crema);padding:12px var(--margen) 24px;z-index:60}
+  .menu--abierto{display:block}
+  .menu ul{flex-direction:column;gap:0}
+  .menu a{font-family:var(--fuente-titulo);font-size:var(--t-titulo);letter-spacing:-.02em;min-height:60px;padding:0}
+  .menu a[aria-current=page]{text-underline-offset:6px}
+  .menu .menu__accion{display:flex;margin-top:12px}
+  .menu .menu__accion a{font-family:var(--fuente);font-size:var(--t-cuerpo);letter-spacing:0;color:#fff;min-height:48px;padding:0 28px;justify-content:center}
+}
+@media (max-width:720px){
+  .cifra--1{min-height:58vw}
+  .cifra--2{grid-column:1 / span 6;min-height:50vw;padding:16px}
+  .cifra--3{grid-column:7 / span 6;margin-top:32px;min-height:50vw;padding:16px}
+  .cifra--1 strong{font-size:clamp(3.4rem,15vw,4.5rem)}
+  .cifra--2 strong,.cifra--3 strong{font-size:clamp(2.2rem,10.5vw,3rem);white-space:nowrap}
+  .cifra--2 span,.cifra--3 span{font-size:var(--t-cuerpo)}
+}
+@media (min-width:901px){.menu .menu__accion{display:none}}
+@media (min-width:1500px){
+  :root{--margen:32px}
+  .carta--2{gap:44px 96px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;transition-delay:0ms !important;scroll-behavior:auto !important}
+  .js [data-sube]{opacity:1;transform:none}
+  .hero__disco img{animation:none}
+}
+
+
+.intro{padding-block:clamp(24px,4vw,56px) clamp(56px,7vw,104px)}
+.intro__fila{align-items:center;row-gap:32px}
+.intro__texto{grid-column:1 / span 6;display:flex;flex-direction:column;gap:24px}
+.intro h1{max-width:12ch}
+.intro__lead{font-size:var(--t-lead);line-height:1.35;max-width:30ch;margin:0}
+.salto{display:flex;flex-wrap:wrap;gap:12px}
+.intro__foto{grid-column:7 / span 6;overflow:hidden}
+.intro__foto img{aspect-ratio:4/3;height:auto}
+.cat{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:clamp(28px,4vw,48px)}
+.cat__n{margin:0;font-size:var(--t-cuerpo);font-weight:600;font-variant-numeric:tabular-nums}
+.banda{margin-block:0;margin-inline:0;padding-inline:var(--margen)}
+.banda figcaption{left:var(--margen)}
+.banda img{display:block}
+.horta{align-items:start}
+.horta__lista{grid-column:1 / span 7}
+.horta__foto{grid-column:9 / span 4;position:sticky;top:96px;overflow:hidden;border-top-right-radius:var(--cuarto)}
+.horta__foto img{aspect-ratio:4/5;object-position:60% 50%}
+.banda img{aspect-ratio:21/9;height:auto;border-top-right-radius:var(--cuarto)}
+.partido--arriba{align-items:start}
+.destinos__col{grid-column:7 / span 6}
+.destinos__foto{grid-column:1 / span 5;position:sticky;top:96px;border-top-right-radius:var(--cuarto);overflow:hidden}
+.destinos__foto img{aspect-ratio:4/5}
+.destinos{list-style:none;margin:clamp(28px,4vw,48px) 0;padding:0;display:grid;gap:28px}
+.destinos li{display:grid;grid-template-columns:var(--disco) minmax(0,1fr) auto;gap:20px;align-items:center}
+.destinos{--disco:calc(var(--t-titulo) * 1.9)}
+.destino__dias{display:grid;place-items:center;align-content:center;width:var(--disco);height:var(--disco);border-radius:50%;background:var(--limon);color:var(--tinta);text-align:center}
+.destino__dias strong{font-family:var(--fuente-titulo);font-size:var(--t-titulo);line-height:.9;letter-spacing:-.03em}
+.destino__dias small{font-size:var(--t-peq);color:var(--tinta);font-weight:600;line-height:1}
+.destinos h3{letter-spacing:-.02em}
+.destino__pais{margin:2px 0 0;color:var(--tinta);font-size:var(--t-cuerpo)}
+.destino__tarifa{margin:0;text-align:right;font-weight:600;font-size:var(--t-cuerpo);font-variant-numeric:tabular-nums;line-height:1.35}
+.destino__tarifa span{font-weight:400;font-size:var(--t-peq);color:var(--tinta)}
+@media (max-width:900px){
+  .intro__texto,.intro__foto{grid-column:1 / -1}
+  .horta__lista,.horta__foto{grid-column:1 / -1;position:relative;top:auto}
+  .horta__foto{margin-top:40px}
+  .horta__foto img{aspect-ratio:4/3}
+  .destinos__foto{position:relative;top:auto;grid-column:1 / -1}
+  .destinos__col{grid-column:1 / -1;margin-top:88px}
+  .banda img{aspect-ratio:4/3}
+}
+@media (max-width:480px){
+  .destinos li{grid-template-columns:var(--disco) minmax(0,1fr);gap:16px}
+  .destino__tarifa{grid-column:2;text-align:left;margin-top:-8px}
+}
+</style>
+</head>
+<body>
+<a class="saltar" href="#contenido">Saltar al contenido</a>
+
+<header class="cab">
+  <div class="cab__fila">
+    <a class="marca" href="01-inicio.html" aria-label="LIMONIA, inicio">
+      <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><circle cx="16" cy="17" r="12" fill="#f2d643"/><path d="M23 4c-6 0-10 3-11 8 6 0 10-3 11-8z" fill="#5b6b2e"/></svg>
+      <span>LIMONIA</span>
+    </a>
+    <button class="menu-boton" type="button" aria-expanded="false" aria-controls="menu">Menú</button>
+    <nav id="menu" class="menu" aria-label="Principal">
+      <ul>
+        <li><a href="01-inicio.html">Inicio</a></li>
+        <li><a href="02-catalogo.html" aria-current="page">Catálogo</a></li>
+        <li><a href="03-presupuesto.html">Presupuesto</a></li>
+        <li><a href="/factory/">Factory</a></li>
+        <li class="menu__accion"><a class="btn" href="01-inicio.html#pide">Pedir un cambio</a></li>
+      </ul>
+    </nav>
+    <a class="btn" href="01-inicio.html#pide">Pedir un cambio</a>
+  </div>
+</header>
+<main id="contenido">
+
+<section class="pag intro" aria-labelledby="titulo">
+  <div class="rej intro__fila">
+    <div class="intro__texto">
+      <h1 id="titulo" data-sube>Productos de la huerta de Murcia</h1>
+      <p class="intro__lead" data-sube style="--i:1">Precios por kilogramo para pedidos mayoristas. Los productos sin tarifa publicada se cotizan a medida.</p>
+      <nav class="salto" aria-label="En esta página" data-sube style="--i:2">
+        <a class="btn btn--paso" href="#fruta">Fruta</a><a class="btn btn--paso" href="#hortaliza">Hortaliza</a><a class="btn btn--paso" href="#destinos">Destinos</a>
+      </nav>
+    </div>
+    <figure class="fig intro__foto cuarto" data-sube style="--i:1">
+      <img src="assets/huerta-de-murcia.webp" width="1400" height="1050" alt="La huerta de Murcia vista desde lo alto: parcelas verdes entre el pueblo y la sierra">
+    </figure>
+  </div>
+</section>
+
+<section class="sec pag" id="fruta" aria-labelledby="h-fruta">
+  <div class="cat"><h2 id="h-fruta" data-sube>Fruta</h2><p class="cat__n">5 productos</p></div>
+  <ul class="carta carta--2">
+  <li data-sube style="--i:0"><span class="bola" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Limón Fino</h3><p class="carta__precio">0,95 € <small>/ kg</small></p></div>
+      <p class="d">Limón fino de temporada, aromático y de piel fina.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p>
+    </div></li>
+  <li data-sube style="--i:1"><span class="bola" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Limón Verna</h3><p class="carta__precio">1,15 € <small>/ kg</small></p></div>
+      <p class="d">Limón de piel lisa y mucho zumo, cosechado en la Vega del Segura.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Vega del Segura</p>
+    </div></li>
+  <li data-sube style="--i:0"><span class="bola" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Mandarina Clemenules</h3><p class="carta__precio">0,92 € <small>/ kg</small></p></div>
+      <p class="d">Mandarina temprana, muy jugosa y sin pepitas.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p>
+    </div></li>
+  <li data-sube style="--i:1"><span class="bola" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Naranja Navel</h3><p class="carta__precio">0,78 € <small>/ kg</small></p></div>
+      <p class="d">Naranja de mesa sin pepitas, dulce y fácil de pelar.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Vega del Segura</p>
+    </div></li>
+  <li data-sube style="--i:0"><span class="bola" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Uva de mesa</h3><p class="carta__precio">2,10 € <small>/ kg</small></p></div>
+      <p class="d">Uva sin pepitas. Fuera de temporada hasta el verano.</p>
+      <p class="meta"><span class="ins ins--no">No disponible</span> Valle del Guadalentín</p>
+    </div></li></ul>
+</section>
+
+<figure class="fig fig--chip banda pag" data-sube>
+  <img src="assets/naranjos.webp" width="1200" height="797" alt="Un naranjo cargado de fruta junto a una torre de ladrillo" loading="lazy">
+  <figcaption>Naranjos junto a una torre de ladrillo</figcaption>
+</figure>
+
+<section class="sec pag" id="hortaliza" aria-labelledby="h-horta">
+  <div class="rej horta">
+    <div class="horta__lista">
+      <div class="cat"><h2 id="h-horta" data-sube>Hortaliza</h2><p class="cat__n">5 productos</p></div>
+      <ul class="carta">
+  <li data-sube style="--i:0"><span class="bola bola--verde" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Alcachofa</h3><p class="carta__precio carta__consultar">Precio a consultar</p></div>
+      <p class="d">Alcachofa tierna de la Vega Baja, de octubre a abril.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Vega del Segura</p>
+    </div></li>
+  <li data-sube style="--i:1"><span class="bola bola--verde" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Brócoli</h3><p class="carta__precio">1,10 € <small>/ kg</small></p></div>
+      <p class="d">Brócoli de cabeza compacta, cortado a diario en invierno.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p>
+    </div></li>
+  <li data-sube style="--i:0"><span class="bola bola--verde" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Lechuga Iceberg</h3><p class="carta__precio">0,65 € <small>/ kg</small></p></div>
+      <p class="d">Lechuga iceberg crujiente, envasada en campo.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p>
+    </div></li>
+  <li data-sube style="--i:1"><span class="bola bola--verde" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Pimiento California</h3><p class="carta__precio">1,35 € <small>/ kg</small></p></div>
+      <p class="d">Pimiento rojo de carne gruesa, ideal para asar.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Campo de Cartagena</p>
+    </div></li>
+  <li data-sube style="--i:0"><span class="bola bola--verde" aria-hidden="true"></span>
+    <div>
+      <div class="carta__nombre"><h3>Tomate Raf</h3><p class="carta__precio">2,40 € <small>/ kg</small></p></div>
+      <p class="d">Tomate Raf de carne firme y sabor intenso, cultivado cerca del mar.</p>
+      <p class="meta"><span class="ins ins--ok">Disponible</span> Águilas</p>
+    </div></li></ul>
+    </div>
+    <figure class="fig fig--chip horta__foto" data-sube>
+      <img src="assets/vega-del-segura.webp" width="1600" height="790" alt="Parcelas de regadío de la Vega del Segura entre la sierra y el río" loading="lazy">
+      <figcaption>La Vega del Segura</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="sec campo-crema pag" id="destinos" aria-labelledby="h-destinos">
+  <div class="rej partido partido--arriba">
+    <figure class="fig fig--chip destinos__foto" data-sube>
+      <img src="assets/puerto-de-cartagena.webp" width="1200" height="800" alt="El puerto de Cartagena visto desde el aire, con sus muelles y depósitos" loading="lazy">
+      <figcaption>El puerto de Cartagena</figcaption>
+    </figure>
+    <div class="destinos__col">
+      <h2 id="h-destinos" data-sube>Destinos de exportación</h2>
+      <ul class="destinos">
+        <li data-sube style="--i:0"><span class="destino__dias"><strong>3</strong><small>días</small></span><div><h3>Hamburgo</h3><p class="destino__pais">Alemania</p></div><p class="destino__tarifa">0,14 €/kg<br><span>mínimo 180 €</span></p></li>
+        <li data-sube style="--i:1"><span class="destino__dias"><strong>2</strong><small>días</small></span><div><h3>Rungis</h3><p class="destino__pais">Francia</p></div><p class="destino__tarifa">0,10 €/kg<br><span>mínimo 120 €</span></p></li>
+        <li data-sube style="--i:2"><span class="destino__dias"><strong>3</strong><small>días</small></span><div><h3>Róterdam</h3><p class="destino__pais">Países Bajos</p></div><p class="destino__tarifa">0,13 €/kg<br><span>mínimo 160 €</span></p></li>
+        <li data-sube style="--i:0"><span class="destino__dias"><strong>4</strong><small>días</small></span><div><h3>Varsovia</h3><p class="destino__pais">Polonia</p></div><p class="destino__tarifa">0,17 €/kg<br><span>mínimo 220 €</span></p></li>
+        <li data-sube style="--i:1"><span class="destino__dias"><strong>4</strong><small>días</small></span><div><h3>Londres</h3><p class="destino__pais">Reino Unido</p></div><p class="destino__tarifa">0,19 €/kg<br><span>mínimo 260 €</span></p></li>
+        <li data-sube style="--i:2"><span class="destino__dias"><strong>5</strong><small>días</small></span><div><h3>Estocolmo</h3><p class="destino__pais">Suecia</p></div><p class="destino__tarifa">0,22 €/kg<br><span>mínimo 300 €</span></p></li>
+      </ul>
+      <p><a class="btn" href="03-presupuesto.html">Calcular presupuesto</a></p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="pie">
+  <div class="pie__marca" aria-hidden="true"><span>L</span><span>I</span><span>M</span><span>O</span><span>N</span><span>I</span><span>A</span></div>
+  <div class="pie__cols">
+    <ul class="pie__links">
+      <li><a href="01-inicio.html">Inicio</a></li>
+      <li><a href="02-catalogo.html">Catálogo</a></li>
+      <li><a href="03-presupuesto.html">Presupuesto</a></li>
+      <li><a href="/factory/">Factory</a></li>
+    </ul>
+    <div class="pie__contacto">
+      <p><strong>LIMONIA</strong><br>Exportación de frutas y hortalizas de Murcia a Europa.</p>
+    </div>
+    <ul class="pie__creditos" aria-label="Créditos de las fotografías, vía Wikimedia Commons">
+      <li>Vega del Segura: Bobnienhuis, dominio público</li>
+      <li>Limón cortado: Ivar Leidus, CC BY-SA 4.0</li>
+      <li>Limonero: Vyacheslav Argenberg, CC BY 4.0</li>
+      <li>Naranjos: Steve Slater, CC BY 2.0</li>
+      <li>Huerta de Murcia: pabloes, CC BY-SA 3.0</li>
+      <li>Puerto de Cartagena: Andrew Thomas, CC BY-SA 2.0</li>
+    </ul>
+    <div class="pie__fin">
+      <p>Empresa ficticia para una demo. Los precios y las tarifas son simulados.</p>
+      <a class="btn btn--limon" href="01-inicio.html#pide">Pedir un cambio</a>
+    </div>
+  </div>
+</footer>
+<script>
+
+document.documentElement.classList.add('js');
+(function(){
+  var b=document.querySelector('.menu-boton'),m=document.getElementById('menu');
+  if(b&&m){b.addEventListener('click',function(){var o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));m.classList.toggle('menu--abierto',!o)});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&m.classList.contains('menu--abierto')){b.click();b.focus()}})}
+  var els=[].slice.call(document.querySelectorAll('[data-sube]'));
+  var show=function(e){e.classList.add('dentro')};
+  if(!('IntersectionObserver' in window)){els.forEach(show);return}
+  var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){show(x.target);io.unobserve(x.target)}})},{threshold:.12,rootMargin:'0px 0px -6% 0px'});
+  requestAnimationFrame(function(){els.forEach(function(e){if(e.getBoundingClientRect().top<innerHeight)show(e);else io.observe(e)})});
+  setTimeout(function(){els.forEach(show)},3000);
+})();
+
+</script>
+</body>
+</html>
