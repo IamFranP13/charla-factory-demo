@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory · El diagrama en vivo (LIMONIA editorial)</title>
+<style>
+:root{
+  --oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;
+  --limon:#f2d643;--limon-suave:#fbf0b0;
+  --blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;
+  --tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;
+  --acento-tinte:rgb(91 107 46 / 10%);
+  --fuente:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;
+  --fuente-titulo:ui-serif,'Iowan Old Style','Palatino Linotype',Georgia,serif;
+  --mono:ui-monospace,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace;
+  --motion-fast:160ms;--motion-step:480ms;--motion-hold:720ms;--ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--blanco);color:var(--tinta);font-family:var(--fuente);font-size:17px;line-height:1.45;min-height:100vh}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--oliva);outline-offset:2px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-suave)}
+h1,h2{font-family:var(--fuente-titulo);font-weight:600;color:var(--oliva-oscuro);line-height:1.12}
+.mono{font-family:var(--mono)}
+
+/* ---- page frame ---- */
+.pagina{width:min(1920px,100%);height:100vh;margin-inline:auto;padding:16px 28px 16px;display:grid;gap:16px 24px;
+  grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"cab cab" "cont lat"}
+@media (min-width:1600px){.pagina{grid-template-columns:minmax(0,1fr) 384px}}
+.cab{grid-area:cab;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--borde);padding-bottom:10px}
+.cab h1{font-size:34px;margin-top:0}
+.cab p.sub{color:var(--tinta-suave);font-size:16px;margin-top:2px}
+.cab__acc{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.sigue{display:flex;flex-direction:column;gap:4px}
+.sigue__fila{display:flex;gap:8px}
+.sigue input{width:118px;height:44px;border:1px solid var(--tinta-suave);border-radius:6px;background:#fff;padding:0 12px;font-family:var(--mono);font-size:18px;font-weight:600}
+.boton{height:44px;padding:0 18px;border-radius:6px;border:1px solid var(--oliva);background:var(--oliva);color:#fff;font-weight:600;cursor:pointer;transition:background var(--motion-fast) var(--ease)}
+.boton:hover{background:var(--oliva-oscuro);border-color:var(--oliva-oscuro)}
+.boton--borde{background:transparent;color:var(--oliva-oscuro);border-color:var(--tinta-suave)}
+.boton--borde:hover{background:var(--crema);color:var(--oliva-oscuro);border-color:var(--tinta-suave)}
+.proto{display:flex;align-items:center;gap:8px;border:1px dashed var(--tinta-suave);border-radius:6px;padding:6px 8px 6px 10px;background:var(--crema)}
+.proto .eyebrow{font-size:11px;line-height:1.2}
+.proto .boton{height:36px;padding:0 12px;font-size:15px;min-width:44px}
+.sigue input::placeholder{color:var(--tinta-suave);opacity:1}
+.msg{min-height:20px;font-size:14px;color:var(--tinta-suave)}
+.msg.err{color:#7a2b0e}.msg:empty{display:none}
+
+/* ---- counters ---- */
+.cont{grid-area:cont;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
+.cont>.papel{flex:1;min-height:0}
+.contadores{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border:1px solid var(--borde);border-radius:8px}
+.contador{padding:6px 18px 6px;border-left:1px solid var(--borde);display:flex;flex-direction:column-reverse;gap:0}
+.contador:first-child{border-left:0}
+.contador dd{font-family:var(--mono);font-size:32px;font-weight:600;line-height:1.1;color:var(--oliva-oscuro);font-variant-numeric:tabular-nums}
+.contador dt{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-suave)}
+.contador--rech dd{color:#7a2b0e}
+
+/* ---- diagram ---- */
+.papel{position:relative;overflow:hidden;border:1px solid var(--borde);border-radius:8px;background-color:var(--blanco);
+  background-image:radial-gradient(circle,rgb(42 48 26 / 10%) 1px,transparent 1.2px);background-size:22px 22px}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0}
+.stage svg{position:absolute;inset:0;overflow:visible}
+.nodo-btn{position:absolute;background:transparent;border:0;border-radius:8px;cursor:pointer;padding:0;z-index:1}
+.nodo-btn:hover{background:rgb(91 107 46 / 6%)}
+.tk{position:absolute;left:0;top:0;width:42px;height:26px;z-index:2;border-radius:999px;border:1px solid var(--tinta-suave);background:#fff;
+  font-family:var(--mono);font-size:12px;font-weight:600;line-height:24px;letter-spacing:-.01em;color:var(--tinta);padding:0;cursor:pointer;white-space:nowrap;
+  transition:opacity var(--motion-step) var(--ease),background var(--motion-fast) var(--ease),border-color var(--motion-fast) var(--ease)}
+.tk:hover{border-color:var(--oliva-oscuro)}
+.tk--curso{background:var(--limon);border-color:var(--tinta)}
+.tk--espera{background:var(--limon-suave);border-color:var(--tinta-suave)}
+.tk--ok{background:#e3ecc2;border-color:var(--oliva);color:#33401a}
+.tk--rech{background:#fbe6dc;border-color:#c4511f;color:#7a2b0e}
+.tk::after{content:"";position:absolute;inset:-9px -2px}
+.tk.is-sel{background:var(--oliva);border-color:var(--oliva);color:#fff;z-index:4}
+.tk.is-hid{opacity:0;pointer-events:none}
+.tk.is-new{opacity:0}
+.hay-sel .tk:not(.is-sel){opacity:.35}
+.hay-sel .tk.is-hid{opacity:0}
+.mas{position:absolute;left:0;top:0;width:42px;height:26px;z-index:2;border-radius:999px;border:1px dashed var(--tinta-suave);background:var(--crema);
+  font-family:var(--mono);font-size:12px;font-weight:600;line-height:24px;padding:0;cursor:pointer;color:var(--tinta)}
+.mas[hidden]{display:none}
+.mas:hover{border-color:var(--oliva-oscuro)}
+
+/* SVG paint */
+.n-forma{fill:#fff;stroke:var(--tinta-suave);stroke-width:1}
+.n-forma.focal{fill:var(--acento-tinte);stroke:var(--oliva);stroke-width:1.5}
+.n-forma.term{fill:var(--crema)}
+.n-forma.dec{stroke:var(--tinta)}
+.n-forma.err{fill:#fbe6dc;stroke:#c4511f}
+.on-path .n-forma{stroke:var(--oliva);stroke-width:1.5}
+.n-nombre{font-family:var(--fuente);font-size:18px;font-weight:600;fill:var(--tinta)}
+.nodo.movil .n-nombre.t-rech{font-size:16px}
+.n-sub{font-family:var(--mono);font-size:12px;fill:var(--tinta-suave)}
+.n-cuenta rect{fill:#fff;stroke:var(--tinta-suave);stroke-width:1}
+.n-cuenta text{font-family:var(--mono);font-size:12px;font-weight:600;fill:var(--tinta);text-anchor:middle}
+.n-marca circle{stroke-width:1.2}
+.n-marca text{font-family:var(--mono);font-size:13px;font-weight:700;text-anchor:middle}
+.m-ok circle{fill:#e3ecc2;stroke:var(--oliva)} .m-ok text{fill:#33401a}
+.m-curso circle{fill:var(--limon);stroke:var(--tinta)} .m-curso text{fill:var(--tinta)}
+.m-rech circle{fill:#fbe6dc;stroke:#c4511f} .m-rech text{fill:#7a2b0e}
+.m-pend circle{fill:var(--crema);stroke:var(--tinta-suave)} .m-pend text{fill:var(--tinta-suave)}
+.e-base{fill:none;stroke:var(--tinta-suave);stroke-width:1.2}
+.e-base.vuelta{stroke-dasharray:5 4}
+.e-lit{fill:none;stroke:var(--oliva);stroke-width:2.2;opacity:0;transition:opacity var(--motion-step) var(--ease)}
+.e-lit.vuelta{stroke-dasharray:5 4}
+.e-lit.on{opacity:1}
+.e-lab rect{fill:var(--blanco)}
+.e-lab text{font-family:var(--mono);font-size:11px;letter-spacing:.06em;fill:var(--tinta-suave);text-anchor:middle}
+.e-lab.on text{fill:var(--oliva-oscuro);font-weight:700}
+.marco{fill:none;stroke:var(--borde);stroke-width:1;stroke-dasharray:none}
+.marco-t{font-family:var(--mono);font-size:11px;letter-spacing:.14em;fill:var(--tinta-suave)}
+
+/* ---- legend ---- */
+.leyenda{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center;border-top:1px solid var(--borde);padding-top:12px;font-size:14px;color:var(--tinta-suave)}
+.leyenda span.it{display:inline-flex;align-items:center;gap:8px}
+.leyenda .eyebrow{font-size:11px}
+.lg-chip{display:inline-block;min-width:38px;text-align:center;border:1px solid var(--tinta-suave);border-radius:999px;font-family:var(--mono);font-size:11px;font-weight:600;line-height:20px;background:#fff;color:var(--tinta);padding:0 6px}
+
+/* ---- side ---- */
+.lat{grid-area:lat;display:grid;gap:16px;align-content:start;min-width:0;min-height:0;overflow:auto}
+.panel{background:#fff;border:1px solid var(--borde);border-radius:8px;min-width:0}
+.panel__cab{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--crema);border-bottom:1px solid var(--borde);padding:8px 8px 8px 16px;border-radius:8px 8px 0 0;min-height:44px}
+.panel__cab .cerrar{min-width:44px;height:44px;border:0;background:transparent;font-family:var(--mono);font-size:20px;cursor:pointer;color:var(--tinta);border-radius:6px}
+.panel__cab .cerrar:hover{background:var(--borde)}
+.panel__cuerpo{padding:16px;display:grid;gap:14px}
+.panel h2{font-size:24px}
+.panel p{font-size:16px}
+.etiquetas{display:flex;flex-wrap:wrap;gap:6px}
+.etq{border:1px solid var(--tinta-suave);border-radius:999px;font-family:var(--mono);font-size:12px;padding:1px 10px;background:#fff;color:var(--tinta-suave)}
+.estado-msg{font-weight:600;font-size:16px}
+.motivo{border:1px solid #c4511f;border-radius:6px;background:#fbe6dc;color:#7a2b0e;padding:10px 12px;font-size:15px}
+.motivo b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:500;margin-bottom:2px}
+.pasos{list-style:none;padding:0;display:grid;border:1px solid var(--borde);border-radius:6px}
+.pasos li{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:5px 10px;border-top:1px solid var(--borde);font-size:15px}
+.pasos li:first-child{border-top:0}
+.pasos .mk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid;font-family:var(--mono);font-weight:700;font-size:12px}
+.pasos .mk.m-ok{background:#e3ecc2;border-color:var(--oliva);color:#33401a}
+.pasos .mk.m-curso{background:var(--limon);border-color:var(--tinta);color:var(--tinta)}
+.pasos .mk.m-rech{background:#fbe6dc;border-color:#c4511f;color:#7a2b0e}
+.pasos .mk.m-pend{background:var(--crema);border-color:var(--tinta-suave);color:var(--tinta-suave)}
+.pasos .w{font-family:var(--mono);font-size:12px;color:var(--tinta-suave);text-transform:uppercase;letter-spacing:.06em}
+.pasos li.aqui{background:var(--acento-tinte)}
+.enlace{display:inline-flex;align-items:center;min-height:44px;color:var(--oliva-oscuro);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.lista-pet{list-style:none;padding:0;display:grid;gap:6px}
+.lista-pet button{width:100%;min-height:44px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;text-align:left;background:#fff;border:1px solid var(--borde);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:15px}
+.lista-pet button:hover{border-color:var(--oliva-oscuro)}
+.lista-pet .n{font-family:var(--mono);font-weight:600}
+.vacio{color:var(--tinta-suave);font-size:15px}
+.cola h2{font-size:20px}
+.cola__cab{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.cola .num{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--oliva-oscuro)}
+
+/* ---- phone ---- */
+@media (max-width:1100px){
+  .cont>.papel{flex:none}.lat{overflow:visible}
+  .pagina{height:auto;grid-template-rows:none;grid-template-columns:minmax(0,1fr);grid-template-areas:"cab" "cont" "lat";padding:14px 12px 28px}
+  .cab h1{font-size:28px}
+  .cab__acc{width:100%;justify-content:space-between}
+  .sigue{flex:1}.sigue input{flex:1;min-width:0}
+  .contadores{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .contador:nth-child(3){border-left:0}
+  .contador:nth-child(n+3){border-top:1px solid var(--borde)}
+  .contador dd{font-size:30px}
+  .detalle{position:fixed;left:0;right:0;bottom:0;z-index:20;max-height:50vh;overflow:auto;border-radius:12px 12px 0 0;border-bottom:0;
+    transform:translateY(105%);transition:transform var(--motion-step) var(--ease);visibility:hidden}
+  .detalle.abierto{transform:none;visibility:visible}
+  body.sheet-open .pagina{padding-bottom:52vh}
+  .detalle .panel__cab::before{content:"";position:absolute;left:50%;top:6px;width:36px;height:3px;border-radius:2px;background:var(--tinta-suave);transform:translateX(-50%);opacity:.5}
+  .detalle .panel__cab{position:sticky;top:0;z-index:1;border-radius:12px 12px 0 0;padding-top:12px}
+  .lat{padding-bottom:12px}
+}
+@media (min-width:1101px){html,body{overflow:hidden}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms!important;animation-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<div class="pagina" id="pagina">
+  <header class="cab">
+    <div>
+      <p class="eyebrow">LIMONIA · Factory · en vivo</p>
+      <h1>La línea de la factory</h1>
+      <p class="sub">Cada petición viaja por el diagrama. Toca una petición o una estación.</p>
+    </div>
+    <div class="cab__acc">
+      <form class="sigue" id="form-sigue" autocomplete="off">
+        <label class="eyebrow" for="n-sigue">Sigue tu petición #</label>
+        <div class="sigue__fila">
+          <input id="n-sigue" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="43" aria-describedby="msg">
+          <button class="boton" type="submit">Seguir</button>
+        </div>
+      </form>
+      <div class="proto" role="group" aria-label="Control del prototipo">
+        <span class="eyebrow">Control<br>del prototipo</span>
+        <button class="boton boton--borde" type="button" id="b-play" aria-pressed="true">Pausa</button>
+        <button class="boton boton--borde" type="button" id="b-reset">Reiniciar</button>
+      </div>
+    </div>
+    <p class="msg" id="msg" role="status" style="width:100%"></p>
+  </header>
+
+  <main class="cont" id="contenido">
+    <dl class="contadores" aria-label="Contadores">
+      <div class="contador"><dd id="c-pet">0</dd><dt>Peticiones</dt></div>
+      <div class="contador"><dd id="c-prod">0</dd><dt>En producción</dt></div>
+      <div class="contador"><dd id="c-esp">0</dd><dt>Esperando</dt></div>
+      <div class="contador contador--rech"><dd id="c-rech">0</dd><dt>Rechazadas</dt></div>
+    </dl>
+    <div class="papel" id="papel">
+      <div class="stage" id="stage">
+        <svg id="svg" role="img" aria-labelledby="svg-t svg-d"><title id="svg-t">Diagrama de la factory</title><desc id="svg-d">Entrada, Spec writer y Builder, cuatro revisores en paralelo (Seguridad, UX, UI y Código), Approver y la puerta ¿Humano?, que lleva a Main si es automático o a un PR si espera a una persona, y de ahí a Producción. Un camino de vuelta lleva de Approver a Builder y otro a Rechazadas.</desc></svg>
+      </div>
+    </div>
+    <div class="leyenda" role="group" aria-label="Leyenda">
+      <span class="eyebrow">Leyenda</span>
+      <span class="it"><svg width="34" height="16" aria-hidden="true"><rect x=".5" y=".5" width="33" height="15" rx="4" fill="#fff" stroke="#5c6245"/></svg>Estación</span>
+      <span class="it"><svg width="34" height="16" aria-hidden="true"><rect x=".5" y=".5" width="33" height="15" rx="7" fill="#f3ecdc" stroke="#5c6245"/></svg>Entrada · salida</span>
+      <span class="it"><svg width="34" height="18" aria-hidden="true"><path d="M17 .5L33 9L17 17.5L1 9Z" fill="#fff" stroke="#2a301a"/></svg>Decisión</span>
+      <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2"/><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"/></svg>Flujo</span>
+      <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4"/><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"/></svg>Vuelta a Build</span>
+      <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5b6b2e" stroke-width="2.2"/><polygon points="29 2.5,37 6,29 9.5" fill="#5b6b2e"/></svg>Camino de la petición que sigues</span>
+      <span class="it"><span class="lg-chip" style="background:var(--limon);border-color:var(--tinta)">● #n</span>trabajando</span>
+      <span class="it"><span class="lg-chip" style="background:var(--limon-suave)">– #n</span>espera a una persona</span>
+      <span class="it"><span class="lg-chip" style="background:#e3ecc2;border-color:var(--oliva);color:#33401a">✓ #n</span>en producción</span>
+      <span class="it"><span class="lg-chip" style="background:#fbe6dc;border-color:#c4511f;color:#7a2b0e">! #n</span>rechazada</span>
+      <span class="it mono" style="font-size:13px">✓ hecho · ● en curso · ! rechazada · – pendiente</span>
+    </div>
+  </main>
+
+  <aside class="lat" id="lateral">
+    <section class="panel detalle" id="detalle" aria-labelledby="det-t" role="region">
+      <div class="panel__cab"><span class="eyebrow" id="det-t">Detalle</span><button class="cerrar" id="b-cerrar" type="button" aria-label="Cerrar el detalle (Esc)">×</button></div>
+      <div class="panel__cuerpo" id="det-cuerpo"></div>
+    </section>
+    <section class="panel cola" id="cola" aria-labelledby="cola-t">
+      <div class="panel__cab"><span class="eyebrow" id="cola-t">Esperando a una persona</span><span class="num" id="cola-n" aria-hidden="true">0</span></div>
+      <div class="panel__cuerpo"><ul class="lista-pet" id="cola-lista"></ul></div>
+    </section>
+  </aside>
+</div>
+<div id="live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+<div id="tip" role="tooltip" hidden style="position:fixed;z-index:30;max-width:300px;background:var(--tinta);color:#fff;border-radius:6px;padding:6px 10px;font-size:14px;line-height:1.35;pointer-events:none"></div>
+
+<script>
+'use strict';
+/* ====================== DATOS (misma forma que /api/estado) ====================== */
+const STATIONS=['entrada','spec','build','seguridad','ux','ui','codigo','approver','puerta','merge','produccion'];
+const LABEL={entrada:'Entrada',spec:'Spec writer',build:'Builder',seguridad:'Seguridad',ux:'UX',ui:'UI',codigo:'Código',approver:'Approver',puerta:'¿Humano?',merge:'Main o PR',produccion:'Producción'};
+const MENSAJES={en_curso:'Tu petición está en la factory',esperando_persona:'Tu petición espera a una persona que la revise',desplegada:'Ya está en la web',rechazada:'La factory ha rechazado tu petición'};
+const REV=['seguridad','ux','ui','codigo'];
+const MARK={ok:'✓',en_curso:'●',rechazada:'!',error:'!',pendiente:'–'};
+const PALABRA={ok:'hecho',en_curso:'en curso',rechazada:'rechazada',error:'error',pendiente:'pendiente'};
+const CLS={ok:'m-ok',en_curso:'m-curso',rechazada:'m-rech',error:'m-rech',pendiente:'m-pend'};
+const QUE_HACE={
+  entrada:'Aquí llega cada petición del formulario, tal cual la escribe quien la pide.',
+  spec:'Lee brain/ (marca, tono, decisiones) y clasifica la petición en un tipo: eso decide qué archivos se pueden tocar.',
+  build:'Escribe el cambio dentro de la superficie de su tipo: un archivo nuevo de datos o, como mucho, 3 archivos de código con sus tests.',
+  seguridad:'Busca secretos y código peligroso.',
+  ux:'Juzga la experiencia: el texto, el orden de lectura y si el cambio hace lo que se pidió.',
+  ui:'Juzga el aspecto contra el sistema de diseño: tokens, contraste y maquetación.',
+  codigo:'Comprueba esquemas y reglas del catálogo y ejecuta los tests en un sandbox sin red ni secretos. Es código, no un modelo.',
+  approver:'Cuenta las cuatro aprobaciones: si están las cuatro pasa; si no, vuelve a Builder una vez con todos los motivos. Un segundo rechazo termina la petición.',
+  puerta:'Decide el diff, no quien lo pide: precios, descuentos, dominio y plataforma esperan a una persona; campañas, catálogo y estilo con comprobación pasan solos.',
+  main:'Los cambios seguros se unen a main por sí solos y se despliegan.',
+  pr:'El cambio de riesgo espera aquí, como pull request, a que una persona lo apruebe; después se une a main.',
+  produccion:'Ya está en la web.',
+  rechazadas:'La factory ha rechazado la petición: no se publica y el motivo queda a la vista.'
+};
+const NODO_NOMBRE={entrada:'Entrada',spec:'Spec writer',build:'Builder',seguridad:'Seguridad',ux:'UX',ui:'UI',codigo:'Código',approver:'Approver',puerta:'¿Humano?',main:'Main',pr:'PR',produccion:'Producción',rechazadas:'Rechazadas'};
+const NODO_SUB={entrada:'formulario',spec:'clasifica el tipo',build:'escribe el cambio',seguridad:'secretos · riesgo',ux:'texto · uso',ui:'aspecto · tokens',codigo:'tests · reglas',approver:'4 aprobaciones',puerta:'',main:'merge directo',pr:'espera revisión',produccion:'ya en la web',rechazadas:'no se publica'};
+const NODO_PASO={entrada:1,spec:2,build:3,seguridad:4,ux:5,ui:6,codigo:7,approver:8,puerta:9,main:10,pr:10,produccion:11,rechazadas:0};
+
+/* ====================== SIMULACIÓN (guion determinista, sin red) ====================== */
+const ahora=(k)=>new Date(Date.UTC(2026,9,29,9,0,0)+k*2000).toISOString();
+function nuevaTarea(numero,titulo,perfil){
+  return {numero,titulo,perfil,tipo:null,fase:'entrada',estaciones:Object.fromEntries(STATIONS.map(s=>[s,s==='entrada'?'ok':'pendiente'])),resultado:null,pr:null,ruta:null,actualizado:ahora(0),resultadoFinal:'en_curso',mensaje:MENSAJES.en_curso,estacion:'entrada',motivo:null,enlace:null};
+}
+const primero=(t,st)=>STATIONS.find(s=>t.estaciones[s]===st);
+function recalcula(t,k){
+  const e=t.estaciones;
+  let rf='en_curso';
+  if(t.resultado==='rejected')rf='rechazada';
+  else if(e.produccion==='ok')rf='desplegada';
+  else if(t.pr!==null&&e.puerta!=='ok'&&t.ruta==='human')rf='esperando_persona';
+  t.resultadoFinal=rf;t.mensaje=MENSAJES[rf];
+  t.estacion=rf==='desplegada'?'produccion':(primero(t,'en_curso')||STATIONS.find(s=>['rechazada','error'].includes(e[s]))||t.fase);
+  t.enlace=rf==='desplegada'?'/':null;
+  t.actualizado=ahora(k);
+}
+const HIST={}; // solo del prototipo: cuántas veces volvió a Build (para iluminar el camino de vuelta)
+// Un evento = una unidad de avance. Misma forma que applyEvent de lib/estado.js, más 'rev' (arranca los 4 revisores).
+function aplica(t,ev,k){
+  const [st,status,extra]=ev;
+  const e=t.estaciones;
+  if(st==='rev'){REV.forEach(s=>e[s]='en_curso');t.fase='seguridad';}
+  else if(st==='approver'&&status==='retry'){['build',...REV].forEach(s=>e[s]='pendiente');e.approver='pendiente';e.build='en_curso';t.fase='build';HIST[t.numero].vueltas++;}
+  else if(st==='fin'){t.resultado=status;if(status==='rejected'){e.approver='rechazada';}t.fase='approver';}
+  else{e[st]=status;t.fase=st;
+    if(REV.includes(st)&&REV.every(r=>!['en_curso','pendiente'].includes(e[r]))){e.approver='en_curso';t.fase='approver';}}
+  if(extra){if(extra.tipo)t.tipo=extra.tipo;if(extra.ruta)t.ruta=extra.ruta;if(extra.pr)t.pr=extra.pr;if(extra.motivo)t.motivo=extra.motivo;if(extra.sinMotivo)t.motivo=null;}
+  recalcula(t,k);
+}
+const E=(st,status,extra)=>[st,status,extra];
+const cabeza=(tipo)=>[E('spec','en_curso'),E('spec','ok',{tipo}),E('build','en_curso'),E('build','ok'),E('rev'),E('seguridad','ok'),E('ux','ok'),E('ui','ok'),E('codigo','ok'),E('approver','ok'),E('puerta','en_curso')];
+const auto=[E('puerta','ok',{ruta:'auto'}),E('merge','en_curso'),E('merge','ok'),E('produccion','ok')];
+const persona=(pr)=>[E('puerta','en_curso',{ruta:'human',pr})];
+const aprobada=[E('puerta','ok'),E('merge','en_curso'),E('merge','ok'),E('produccion','ok')];
+const esperar=(n)=>Array.from({length:n},()=>null);
+const GUION=[
+  {n:38,titulo:'Campaña de aceituna nueva para el otoño',perfil:'marketing',inicio:0,previo:99,eventos:[E('entrada','ok'),...cabeza('campana'),...auto]},
+  {n:39,titulo:'Subir el limón fino a 0,95 € el kilo',perfil:'negocio',inicio:0,previo:13,eventos:[E('entrada','ok'),...cabeza('precios'),...persona(12),...esperar(14),...aprobada]},
+  {n:40,titulo:'Añadir la mandarina Ortanique al catálogo',perfil:'producto',inicio:0,previo:6,eventos:[E('entrada','ok'),...cabeza('producto'),...auto]},
+  {n:41,titulo:'El botón del hero no se ve bien',perfil:'marketing',inicio:0,previo:4,eventos:[E('entrada','ok'),E('spec','en_curso'),E('spec','ok',{tipo:'estilo'}),E('build','en_curso'),E('build','ok'),E('rev'),E('seguridad','ok'),E('ux','ok'),E('ui','rechazada',{motivo:'el botón sigue sin contraste suficiente'}),E('codigo','ok'),E('approver','retry',{sinMotivo:true}),E('build','en_curso'),E('build','ok'),E('rev'),E('seguridad','ok'),E('ux','ok'),E('ui','ok'),E('codigo','ok'),E('approver','ok'),E('puerta','en_curso'),...auto]},
+  {n:42,titulo:'Descuento del 5 % desde 2 toneladas',perfil:'negocio',inicio:0,previo:1,eventos:[E('entrada','ok'),...cabeza('descuentos'),...persona(13)]},
+  {n:43,titulo:'Una lista con las claves del servidor',perfil:'producto',inicio:1,previo:2,eventos:[E('entrada','ok'),E('spec','en_curso'),E('spec','ok',{tipo:'feature'}),E('build','en_curso'),E('build','ok'),E('rev'),E('seguridad','rechazada',{motivo:'el código intenta leer process.env'}),E('ux','ok'),E('ui','ok'),E('codigo','ok'),E('approver','retry',{sinMotivo:true}),E('build','en_curso'),E('build','ok'),E('rev'),E('seguridad','rechazada',{motivo:'el código intenta leer process.env'}),E('ux','ok'),E('ui','ok'),E('codigo','ok'),E('fin','rejected')]},
+  {n:44,titulo:'Banner de rebajas para la patata nueva',perfil:'marketing',inicio:2,previo:0,eventos:[E('entrada','ok'),...cabeza('campana'),...auto]},
+  {n:45,titulo:'Nueva tarifa de transporte a Lisboa',perfil:'negocio',inicio:4,previo:0,eventos:[E('entrada','ok'),...cabeza('transporte'),...persona(14)]}
+];
+const SIM={tareas:new Map(),cola:[],k:0,pausa:false,timer:null};
+function iniciaSim(ticksPrevios=0){
+  SIM.tareas.clear();SIM.k=0;
+  for(const g of GUION){
+    const t=nuevaTarea(g.n,g.titulo,g.perfil);HIST[g.n]={vueltas:0};
+    g.cursor=0;g.t=t;g.espera=0;
+    SIM.tareas.set(g.n,t);t.oculta=g.inicio>0;
+    const previo=Math.min(g.previo,g.eventos.length);
+    if(!t.oculta)for(let i=0;i<previo;i++){const ev=g.eventos[g.cursor++];if(ev)aplica(t,ev,0);}
+  }
+  for(let i=0;i<ticksPrevios;i++)tickSim(false);
+}
+function tickSim(anima=true){
+  SIM.k++;
+  for(const g of GUION){
+    if(SIM.k<g.inicio)continue;
+    g.t.oculta=false;
+    if(g.cursor>=g.eventos.length)continue;
+    const ev=g.eventos[g.cursor++];
+    if(ev)aplica(g.t,ev,SIM.k);
+  }
+  SIM.cola=[...SIM.tareas.values()].filter(t=>t.resultadoFinal==='esperando_persona').map(t=>({pr:t.pr,tarea:t.numero,titulo:t.titulo,url:'#pr-'+t.pr}));
+}
+const tareasVisibles=()=>[...SIM.tareas.values()].filter(t=>!t.oculta).sort((a,b)=>b.numero-a.numero);
+
+/* ====================== GEOMETRÍA ====================== */
+const NH=84;
+const R=(n,dy=0)=>({x:n.x+n.w,y:n.y+n.h/2+dy}), L=(n,dy=0)=>({x:n.x,y:n.y+n.h/2+dy});
+const T=(n,dx=0)=>({x:n.x+n.w/2+dx,y:n.y}), B=(n,dx=0)=>({x:n.x+n.w/2+dx,y:n.y+n.h});
+const cx=(n)=>n.x+n.w/2, cy=(n)=>n.y+n.h/2;
+function trazo(pts,r=8){ // polilínea ortogonal con esquinas redondeadas
+  let d=`M${pts[0].x} ${pts[0].y}`;
+  for(let i=1;i<pts.length;i++){
+    const p=pts[i-1],c=pts[i],n=pts[i+1];
+    if(!n){d+=` L${c.x} ${c.y}`;break;}
+    const l1=Math.hypot(c.x-p.x,c.y-p.y),l2=Math.hypot(n.x-c.x,n.y-c.y),rr=Math.min(r,l1/2,l2/2);
+    const a={x:c.x-(c.x-p.x)/l1*rr,y:c.y-(c.y-p.y)/l1*rr},b={x:c.x+(n.x-c.x)/l2*rr,y:c.y+(n.y-c.y)/l2*rr};
+    d+=` L${a.x} ${a.y} Q${c.x} ${c.y} ${b.x} ${b.y}`;
+  }
+  return d;
+}
+function geometria(movil){
+  const N={},E=[],F={};
+  const mk=(id,x,y,w,h,o={})=>N[id]=Object.assign({id,x,y,w,h,cap:Math.floor((w-8)/46),dx:6,dy:h-31},o);
+  if(!movil){
+    const NH2=108,NWD=156,P=160,TOP=84,mid=TOP+(3*P+NH2)/2,M=16;let x=M;
+    const nodo=(id,w,o={})=>{mk(id,x,mid-NH2/2,w,NH2,o);x+=w;};
+    nodo('entrada',116,{term:true,dx:10});x+=36;nodo('spec',NWD);x+=36;nodo('build',NWD);x+=46;
+    const rx=x;REV.forEach((id,i)=>mk(id,rx,TOP+i*P,NWD,NH2));x+=NWD+46;
+    nodo('approver',NWD,{focal:true});x+=46;
+    mk('puerta',x,mid-88,196,176,{dec:true,dx:48,dy:108,cap:2});x+=196+52;
+    nodo('main',NWD);x+=40;nodo('produccion',150,{term:true,dx:10});
+    const W=x+M,H=TOP+3*P+NH2+28;
+    const LOW=mid+88+64;mk('pr',cx(N.puerta)-NWD/2,LOW,NWD,NH2);
+    mk('rechazadas',N.approver.x,LOW,NWD,NH2,{term:true,err:true,dx:10});
+    F.marco={x:rx-14,y:TOP-36,w:NWD+28,h:3*P+NH2+36+16,t:'REVISIÓN EN PARALELO'};
+    const bus1=N.build.x+N.build.w+23,bus2=rx+NWD+23;
+    E.push(
+      {id:'e1',a:'entrada',b:'spec',pts:[R(N.entrada),L(N.spec)]},
+      {id:'e2',a:'spec',b:'build',pts:[R(N.spec),L(N.build)]});
+    REV.forEach(id=>{const r=N[id];
+      E.push({id:'f-'+id,a:'build',b:id,pts:[R(N.build),{x:bus1,y:mid},{x:bus1,y:cy(r)},L(r)]});
+      E.push({id:'j-'+id,a:id,b:'approver',pts:[R(r),{x:bus2,y:cy(r)},{x:bus2,y:mid},L(N.approver)]});});
+    // tránsito entre revisores (invisible): por el bus
+    REV.forEach(a=>REV.forEach(b=>{if(a!==b)E.push({id:`t-${a}-${b}`,a,b,oculta:true,pts:[L(N[a]),{x:bus1,y:cy(N[a])},{x:bus1,y:cy(N[b])},L(N[b])]});}));
+    E.push(
+      {id:'e-ap',a:'approver',b:'puerta',pts:[R(N.approver),L(N.puerta)]},
+      {id:'e-auto',a:'puerta',b:'main',pts:[R(N.puerta),L(N.main)],lab:'AUTO',lpos:'arriba'},
+      {id:'e-per',a:'puerta',b:'pr',pts:[B(N.puerta),T(N.pr)],lab:'PERSONA',lpos:'derecha'},
+      {id:'e-prm',a:'pr',b:'main',pts:[R(N.pr),{x:cx(N.main),y:cy(N.pr)},B(N.main)],lab:'TRAS APROBAR',lpos:'arriba'},
+      {id:'e-mp',a:'main',b:'produccion',pts:[R(N.main),L(N.produccion)]},
+      {id:'e-rech',a:'approver',b:'rechazadas',pts:[B(N.approver),T(N.rechazadas)],lab:'2.º RECHAZO',lpos:'derecha'},
+      {id:'e-vuelta',a:'approver',b:'build',vuelta:true,pts:[T(N.approver),{x:cx(N.approver),y:24},{x:cx(N.build),y:24},T(N.build)],lab:'VUELVE A BUILD · SOLO 1 VEZ',lpos:'arriba'});
+    return {W,H,N,E,F};
+  }
+  // ---- móvil: vertical ----
+  const W=372,H=1180,cxm=210;
+  const sw=240,sx=cxm-sw/2;
+  mk('entrada',sx,8,sw,NH,{term:true,dx:12});
+  mk('spec',sx,128,sw,NH);mk('build',sx,248,sw,NH);
+  F.marco={x:44,y:372,w:316,h:240,t:'REVISIÓN EN PARALELO'};
+  mk('seguridad',52,408,150,NH);mk('ux',218,408,150-0,NH);mk('ui',52,504,150,NH);mk('codigo',218,504,150,NH);
+  N.ux.w=142;N.codigo.w=142;N.ux.x=218;N.codigo.x=218;
+  [N.seguridad,N.ui].forEach(n=>{n.w=156;n.x=52;});[N.ux,N.codigo].forEach(n=>{n.w=142;n.x=218;});
+  Object.values(N).forEach(n=>n.cap=Math.floor((n.w-8)/46));
+  mk('approver',52,648,132,NH,{focal:true});
+  mk('rechazadas',228,648,132,NH,{term:true,err:true,dx:8});
+  mk('puerta',cxm-120,768,240,140,{dec:true,dx:70,dy:92,cap:2});
+  mk('main',52,940,136,NH);mk('pr',224,940,136,NH);
+  mk('produccion',sx,1068,sw,NH,{term:true,dx:12});
+  const fx=cx(N.seguridad),fx2=cx(N.ux);
+  E.push(
+    {id:'e1',a:'entrada',b:'spec',pts:[B(N.entrada),T(N.spec)]},
+    {id:'e2',a:'spec',b:'build',pts:[B(N.spec),T(N.build)]},
+    {id:'f-in',a:'build',b:'marco',vis:true,pts:[B(N.build),{x:cxm,y:F.marco.y}]});
+  const gx=cxm;
+  const pf={seguridad:[B(N.build),{x:cxm,y:384},{x:cx(N.seguridad),y:384},T(N.seguridad)],ux:[B(N.build),{x:cxm,y:384},{x:cx(N.ux),y:384},T(N.ux)],
+    ui:[B(N.build),{x:cxm,y:384},{x:gx,y:cy(N.ui)},L({...N.ui,x:N.ui.x})],codigo:[B(N.build),{x:cxm,y:384},{x:gx,y:cy(N.codigo)},L(N.codigo)]};
+  pf.ui=[B(N.build),{x:cxm,y:392},{x:gx,y:392},{x:gx,y:cy(N.ui)},{x:N.ui.x+N.ui.w,y:cy(N.ui)}];
+  pf.codigo=[B(N.build),{x:cxm,y:392},{x:gx,y:392},{x:gx,y:cy(N.codigo)},{x:N.codigo.x,y:cy(N.codigo)}];
+  REV.forEach(id=>E.push({id:'f-'+id,a:'build',b:id,oculta:true,pts:pf[id]}));
+  const pj={seguridad:[B(N.seguridad),{x:cx(N.seguridad),y:624}],ux:[B(N.ux),{x:cx(N.ux),y:624}],ui:[B(N.ui),{x:cx(N.ui),y:624}],codigo:[B(N.codigo),{x:cx(N.codigo),y:624}]};
+  REV.forEach(id=>E.push({id:'j-'+id,a:id,b:'approver',oculta:true,pts:[...pj[id],{x:cx(N.approver),y:630},T(N.approver)]}));
+  E.push({id:'j-out',a:'marco',b:'approver',vis:true,pts:[{x:cxm,y:F.marco.y+F.marco.h},{x:cxm,y:624},{x:cx(N.approver),y:624},T(N.approver)]});
+  REV.forEach(a=>REV.forEach(b=>{if(a!==b)E.push({id:`t-${a}-${b}`,a,b,oculta:true,pts:[{x:cx(N[a]),y:cy(N[a])},{x:cx(N[b]),y:cy(N[b])}]});}));
+  E.push(
+    {id:'e-ap',a:'approver',b:'puerta',pts:[B(N.approver),{x:cx(N.approver),y:744},{x:cxm,y:744},T(N.puerta)]},
+    {id:'e-auto',a:'puerta',b:'main',pts:[{x:N.puerta.x,y:cy(N.puerta)},{x:N.main.x+14,y:cy(N.puerta)},{x:N.main.x+14,y:N.main.y}],lab:'AUTO',lpos:'izq'},
+    {id:'e-per',a:'puerta',b:'pr',pts:[{x:N.puerta.x+N.puerta.w,y:cy(N.puerta)},{x:N.pr.x+N.pr.w-14,y:cy(N.puerta)},{x:N.pr.x+N.pr.w-14,y:N.pr.y}],lab:'PERSONA',lpos:'der'},
+    {id:'e-prm',a:'pr',b:'main',pts:[L(N.pr),R(N.main)],lab:'OK',lpos:'abajo'},
+    {id:'e-mp',a:'main',b:'produccion',pts:[B(N.main,-32),{x:N.main.x+N.main.w/2-32,y:N.produccion.y}]},
+    {id:'e-rech',a:'approver',b:'rechazadas',pts:[R(N.approver),L(N.rechazadas)],lab:'NO',lpos:'arriba'},
+    {id:'e-vuelta',a:'approver',b:'build',vuelta:true,pts:[L(N.approver),{x:30,y:cy(N.approver)},{x:30,y:cy(N.build)},L(N.build)],lab:'A BUILD',lpos:'centro-v'});
+  return {W,H,N,E,F};
+}
+
+/* ====================== DIBUJO ESTÁTICO (una vez por layout) ====================== */
+const NS='http://www.w3.org/2000/svg';
+const $=(s,r=document)=>r.querySelector(s);
+const el=(tag,attrs={},kids=[])=>{const e=tag in {svg:1,g:1,path:1,rect:1,text:1,polygon:1,circle:1,marker:1,defs:1}?document.createElementNS(NS,tag):document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs)){if(k==='class')e.setAttribute('class',v);else if(k==='text')e.textContent=v;else e.setAttribute(k,v);}
+  for(const c of [].concat(kids))if(c)e.append(c);return e;};
+let GEO=null,MOVIL=null,ESC=1;
+const STAGE=$('#stage'),SVG=$('#svg'),PAPEL=$('#papel');
+const nodoBtn={},nodoG={},edgeBase={},edgeLit={},edgeLab={},masBtn={};
+function dibuja(){
+  SVG.querySelectorAll(':scope>:not(title):not(desc)').forEach(e=>e.remove());
+  STAGE.querySelectorAll('.nodo-btn,.mas').forEach(e=>e.remove());
+  GEO=geometria(MOVIL);const{W,H,N,E,F}=GEO;
+  STAGE.style.width=W+'px';STAGE.style.height=H+'px';SVG.setAttribute('width',W);SVG.setAttribute('height',H);SVG.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const defs=el('defs',{},[
+    el('marker',{id:'ah',markerWidth:8,markerHeight:6,refX:7,refY:3,orient:'auto',markerUnits:'userSpaceOnUse'},[el('polygon',{points:'0 0, 8 3, 0 6',fill:'#5c6245'})]),
+    el('marker',{id:'ah-a',markerWidth:9,markerHeight:7,refX:8,refY:3.5,orient:'auto',markerUnits:'userSpaceOnUse'},[el('polygon',{points:'0 0, 9 3.5, 0 7',fill:'#5b6b2e'})])]);
+  SVG.append(defs);
+  // marco de la revisión en paralelo
+  const m=F.marco;
+  SVG.append(el('rect',{class:'marco',x:m.x,y:m.y,width:m.w,height:m.h,rx:8}));
+  SVG.append(el('text',{class:'marco-t',x:m.x+14,y:m.y+(MOVIL?22:20),text:m.t}));
+  // conectores primero
+  for(const e of E){
+    if(e.oculta)continue;
+    const d=trazo(e.pts);
+    const base=el('path',{class:'e-base'+(e.vuelta?' vuelta':''),d,'marker-end':'url(#ah)'});
+    const lit=el('path',{class:'e-lit'+(e.vuelta?' vuelta':''),d,'marker-end':'url(#ah-a)'});
+    SVG.append(base,lit);edgeBase[e.id]=base;edgeLit[e.id]=lit;
+    if(e.lab){
+      const w=e.lab.length*6.9+12,mid=etiquetaPos(e,w);
+      const g=el('g',{class:'e-lab'},[el('rect',{x:mid.x-w/2,y:mid.y-8,width:w,height:16,rx:2}),el('text',{x:mid.x,y:mid.y+4,text:e.lab})]);
+      SVG.append(g);edgeLab[e.id]=g;
+    }
+  }
+  // nodos
+  for(const id of Object.keys(N)){
+    const n=N[id];const g=el('g',{class:'nodo'+(MOVIL?' movil':'')});
+    let forma;
+    if(n.dec){forma=el('polygon',{class:'n-forma dec',points:`${n.x+n.w/2},${n.y} ${n.x+n.w},${n.y+n.h/2} ${n.x+n.w/2},${n.y+n.h} ${n.x},${n.y+n.h/2}`});}
+    else forma=el('rect',{class:'n-forma'+(n.focal?' focal':'')+(n.term?' term':'')+(n.err?' err':''),x:n.x,y:n.y,width:n.w,height:n.h,rx:n.term?20:6});
+    g.append(forma);
+    const tx=n.dec?cx(n):n.x+12,anchor=n.dec?'middle':'start';
+    g.append(el('text',{class:'n-nombre'+(id==='rechazadas'?' t-rech':''),x:tx,y:n.dec?cy(n)-14:n.y+25,'text-anchor':anchor,text:NODO_NOMBRE[id]}));
+    if(NODO_SUB[id])g.append(el('text',{class:'n-sub',x:tx,y:n.y+44,'text-anchor':anchor,text:NODO_SUB[id]}));
+    const cuenta=el('g',{class:'n-cuenta'},[el('rect',{x:n.x+n.w-30,y:n.y+7,width:22,height:20,rx:4}),el('text',{x:n.x+n.w-19,y:n.y+22,text:'0'})]);
+    cuenta.style.display='none';
+    if(n.dec){const q=cuenta.children;q[0].setAttribute('x',cx(n)-11);q[0].setAttribute('y',n.y+n.h-30);q[1].setAttribute('x',cx(n));q[1].setAttribute('y',n.y+n.h-15);}
+    g.append(cuenta);
+    const mx=n.dec?cx(n):n.x+n.w-19,my=n.dec?n.y+16:n.y+17;
+    const marca=el('g',{class:'n-marca m-pend'},[el('circle',{cx:mx,cy:my,r:11}),el('text',{x:mx,y:my+4.5,text:'–'})]);marca.style.display='none';g.append(marca);
+    SVG.append(g);nodoG[id]=g;
+    const b=el('button',{class:'nodo-btn',type:'button','data-nodo':id,'aria-label':`Estación ${NODO_NOMBRE[id]}`});
+    b.style.cssText=`left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px`;
+    STAGE.append(b);nodoBtn[id]=b;
+    const mas=el('button',{class:'mas',type:'button',hidden:'','data-mas':id});STAGE.append(mas);masBtn[id]=mas;
+  }
+}
+function etiquetaPos(e,w){
+  const pts=e.pts;
+  // segmento más largo
+  let best=0,bi=0;for(let i=1;i<pts.length;i++){const l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);if(l>best){best=l;bi=i;}}
+  const a=pts[bi-1],b=pts[bi];const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+  switch(e.lpos){
+    case'arriba':return{x:mx,y:my-14};
+    case'abajo':return{x:mx,y:my+20};
+    case'derecha':return{x:mx+w/2+8,y:my};
+    case'der':return{x:b.x-w/2-8-0,y:my-0+(my<b.y?0:0)+(MOVIL?0:0)};
+    case'izq':return{x:a.x+w/2-4,y:my-14};
+    case'centro-v':return{x:a.x,y:352};
+    default:return{x:mx,y:my};
+  }
+}
+
+/* ====================== TOKENS (claves estables; solo se mueven) ====================== */
+const REDUCIDO=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TK={}; // numero -> {t, el, nodo, pos:{x,y}}
+const TW=42,TH=26;
+let SEL=null,SELEST=null;
+function ubica(t){
+  if(t.resultadoFinal==='rechazada')return'rechazadas';
+  if(t.resultadoFinal==='desplegada')return'produccion';
+  if(t.resultadoFinal==='esperando_persona')return'pr';
+  const s=t.estacion;
+  if(s==='merge')return'main';
+  return s;
+}
+function claseTk(t){return t.resultadoFinal==='rechazada'?'tk--rech':t.resultadoFinal==='desplegada'?'tk--ok':t.resultadoFinal==='esperando_persona'?'tk--espera':'tk--curso';}
+function marcaTk(t){return t.resultadoFinal==='rechazada'?'!':t.resultadoFinal==='desplegada'?'✓':t.resultadoFinal==='esperando_persona'?'–':'●';}
+function nombreAcc(t){
+  const nodo=ubica(t),dónde=nodo==='rechazadas'?'rechazada':nodo==='pr'?'esperando a una persona (PR #'+t.pr+')':nodo==='produccion'?'en Producción':'en '+NODO_NOMBRE[nodo];
+  const motivo=t.resultadoFinal==='rechazada'&&t.motivo?`. Motivo: ${t.motivo}`:'';
+  return `Petición #${t.numero}: ${t.titulo}, ${dónde}${motivo}`;
+}
+function slotsDe(nodo,lista){ // lista de tokens (ordenada) -> posiciones
+  const n=GEO.N[nodo];const cap=n.cap;const out=[];
+  const colapsa=lista.length>cap;
+  const base={x:(n.dec?cx(n)-(cap*46-4)/2:n.x+n.dx),y:n.y+n.dy};
+  lista.forEach((t,i)=>{
+    const visible=!colapsa||i<cap-1;
+    const idx=visible?i:cap-1;
+    out.push({t,x:base.x+idx*46,y:base.y,visible});
+  });
+  return{out,colapsa,masX:base.x+(cap-1)*46,masY:base.y,resto:colapsa?lista.length-(cap-1):0};
+}
+function ruta(a,b){ // camino en el grafo (BFS) -> puntos
+  if(a===b)return null;
+  const q=[[a,[]]],seen=new Set([a]);
+  while(q.length){const[n,path]=q.shift();
+    for(const e of GEO.E){if(e.a!==n||seen.has(e.b))continue;const np=[...path,e];if(e.b===b)return np;seen.add(e.b);q.push([e.b,np]);}}
+  return null;
+}
+function muevePos(rec,x,y,puntos,hops){
+  const to=`translate(${x}px,${y}px)`;
+  const el_=rec.el;
+  if(!REDUCIDO&&rec.pos&&(rec.pos.x!==x||rec.pos.y!==y)&&!rec.inst){
+    let ks;
+    if(puntos&&puntos.length){
+      const ps=[{x:rec.pos.x+TW/2,y:rec.pos.y+TH/2},...puntos,{x:x+TW/2,y:y+TH/2}];
+      let tot=0;const acum=[0];for(let i=1;i<ps.length;i++){tot+=Math.hypot(ps[i].x-ps[i-1].x,ps[i].y-ps[i-1].y);acum.push(tot);}
+      ks=ps.map((p,i)=>({transform:`translate(${p.x-TW/2}px,${p.y-TH/2}px)`,offset:tot?acum[i]/tot:i/(ps.length-1)}));
+    }else ks=[{transform:`translate(${rec.pos.x}px,${rec.pos.y}px)`},{transform:to}];
+    const dur=Math.min(1200,480*Math.max(1,hops||1));
+    el_.style.zIndex=el_.classList.contains('is-sel')?4:3;
+    const an=el_.animate(ks,{duration:dur,easing:'cubic-bezier(.2,.8,.2,1)'});
+    setTimeout(()=>{el_.style.zIndex='';},dur+60);
+  }
+  el_.style.transform=to;rec.pos={x,y};
+}
+function sincronizaTokens(inicial=false){
+  const vis=tareasVisibles();
+  // crea los que faltan (elementos con clave: nunca se recrean)
+  for(const t of vis){
+    if(!TK[t.numero]){
+      const b=el('button',{class:'tk',type:'button','data-n':t.numero});
+      b.append(document.createTextNode(''));
+      STAGE.append(b);TK[t.numero]={t,el:b,nodo:null,pos:null,inst:true};
+      if(!inicial&&!REDUCIDO){b.classList.add('is-new');setTimeout(()=>b.classList.remove('is-new'),60);}
+    }
+    TK[t.numero].t=t;
+  }
+  // agrupa por nodo
+  const grupos={};
+  for(const t of vis)(grupos[ubica(t)]??=[]).push(t);
+  const cambio=[];
+  for(const[nodo,lista]of Object.entries(grupos)){
+    lista.sort((a,b)=>(b.numero===SEL)-(a.numero===SEL)||b.numero-a.numero);
+    const s=slotsDe(nodo,lista);
+    for(const o of s.out){
+      const rec=TK[o.t.numero];const antes=rec.nodo;
+      let pts=null,hops=1;
+      if(antes&&antes!==nodo){const r=ruta(antes,nodo);if(r){pts=[];r.forEach(e=>e.pts.forEach(p=>{const l=pts[pts.length-1];if(!l||l.x!==p.x||l.y!==p.y)pts.push(p);}));hops=r.length;}}
+      rec.nodo=nodo;
+      muevePos(rec,o.x,o.y,pts,hops);rec.inst=false;
+      rec.el.classList.toggle('is-hid',!o.visible);
+      rec.el.tabIndex=o.visible?0:-1;
+    }
+    const mas=masBtn[nodo];
+    if(s.colapsa){mas.hidden=false;mas.style.transform=`translate(${s.masX}px,${s.masY}px)`;mas.textContent='+'+s.resto;mas.setAttribute('aria-label',`Ver las ${lista.length} peticiones en ${NODO_NOMBRE[nodo]}`);}
+    else mas.hidden=true;
+  }
+  for(const nodo of Object.keys(GEO.N))if(!grupos[nodo])masBtn[nodo].hidden=true;
+  // texto, clases y nombre accesible
+  for(const t of vis){
+    const rec=TK[t.numero],b=rec.el;
+    const marca=marcaTk(t)+'#'+t.numero;
+    if(b.firstChild.nodeValue!==marca)b.firstChild.nodeValue=marca;
+    b.className='tk '+claseTk(t)+(SEL===t.numero?' is-sel':'')+(b.classList.contains('is-hid')?' is-hid':'')+(b.classList.contains('is-new')?' is-new':'');
+    b.setAttribute('aria-label',nombreAcc(t));
+  }
+  // cuentas por nodo
+  for(const nodo of Object.keys(GEO.N)){
+    const n=(grupos[nodo]||[]).length,g=nodoG[nodo].querySelector('.n-cuenta');
+    g.style.display='none';g.querySelector('text').textContent=n;
+  }
+  $('#stage').classList.toggle('hay-sel',SEL!==null);
+  PAPEL.classList.toggle('hay-sel',SEL!==null);
+}
+
+/* ====================== CAMINO, MARCAS, PANEL ====================== */
+function aristasEncendidas(t){
+  const e=t.estaciones,on=new Set();const vis=(s)=>e[s]!=='pendiente';
+  const add=(...x)=>x.forEach(i=>on.add(i));
+  if(vis('spec'))add('e1');if(vis('build'))add('e2');
+  if(vis('seguridad')||vis('ux')||vis('ui')||vis('codigo')){add(MOVIL?'f-in':'e2');REV.forEach(r=>{if(vis(r))add('f-'+r);});}
+  if(REV.every(r=>e[r]==='ok')||vis('approver')){REV.forEach(r=>{if(e[r]==='ok')add('j-'+r);});add('j-out');}
+  if(e.approver==='ok'||vis('puerta'))add('e-ap');
+  if(t.ruta==='auto'&&(vis('merge')||e.puerta==='ok'))add('e-auto');
+  if(t.ruta==='human'&&t.pr!==null)add('e-per');
+  if(t.ruta==='human'&&e.merge!=='pendiente')add('e-prm');
+  if(vis('produccion')||e.produccion==='ok')add('e-mp');
+  if(t.resultadoFinal==='rechazada')add('e-rech');
+  if(HIST[t.numero]?.vueltas>0)add('e-vuelta');
+  if(t.ruta==='auto'&&e.merge!=='pendiente')add('e-mp');
+  return on;
+}
+function marcaNodo(t,nodo){
+  const e=t.estaciones;
+  if(nodo==='main')return t.ruta==='human'&&e.merge==='pendiente'?'pendiente':e.merge;
+  if(nodo==='pr')return t.ruta!=='human'?'pendiente':(e.merge==='pendiente'?'en_curso':'ok');
+  if(nodo==='rechazadas')return t.resultadoFinal==='rechazada'?'rechazada':'pendiente';
+  return e[nodo];
+}
+function pintaSeleccion(){
+  const t=SEL!==null?SIM.tareas.get(SEL):null;
+  const on=t?aristasEncendidas(t):new Set();
+  for(const id in edgeLit){edgeLit[id].classList.toggle('on',on.has(id));if(edgeLab[id])edgeLab[id].classList.toggle('on',on.has(id));}
+  for(const nodo of Object.keys(GEO.N)){
+    const g=nodoG[nodo],mk=g.querySelector('.n-marca');
+    if(!t){mk.style.display='none';g.classList.remove('on-path');continue;}
+    const st=marcaNodo(t,nodo);
+    mk.style.display='';mk.setAttribute('class','n-marca '+CLS[st]);mk.querySelector('text').textContent=MARK[st];
+    g.classList.toggle('on-path',st!=='pendiente');
+  }
+}
+const h=(tag,attrs,...kids)=>{const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else e.setAttribute(k,v);}for(const c of kids.flat())if(c!=null)e.append(c.nodeType?c:document.createTextNode(c));return e;};
+const DET=$('#detalle'),CUERPO=$('#det-cuerpo'),DET_T=$('#det-t');
+function abreDetalle(){DET.classList.add('abierto');document.body.classList.add('sheet-open');}
+function cierraDetalle(){SEL=null;SELEST=null;DET.classList.remove('abierto');document.body.classList.remove('sheet-open');pintaPanel();pintaSeleccion();sincronizaTokens();}
+function pintaPanel(){
+  CUERPO.replaceChildren();
+  const put=(...x)=>CUERPO.append(...x.filter(Boolean));
+  if(SEL!==null){
+    const t=SIM.tareas.get(SEL);if(!t){return;}
+    DET_T.textContent='Petición #'+t.numero;
+    const nodo=ubica(t);
+    put(
+      h('h2',{text:t.titulo}),
+      h('div',{class:'etiquetas'},h('span',{class:'etq',text:'perfil · '+t.perfil}),t.tipo?h('span',{class:'etq',text:'tipo · '+t.tipo}):null,h('span',{class:'etq',text:'estación · '+(nodo==='rechazadas'?'Rechazadas':NODO_NOMBRE[nodo])})),
+      h('p',{class:'estado-msg',text:t.mensaje}),
+      t.motivo&&t.resultadoFinal==='rechazada'?h('div',{class:'motivo'},h('b',{text:'Motivo del rechazo'}),t.motivo):null,
+      t.pr!==null&&t.resultadoFinal!=='rechazada'?h('a',{class:'enlace',href:'#pr-'+t.pr,text:'Ver el PR #'+t.pr+' →'}):null,
+      t.enlace?h('a',{class:'enlace',href:t.enlace,text:'Ver el cambio en la web →'}):null,
+      h('ol',{class:'pasos','aria-label':'Estado de las 11 estaciones'},STATIONS.map(s=>{
+        const st=t.estaciones[s];
+        return h('li',{class:s===t.estacion?'aqui':''},h('span',{class:'mk '+CLS[st],'aria-hidden':'true',text:MARK[st]}),h('span',{text:LABEL[s]}),h('span',{class:'w',text:PALABRA[st]}));})),
+      h('button',{class:'boton boton--borde',type:'button',id:'b-dejar',text:'Dejar de seguir'}));
+    $('#b-dejar').onclick=cierraDetalle;
+  }else if(SELEST){
+    const id=SELEST,n=NODO_NOMBRE[id];
+    DET_T.textContent=NODO_PASO[id]?`Estación ${NODO_PASO[id]} de 11`:'Estación final';
+    const aqui=tareasVisibles().filter(t=>ubica(t)===id);
+    put(h('h2',{text:n}),h('p',{text:QUE_HACE[id]}),
+      h('div',{class:'eyebrow',text:`Ahora aquí (${aqui.length})`}),
+      aqui.length?h('ul',{class:'lista-pet'},aqui.map(t=>h('li',{},h('button',{type:'button','data-ver':t.numero,'aria-label':nombreAcc(t)},h('span',{class:'n',text:'#'+t.numero}),h('span',{text:t.titulo}))))):h('p',{class:'vacio',text:'Ninguna petición ahora mismo.'}));
+  }else{
+    DET_T.textContent='Detalle';
+    CUERPO.append(h('p',{class:'vacio',text:'Toca una petición para ver su camino y el estado de cada estación, o una estación para saber qué hace y qué peticiones tiene ahora.'}));
+  }
+}
+function pintaCola(){
+  $('#cola-n').textContent=SIM.cola.length;
+  const ul=$('#cola-lista');
+  // lista con claves: solo se añaden o quitan los que cambian
+  const hay=new Set(SIM.cola.map(c=>'c'+c.pr));
+  [...ul.children].forEach(li=>{if(!hay.has(li.dataset.k))li.remove();});
+  for(const c of SIM.cola){
+    if(ul.querySelector(`[data-k="c${c.pr}"]`))continue;
+    ul.append(h('li',{'data-k':'c'+c.pr},h('button',{type:'button','data-ver':c.tarea,'aria-label':`Petición #${c.tarea}: ${c.titulo}, PR #${c.pr} esperando a una persona`},h('span',{class:'n',text:'PR #'+c.pr}),h('span',{text:'#'+c.tarea+' · '+c.titulo}))));
+  }
+  if(!SIM.cola.length&&!ul.querySelector('.vacio'))ul.append(h('li',{class:'vacio',text:'Ninguna petición espera ahora.'}));
+  if(SIM.cola.length)ul.querySelector('.vacio')?.remove();
+}
+function pintaContadores(){
+  const v=tareasVisibles(),c=(r)=>v.filter(t=>t.resultadoFinal===r).length;
+  $('#c-pet').textContent=v.length;$('#c-prod').textContent=c('desplegada');$('#c-esp').textContent=c('esperando_persona');$('#c-rech').textContent=c('rechazada');
+}
+
+/* ====================== INTERACCIÓN ====================== */
+const LIVE=$('#live'),MSG=$('#msg');
+const anuncia=(s)=>{LIVE.textContent='';setTimeout(()=>{LIVE.textContent=s;},30);};
+function sigue(n,{foco=false}={}){
+  SELEST=null;SEL=n;pintaPanel();pintaSeleccion();sincronizaTokens();abreDetalle();
+  if(MOVIL)setTimeout(()=>{const r=TK[n]?.el.getBoundingClientRect();if(r)scrollBy({top:r.top-innerHeight*.18,behavior:REDUCIDO?'auto':'smooth'});},60);
+  const t=SIM.tareas.get(n);anuncia(`Sigues la petición #${n}: ${t.titulo}. ${nombreAcc(t).split(', ').slice(1).join(', ')}`);
+}
+function estacion(id){SEL=null;SELEST=id;pintaPanel();pintaSeleccion();sincronizaTokens();abreDetalle();
+  if(MOVIL)setTimeout(()=>{const r=nodoBtn[id].getBoundingClientRect();scrollBy({top:r.top-innerHeight*.18,behavior:REDUCIDO?'auto':'smooth'});},60);}
+STAGE.addEventListener('click',(ev)=>{
+  const tk=ev.target.closest('.tk'),mas=ev.target.closest('.mas'),nb=ev.target.closest('.nodo-btn');
+  if(tk)sigue(Number(tk.dataset.n));else if(mas)estacion(mas.dataset.mas);else if(nb)estacion(nb.dataset.nodo);
+});
+document.addEventListener('click',(ev)=>{const v=ev.target.closest('[data-ver]');if(v&&!v.closest('#stage'))sigue(Number(v.dataset.ver));});
+$('#form-sigue').addEventListener('submit',(ev)=>{
+  ev.preventDefault();const v=$('#n-sigue').value.replace(/^#/,'').trim();
+  const n=Number(v);
+  if(/^\d{1,6}$/.test(v)&&SIM.tareas.has(n)&&!SIM.tareas.get(n).oculta){MSG.className='msg';MSG.textContent='';sigue(n);}
+  else{MSG.className='msg err';MSG.textContent=v?`No encontramos la petición #${v.replace(/\D/g,'')||v}. Prueba con un número del tablero.`:'Escribe el número de tu petición.';}
+});
+$('#b-cerrar').addEventListener('click',cierraDetalle);
+document.addEventListener('keydown',(ev)=>{if(ev.key==='Escape'&&(SEL!==null||SELEST)){cierraDetalle();}});
+// tooltip con el título (ratón y teclado)
+const TIP=$('#tip');
+function muestraTip(b){
+  const t=SIM.tareas.get(Number(b.dataset.n));if(!t)return;
+  TIP.textContent='';TIP.append(h('b',{text:'#'+t.numero+' · '}),t.titulo);
+  TIP.hidden=false;const r=b.getBoundingClientRect(),w=TIP.offsetWidth;
+  TIP.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2))+'px';
+  TIP.style.top=(r.top>60?r.top-TIP.offsetHeight-8:r.bottom+8)+'px';
+}
+STAGE.addEventListener('pointerover',(ev)=>{const b=ev.target.closest('.tk');if(b&&!b.classList.contains('is-hid'))muestraTip(b);});
+STAGE.addEventListener('pointerout',(ev)=>{if(ev.target.closest('.tk'))TIP.hidden=true;});
+STAGE.addEventListener('focusin',(ev)=>{const b=ev.target.closest('.tk');if(b)muestraTip(b);});
+STAGE.addEventListener('focusout',()=>{TIP.hidden=true;});
+
+/* ====================== BUCLE ====================== */
+let ultimaUbic={};
+function pintaTodo(inicial=false){
+  sincronizaTokens(inicial);pintaCola();pintaContadores();pintaSeleccion();
+  if(SELEST||SEL!==null)pintaPanel();
+}
+function paso(){
+  const antes=SEL!==null?ubica(SIM.tareas.get(SEL)):null;
+  tickSim();pintaTodo();
+  if(SEL!==null){const t=SIM.tareas.get(SEL),ahora_=ubica(t);if(ahora_!==antes)anuncia(`Petición #${t.numero}: ${nombreAcc(t).split(', ').slice(1).join(', ')}`);}
+}
+function programa(){clearTimeout(SIM.timer);if(SIM.pausa)return;SIM.timer=setTimeout(()=>{if(document.visibilityState==='visible')paso();programa();},2000);}
+$('#b-play').addEventListener('click',(ev)=>{SIM.pausa=!SIM.pausa;ev.currentTarget.textContent=SIM.pausa?'Reanudar':'Pausa';ev.currentTarget.setAttribute('aria-pressed',String(!SIM.pausa));programa();});
+$('#b-reset').addEventListener('click',()=>{
+  cierraDetalle();Object.values(TK).forEach(r=>r.el.remove());for(const k in TK)delete TK[k];
+  iniciaSim(0);pintaTodo(true);programa();
+});
+
+/* ====================== ARRANQUE Y ADAPTACIÓN ====================== */
+function ajusta(){
+  const w=PAPEL.clientWidth;const movil=innerWidth<=1100||w<760;
+  if(movil!==MOVIL||!GEO){
+    MOVIL=movil;dibuja();
+    for(const k in TK){TK[k].nodo=null;TK[k].pos=null;TK[k].inst=true;}
+    sincronizaTokens(true);pintaSeleccion();
+  }
+  if(MOVIL){ESC=Math.min(1,w/GEO.W);PAPEL.style.height=Math.ceil(GEO.H*ESC)+2+'px';STAGE.style.transform=ESC<1?`scale(${ESC})`:'none';return;}
+  PAPEL.style.height='';const h=PAPEL.clientHeight;
+  ESC=Math.min(w/GEO.W,h/GEO.H,1.3);
+  const ox=Math.max(0,(w-GEO.W*ESC)/2),oy=Math.max(0,(h-GEO.H*ESC)/2);
+  STAGE.style.transform=`translate(${ox}px,${oy}px) scale(${ESC})`;
+}
+/* ====================== AUTOCOMPROBACIÓN ======================
+   Para cada paso y cada petición: la ficha, las marcas de los nodos, el panel y los contadores salen del MISMO objeto. */
+function autoComprobacion(pasos=60){
+  const fallos=[];iniciaSim(0);
+  const idx=(s)=>STATIONS.indexOf(s);
+  for(let k=0;k<=pasos;k++){
+    if(k)tickSim(false);
+    for(const t of tareasVisibles()){
+      const nodo=ubica(t),e=t.estaciones,fin=t.resultadoFinal,r=(m)=>fallos.push(`k${k} #${t.numero} ${m}`);
+      // 1. ficha == estado final, o == una estación en curso
+      if(fin==='rechazada'){if(nodo!=='rechazadas')r('rechazada fuera de Rechazadas');}
+      else if(fin==='desplegada'){if(nodo!=='produccion'||e.produccion!=='ok')r('desplegada sin Producción ok');}
+      else if(fin==='esperando_persona'){if(nodo!=='pr'||e.puerta==='ok')r('PR inconsistente');}
+      else{
+        const en=STATIONS.filter(s=>e[s]==='en_curso');
+        const st=nodo==='main'?'merge':nodo;
+        if(en.length){if(!en.includes(st))r(`ficha en ${nodo} pero en curso: ${en}`);}
+        else if(st!==t.fase&&!(st==='entrada'))r(`sin en_curso y ficha en ${nodo}, fase ${t.fase}`);
+        // 2. coherencia: antes de la ficha todo ok (o rechazada en un revisor), después todo pendiente salvo pares en paralelo
+        const i=idx(st==='produccion'?'produccion':st),par=REV.includes(st);
+        STATIONS.forEach((s,j)=>{
+          const v=e[s];
+          if(j<i&&!(REV.includes(s)&&par)&&!['ok','rechazada'].includes(v))r(`${s} es ${v} antes de ${st}`);
+          if(j>i&&!(REV.includes(s)&&par)&&v!=='pendiente')r(`${s} es ${v} después de ${st}`);
+        });
+      }
+      // 3. panel: el estado de cada fila es el de la tarea (mismo objeto) y el mensaje corresponde al resultado
+      if(t.mensaje!==MENSAJES[fin])r('mensaje no corresponde');
+      if(fin==='rechazada'&&!t.motivo)r('rechazada sin motivo');
+    }
+    // 4. contadores == recuento de los objetos
+    const v=tareasVisibles(),c=(x)=>v.filter(t=>t.resultadoFinal===x).length;
+    if(v.length!==new Set(v.map(t=>t.numero)).size)fallos.push(`k${k} duplicados`);
+    if(c('desplegada')+c('esperando_persona')+c('rechazada')+c('en_curso')!==v.length)fallos.push(`k${k} contadores no suman`);
+    if(c('esperando_persona')!==SIM.cola.length&&k>0)fallos.push(`k${k} cola ${SIM.cola.length} != esperando ${c('esperando_persona')}`);
+  }
+  iniciaSim(0);
+  return fallos;
+}
+window.autoComprobacion=autoComprobacion;
+const P=new URLSearchParams(location.search);
+iniciaSim(Number(P.get('t'))||0);
+ajusta();pintaTodo(true);pintaPanel();
+if(P.get('sel')){sigue(Number(P.get('sel')));}
+if(P.get('est')){estacion(P.get('est'));}
+if(P.get('pausa')){SIM.pausa=true;$('#b-play').textContent='Reanudar';$('#b-play').setAttribute('aria-pressed','false');}
+programa();
+new ResizeObserver(()=>ajusta()).observe(PAPEL);
+addEventListener('resize',ajusta);
+</script>
+</body>
+</html>

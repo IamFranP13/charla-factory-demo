@@ -1,0 +1,21 @@
+{
+  "title": "El diagrama de la factory (/factory/)",
+  "feature": "odd/tasks/diseno-editorial.md",
+  "brief": "El tablero en vivo como un diagrama de flujo de verdad, con la gramática editorial de diagram-design (plano, filetes de 1px, papel de puntos, mono para el detalle, un solo acento, leyenda) y la marca LIMONIA: Entrada → Spec writer → Builder → cuatro revisores en paralelo (Seguridad, UX, UI, Código) → Approver → ¿Humano? (rombo: AUTO → Main, PERSONA → PR → Main) → Producción, con la vuelta a Build y el terminal Rechazadas. Cada petición es una ficha (#n) que viaja por las flechas; se toca una petición (su camino se ilumina y un panel cuenta su estado) o una estación (qué hace y qué peticiones tiene). El prototipo simula el feed con el mismo formato que /api/estado. Usa solo los tokens de design/system.md.",
+  "artboards": [
+    {
+      "file": "01-diagrama.html",
+      "title": "Diagrama interactivo",
+      "tradeoff": "Un solo HTML responsive e interactivo (inline, sin red): en sala (1920×1080) es un flujo horizontal con los cuatro revisores apilados entre un abanico y una unión, la puerta como rombo con dos salidas etiquetadas y panel lateral fijo; por debajo de 1100 px pasa a vertical con la revisión en un marco 2×2 (las cuatro flechas se resumen en una de entrada y otra de salida) y el detalle como hoja inferior. Las fichas son elementos con clave que viajan por las flechas con la animación de la Web Animations API (480 ms por estación, tope 1200 ms) y reposicionan sus huecos sin saltos; con muchas peticiones en una estación se apilan hasta 3 y la tercera pasa a «+n». Coste: el diagrama tiene proporciones fijas y se escala para llenar el alto y el ancho disponibles (≈0,92 a 1920×1080, ≈0,65 a 1440×900, donde el texto de los nodos queda pequeño), y en móvil las fichas miden 42×26 con área táctil ampliada, no 44×44 reales.",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "01-diagrama.html",
+      "title": "Diagrama interactivo · móvil",
+      "tradeoff": "El mismo archivo a 390 px: flujo vertical de arriba abajo (Entrada → … → Producción) con la revisión en 2×2 dentro de un marco, el rombo de la puerta con AUTO a la izquierda y PERSONA a la derecha, la vuelta a Build por el margen izquierdo y Rechazadas junto a Approver. Al tocar una ficha o una estación se abre una hoja inferior (50 % de la pantalla) y la página se desplaza para que la ficha seguida quede visible; la lista de «Esperando a una persona» queda bajo la leyenda. Es largo (unos 1.900 px con contadores y leyenda) pero no hay scroll horizontal.",
+      "width": 390,
+      "height": 844
+    }
+  ]
+}
