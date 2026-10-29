@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory · Sala de control (adaptable)</title>
+<style>
+:root{--oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;--blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;--radio:18px;--sombra:0 1px 2px rgb(42 48 26 / 6%),0 8px 24px rgb(42 48 26 / 8%);
+--fuente:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;--fuente-titulo:ui-serif,'Iowan Old Style','Palatino Linotype',Georgia,serif}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden}
+body{background:var(--blanco);color:var(--tinta);font-family:var(--fuente);font-size:20px;line-height:1.3}
+h1,h2,h3,.serif{font-family:var(--fuente-titulo);color:var(--oliva-oscuro);line-height:1.15}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.marca{display:flex;align-items:center;gap:12px;font-family:var(--fuente-titulo);font-weight:700;font-size:32px;color:var(--oliva-oscuro);letter-spacing:.02em}
+.sobretitulo{font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-suave)}
+.sigue{display:flex;align-items:center;gap:12px}
+.sigue label{font-weight:600;font-size:20px}
+.sigue input{width:120px;height:52px;font:700 28px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.boton{height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--oliva);color:#fff;font:600 20px var(--fuente);cursor:pointer}
+.boton:hover{background:var(--oliva-oscuro)}
+:focus-visible{outline:3px solid var(--oliva);outline-offset:2px}
+.s-ok{background:#e3ecc2;color:#33401a;border-color:var(--oliva-claro)}
+.s-en_curso{background:var(--limon);color:var(--tinta);border-color:var(--tinta)}
+.s-rechazada,.s-error{background:#fbe6dc;color:#7a2b0e;border-color:#c4511f}
+.s-pendiente{background:var(--crema);color:var(--tinta-suave);border-color:var(--borde)}
+.mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-weight:800;font-size:20px;line-height:1;flex:none;border:2px solid currentColor}
+.s-en_curso .mark,.mark.s-en_curso{animation:pulso 1.8s ease-in-out infinite}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgb(42 48 26 / 35%)}50%{box-shadow:0 0 0 7px rgb(42 48 26 / 0%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.leyenda{display:flex;gap:26px;align-items:center;font-size:20px;color:var(--tinta-suave)}
+.leyenda span{display:inline-flex;gap:8px;align-items:center}
+.leyenda .mark{width:26px;height:26px;font-size:18px}
+.num{font-family:var(--fuente-titulo);font-weight:700;color:var(--oliva-oscuro)}
+.tag{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--crema);color:var(--tinta-suave);font-size:20px;font-weight:600;line-height:1.35}
+.tu{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--oliva-oscuro);color:#fff;font-size:20px;font-weight:700;line-height:1.35}
+
+html,body{width:auto;height:auto;overflow:visible;overflow-x:hidden}
+body{font-size:16px;line-height:1.4;min-width:0}
+.cabecera{position:sticky;top:0;z-index:5;background:rgb(251 248 241 / 88%);border-bottom:1px solid var(--borde)}
+.cabecera__fila{width:min(1120px,100% - 2.5rem);margin-inline:auto;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px}
+.marca{display:flex;align-items:center;gap:8px;font:700 22px var(--fuente-titulo);color:var(--oliva-oscuro);text-decoration:none;letter-spacing:.02em;min-height:44px}
+.menu-boton{min-width:44px;min-height:44px;font:600 16px var(--fuente);background:var(--crema);color:var(--oliva-oscuro);border:1px solid var(--borde);border-radius:999px;padding:0 18px;cursor:pointer}
+.menu{display:none}
+.menu ul{display:flex;gap:4px;list-style:none;padding:0}
+.menu a{display:block;padding:10px 16px;border-radius:999px;text-decoration:none;color:var(--tinta);font-weight:500;font-size:17px;min-height:44px}
+.menu a[aria-current='page']{background:var(--oliva);color:#fff}
+.pagina{width:min(1120px,100% - 2rem);margin-inline:auto;padding:16px 0 32px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr);grid-template-areas:'tt' 'sigue' 'tot' 'lista' 'puerta' 'cola' 'ley'}
+.tt{grid-area:tt}.tt h1{font-size:30px}.tt .sobretitulo{font-size:16px}
+.sig{grid-area:sigue}.totales{grid-area:tot}.fila-lista{grid-area:lista}.puerta{grid-area:puerta}.cola{grid-area:cola}.ley{grid-area:ley}
+.sig{background:#fff;border:2px solid var(--oliva);border-radius:var(--radio);box-shadow:var(--sombra);padding:12px 14px;align-self:start}
+.sig label{display:block;font-weight:700;font-size:18px;margin-bottom:6px}
+.sig .fl{display:flex;gap:10px}
+.sig input{flex:1;min-width:0;width:auto;height:48px;font:700 24px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.sig .boton{height:48px;min-width:110px;font-size:18px;padding:0 22px}
+.sg{margin-top:8px;font-size:16px;color:var(--tinta-suave)}
+.totales{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.total{display:flex;flex-direction:column-reverse;background:#fff;border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);padding:6px 14px}
+.total dd{font:700 34px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.total dt{font-size:16px;color:var(--tinta-suave)}
+.t-ok dd{color:var(--oliva)}.t-esp{background:var(--limon-suave)}.t-esp dt{color:var(--oliva-oscuro)}.t-no dd{color:#7a2b0e}
+.ley{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:16px;color:var(--tinta-suave)}
+.ley span{display:inline-flex;gap:6px;align-items:center}
+.ley .mark{width:24px;height:24px;font-size:16px}
+.mark{width:28px;height:28px;font-size:18px}
+/* the list of requests: cards on a phone */
+.cab-t{display:none}
+.filas{list-style:none;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start}
+.fila{background:#fff;border:2px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);padding:10px 12px;display:grid;grid-template-columns:repeat(3,minmax(0,34px)) 8px repeat(4,minmax(0,34px)) 8px repeat(4,minmax(0,34px));gap:3px;justify-content:start;align-items:center;min-width:0}
+.fila.seg{background:var(--limon-suave);border:3px solid var(--oliva-oscuro);order:-1}
+.fila.rec{border:3px solid #c4511f}
+.cl{grid-column:1/-1;display:flex;gap:10px;align-items:baseline;margin-bottom:6px;flex-wrap:wrap}
+.nn{font:700 28px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.pt{font-weight:600;font-size:17px;line-height:1.25;flex:1;min-width:140px}
+.tu{font-size:16px;padding:1px 10px;white-space:nowrap;margin-left:8px}
+.tu .sh{display:none}
+.k{display:contents}
+.c{height:28px;border:2px solid;border-radius:7px;display:grid;place-items:center;font-weight:800;font-size:16px;line-height:1;min-width:0}
+.c .d{display:none}
+.c.s-pendiente{background:var(--crema)}
+.sp{height:28px;width:2px;background:var(--oliva-oscuro);justify-self:center;border-radius:2px}
+.ahora{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;margin-top:6px}
+.ahora .est{display:inline-flex;align-items:center;gap:6px;padding:2px 12px 2px 6px;border:2px solid;border-radius:999px}
+.ahora .est .mark{width:24px;height:24px;font-size:16px;border-width:2px}
+.mo{grid-column:1/-1;margin-top:8px;background:#fbe6dc;color:#7a2b0e;border-left:6px solid #c4511f;border-radius:8px;padding:8px 10px;font-size:16px;line-height:1.3}
+.mo b{display:block}
+/* the gate */
+.puerta,.cola{background:#fff;border-radius:var(--radio);padding:12px 14px;align-self:start}
+.puerta{border:3px solid var(--oliva-oscuro)}
+.puerta h2,.cola h2{font-size:24px}
+.puerta>p{font-size:16px;color:var(--tinta-suave)}
+.ramas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;padding-top:34px;margin-top:14px}
+.ramas::before{content:'';position:absolute;top:0;left:25%;right:25%;height:18px;border:3px solid var(--oliva-oscuro);border-bottom:0;border-radius:14px 14px 0 0}
+.ramas::after{content:'';position:absolute;top:-18px;left:calc(50% - 1.5px);width:3px;height:18px;background:var(--oliva-oscuro)}
+.rama{border:3px solid;border-radius:14px;padding:8px 10px;position:relative;display:flex;flex-direction:column;gap:2px;font-weight:700}
+.rama::before{content:'';position:absolute;top:-17px;left:calc(50% - 1.5px);width:3px;height:15px;background:var(--oliva-oscuro)}
+.rama .k2{font:700 34px/1 var(--fuente-titulo)}
+.rama .dest{display:block}
+.rama small{display:block;font-weight:500;font-size:16px;line-height:1.25}
+.rama.a{background:#e3ecc2;color:#33401a;border-color:var(--oliva)}
+.rama.p{background:var(--limon-suave);color:var(--oliva-oscuro);border-color:var(--oliva-oscuro);border-style:dashed}
+.cola{background:var(--limon-suave);border:3px dashed var(--oliva-oscuro)}
+.cola ol{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin-top:8px}
+.cola li{background:#fff;border:2px solid var(--oliva-oscuro);border-radius:12px;padding:8px 12px}
+.cola .pr{font:700 26px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.cola .pr span{font:600 16px var(--fuente);color:var(--tinta-suave);margin-left:6px}
+.cola li p{font-size:16px;line-height:1.25}
+.vacio{font-size:16px;color:var(--tinta-suave)}
+
+/* tablet and small laptop: cards in two columns, gate and queue side by side */
+@media (min-width:720px){
+  .cabecera__fila{width:min(1120px,100% - 2.5rem)}
+  .menu-boton{display:none}.menu{display:block}
+  .pagina{width:min(1120px,100% - 2.5rem);gap:18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'tt tt' 'sigue sigue' 'tot tot' 'lista lista' 'puerta cola' 'ley ley'}
+  .tt h1{font-size:38px}
+  .sig input{flex:none;width:140px}.sig .fl{align-items:center}
+  .totales{grid-template-columns:repeat(4,1fr)}
+  .total dd{font-size:36px}
+  .filas{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+  .cola{align-self:stretch}
+  .puerta{align-self:stretch}
+}
+/* desktop and projector: the table, one row per request */
+@media (min-width:1200px){
+  body{font-size:18px}
+  .pagina{padding-bottom:12px}
+  .cabecera__fila{width:min(1760px,100% - 2.5rem)}
+  .pagina{width:min(1760px,100% - 2.5rem);padding-top:14px;gap:14px 24px;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'tt ley' 'sigue sigue' 'tot tot' 'lista lista' 'puerta cola'}
+  .ley{justify-content:flex-end;align-self:end}
+  .tt{display:flex;align-items:baseline;gap:20px;margin-bottom:-4px}.tt h1{font-size:40px}.tt .sobretitulo{font-size:18px}
+  .cab-t,.filas{--cols:60px minmax(0,3.4fr) repeat(3,minmax(0,1fr)) minmax(0,1.25fr) repeat(3,minmax(0,1fr)) minmax(0,1.2fr) minmax(0,1.55fr) minmax(0,1.55fr) minmax(0,1.3fr)}
+  .cab-t{display:grid;grid-template-columns:var(--cols);align-items:end;font-weight:700;font-size:17px;line-height:1.15;text-align:center;color:var(--oliva-oscuro);column-gap:0;margin-bottom:-6px}
+  .cab-t .peti{text-align:left;padding-left:14px;color:var(--tinta-suave);font-size:20px}
+  .cab-t .nn2{color:var(--tinta-suave);font:700 17px var(--fuente)}
+  .cab-t .gr{padding:6px 0;background:var(--crema);color:var(--tinta);border-radius:12px 12px 0 0;margin:0 1px}
+  .cab-t .gr.rv{background:var(--limon);border:2px solid var(--tinta);border-bottom:0}
+  .cab-t .gr.rg{background:var(--limon-suave);border:2px solid var(--oliva-oscuro);border-bottom:0;color:var(--oliva-oscuro)}
+  .cab-t .h{padding:4px 0 6px}
+  .fila-lista{display:flex;flex-direction:column;gap:6px}
+  .filas{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+  .fila{display:grid;grid-template-columns:var(--cols);gap:0;padding:0;grid-auto-rows:minmax(60px,auto);border-radius:14px;align-items:center;justify-content:stretch}
+  .fila.seg{order:0;border-width:4px}
+  .fila.rec{border-width:3px}
+  .cl{display:contents}
+  .nn{font-size:30px;text-align:center;margin:0}
+  .pt{font-size:18px;padding:0 8px;line-height:1.15;min-width:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .tu{padding:0 8px;font-size:16px;margin-left:6px;vertical-align:1px}
+  .tu .lg{display:none}.tu .sh{display:inline}
+  .k{display:grid;place-items:center;align-self:stretch;min-width:0;padding:0 2px}
+  .k.rv{background:rgb(251 240 176 / 55%)}
+  .k.rv.i{border-left:2px solid var(--borde)}
+  .c{height:38px;width:100%;max-width:64px;border-radius:12px;font-size:24px}
+  .c .g{line-height:1}
+  .c.s-pendiente{background:transparent;border-color:var(--borde)}
+  .c.auto,.c.pers{font-size:17px;white-space:nowrap;max-width:none;width:calc(100% - 6px)}
+  .c .g.m{display:none}
+  .c .d{display:inline;font-size:18px;font-weight:700}
+  .c.auto{background:#e3ecc2;color:#33401a;border-color:var(--oliva-claro)}
+  .c.pers{background:var(--limon-suave);color:var(--oliva-oscuro);border-color:var(--oliva-oscuro)}
+  .sp,.ahora{display:none}
+  .mo{grid-column:2/-1;margin:0 8px 8px;display:flex;gap:10px;font-size:18px}
+  .mo b{display:inline;flex:none}
+  .sig,.totales,.puerta,.cola{align-self:start}
+  .totales{grid-template-columns:repeat(4,1fr)}
+  .ramas{padding-top:0;margin-top:8px;grid-template-columns:1fr;gap:10px}
+  .ramas::before,.ramas::after,.rama::before{display:none}
+  .rama{flex-direction:row;align-items:center;gap:12px;padding:8px 12px}
+  .rama .k2{min-width:40px;text-align:center}
+  .rama .dest{display:inline}
+  .puerta>p,.sg{font-size:18px}
+  .ley{font-size:18px}
+}
+/* wide screens: the side panel comes back */
+@media (min-width:1600px){
+  body{font-size:20px}
+  .pagina{grid-template-columns:minmax(0,1fr) 400px;gap:12px 24px;grid-template-areas:'tt ley' 'lista tot' 'lista sigue' 'lista puerta' 'lista cola';grid-template-rows:auto auto auto auto 1fr}
+  .ley{font-size:17px;gap:4px 12px;justify-content:flex-start}
+  .tt h1{font-size:44px}.tt .sobretitulo{font-size:20px}
+  .totales{grid-template-columns:1fr 1fr}
+  .total dd{font-size:44px}.total dt{font-size:20px}
+  .cab-t{font-size:18px}.cab-t .nn2{font-size:18px}
+  .pt{font-size:19px}
+  .tu{font-size:18px}
+  .sig label{font-size:22px}.sig input{height:52px;font-size:28px;width:120px;flex:none}.sig .boton{height:52px;font-size:20px}
+  .sg,.puerta>p,.mo,.rama small{font-size:20px}
+  .mo{font-size:20px}
+  .c.auto,.c.pers,.c .d{font-size:18px}
+  .c{height:40px}
+  .nn{font-size:32px}
+  .puerta h2,.cola h2{font-size:26px}
+  .cola .pr{font-size:30px}.cola .pr span,.cola li p{font-size:20px}
+}
+@media (max-width:385px){.pagina{width:calc(100% - 24px)}.fila{padding:10px 8px}}
+</style>
+</head>
+<body>
+
+<header class="cabecera"><div class="cabecera__fila"><a class="marca" href="#" aria-label="LIMONIA, inicio"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><ellipse cx="16" cy="18" rx="12" ry="9" fill="#f2d643" transform="rotate(-20 16 18)"/><path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="#5b6b2e"/></svg><span>LIMONIA</span></a><button class="menu-boton" type="button" aria-expanded="false" aria-controls="menu">Menú</button><nav id="menu" class="menu" aria-label="Principal"><ul><li><a href="#">Inicio</a></li><li><a href="#">Catálogo</a></li><li><a href="#">Presupuesto</a></li><li><a href="#" aria-current="page">Factory</a></li></ul></nav></div></header>
+<main class="pagina">
+  <div class="tt"><p class="sobretitulo">Factory</p><h1>La factory en directo</h1></div>
+  <section class="sig" aria-label="Sigue tu petición"><form autocomplete="off" onsubmit="return false"><label for="sigue-n">Sigue tu petición #</label><div class="fl"><input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" value="43"><button class="boton" type="submit">Seguir</button></div></form><p class="sg" role="status">Siguiendo #43: «El botón del hero no se ve bien» · ahora en Revisión</p></section>
+  <dl class="totales" aria-label="Contadores"><div class="total"><dd>49</dd><dt>Peticiones</dt></div><div class="total t-ok"><dd>31</dd><dt>En producción</dt></div><div class="total t-esp"><dd>2</dd><dt>Esperando</dt></div><div class="total t-no"><dd>6</dd><dt>Rechazadas</dt></div></dl>
+  <section class="fila-lista" aria-labelledby="h-pet">
+    <h2 id="h-pet" class="sr-only">Peticiones</h2>
+    <div class="cab-t" aria-hidden="true">
+      <div></div><div></div>
+      <div class="gr" style="grid-column:3/6">Preparación</div><div class="gr rv" style="grid-column:6/10">Revisión en paralelo</div><div class="gr" style="grid-column:10/11">&nbsp;</div><div class="gr rg" style="grid-column:11/13">Puerta de riesgo</div><div class="gr" style="grid-column:13/14">&nbsp;</div>
+      <div class="nn2">N.º</div><div class="peti">Petición</div>
+      <div class="h">Entrada</div><div class="h">Spec writer</div><div class="h">Builder</div><div class="h">Seguridad</div><div class="h">UX</div><div class="h">UI</div><div class="h">Código</div><div class="h">Approver</div><div class="h">¿Humano?</div><div class="h">Main o PR</div><div class="h">Producción</div>
+    </div>
+    <ol class="filas"><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#49</span><span class="pt">Transporte a Lisboa más barato</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Spec writer: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Builder: pendiente</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Seguridad: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UX: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UI: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Código: pendiente</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-ok"><span class="mark" aria-hidden="true">✓</span>Entrada</span><span>ok</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#48</span><span class="pt">Campaña de limones de temporada</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">Spec writer: en curso</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Builder: pendiente</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Seguridad: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UX: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UI: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Código: pendiente</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>Spec writer</span><span>en curso</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#47</span><span class="pt">Descuento del 15 % desde 50.000 kg</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UI: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">Approver: en curso</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>Approver</span><span>en curso</span></p></li><li class="fila rec"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#46</span><span class="pt">Una lista con las claves del servidor</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-rechazada"><span class="g" aria-hidden="true">!</span><span class="sr-only">Seguridad: rechazada</span></span></span><span class="k rv"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">UX: en curso</span></span></span><span class="k rv"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">UI: en curso</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-rechazada"><span class="mark" aria-hidden="true">!</span>Seguridad</span><span>rechazada</span></p><p class="mo"><b>Rechazada por Seguridad:</b><span>el código intenta leer process.env. Una feature solo recibe datos, nunca secretos.</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#45</span><span class="pt">Lista de productos más baratos</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">Builder: en curso</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Seguridad: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UX: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">UI: pendiente</span></span></span><span class="k rv"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Código: pendiente</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>Builder</span><span>en curso</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#44</span><span class="pt">Nuevo destino: Lyon</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UI: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Approver: ok</span></span></span><span class="k"><span class="c s-ok auto"><span class="g m" aria-hidden="true">✓</span><span class="d" aria-hidden="true">auto</span><span class="sr-only">¿Humano?: automático</span></span></span><span class="k"><span class="c s-ok auto"><span class="g m" aria-hidden="true">✓</span><span class="d" aria-hidden="true">Main ✓</span><span class="sr-only">Main o PR: Main</span></span></span><span class="k"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">Producción: en curso</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>Producción</span><span>en curso</span></p></li><li class="fila seg"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#43</span><span class="pt">El botón del hero no se ve bien<span class="tu"><span class="sr-only">Tu petición</span><span class="lg" aria-hidden="true">Tu petición</span><span class="sh" aria-hidden="true">Tú</span></span></span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">UX: en curso</span></span></span><span class="k rv"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">UI: en curso</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>UX</span><span>en curso</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#42</span><span class="pt">Baja el precio del limón a 1&nbsp;€</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UI: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Approver: ok</span></span></span><span class="k"><span class="c s-en_curso pers"><span class="g m" aria-hidden="true">●</span><span class="d" aria-hidden="true">persona</span><span class="sr-only">¿Humano?: una persona</span></span></span><span class="k"><span class="c s-pendiente pers"><span class="g m" aria-hidden="true">–</span><span class="d" aria-hidden="true">PR #57</span><span class="sr-only">Main o PR: PR #57</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>¿Humano?</span><span>en curso</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#41</span><span class="pt">Banner de naranjas para Alemania</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-en_curso"><span class="g" aria-hidden="true">●</span><span class="sr-only">UI: en curso</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Approver: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">¿Humano?: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Main o PR: pendiente</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>UI</span><span>en curso</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#40</span><span class="pt">Producto nuevo: mandarina Clemenules</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UI: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Approver: ok</span></span></span><span class="k"><span class="c s-ok auto"><span class="g m" aria-hidden="true">✓</span><span class="d" aria-hidden="true">auto</span><span class="sr-only">¿Humano?: automático</span></span></span><span class="k"><span class="c s-ok auto"><span class="g m" aria-hidden="true">✓</span><span class="d" aria-hidden="true">Main ✓</span><span class="sr-only">Main o PR: Main</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Producción: ok</span></span></span><p class="ahora"><span class="est s-ok"><span class="mark" aria-hidden="true">✓</span>Producción</span><span>ok</span></p></li><li class="fila"><div class="cl"><span class="nn"><span class="sr-only">Petición </span>#39</span><span class="pt">Cambia el redondeo del presupuesto</span></div><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Entrada: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Spec writer: ok</span></span></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Builder: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k rv i"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Seguridad: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UX: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">UI: ok</span></span></span><span class="k rv"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Código: ok</span></span></span><span class="sp" aria-hidden="true"></span><span class="k"><span class="c s-ok"><span class="g" aria-hidden="true">✓</span><span class="sr-only">Approver: ok</span></span></span><span class="k"><span class="c s-en_curso pers"><span class="g m" aria-hidden="true">●</span><span class="d" aria-hidden="true">persona</span><span class="sr-only">¿Humano?: una persona</span></span></span><span class="k"><span class="c s-pendiente pers"><span class="g m" aria-hidden="true">–</span><span class="d" aria-hidden="true">PR #55</span><span class="sr-only">Main o PR: PR #55</span></span></span><span class="k"><span class="c s-pendiente"><span class="g" aria-hidden="true">–</span><span class="sr-only">Producción: pendiente</span></span></span><p class="ahora"><span class="est s-en_curso"><span class="mark" aria-hidden="true">●</span>¿Humano?</span><span>en curso</span></p></li></ol>
+  </section>
+  <section class="puerta" aria-labelledby="h-pu"><h2 id="h-pu">¿Humano?</h2><p>Lo decide el diff, no quien lo pide.</p><div class="ramas"><div class="rama a"><span class="k2">2</span><span>Automático<span class="dest"> → Main</span><small>sin esperar</small></span></div><div class="rama p"><span class="k2">2</span><span>Una persona<span class="dest"> → PR</span><small>espera su aprobación</small></span></div></div></section>
+  <section class="cola" aria-labelledby="h-co"><h2 id="h-co">Esperando a una persona</h2><ol><li><div class="pr">PR #57<span>petición #42</span></div><p>Baja el precio del limón a 1 €</p></li><li><div class="pr">PR #55<span>petición #39</span></div><p>Cambia el redondeo del presupuesto</p></li></ol></section>
+  <div class="ley" aria-label="Leyenda de estados"><span><b class="mark s-ok">✓</b>Ok</span><span><b class="mark s-en_curso">●</b>En curso</span><span><b class="mark s-rechazada">!</b>Rechazada</span><span><b class="mark s-pendiente">–</b>Pendiente</span></div>
+</main>
+</body>
+</html>
