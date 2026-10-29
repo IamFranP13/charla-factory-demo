@@ -33,7 +33,7 @@ test('prices and discounts always need a human', () => {
 })
 
 test('platform files need a human', () => {
-  const files = ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'factory/profiles.yaml', 'brain/marca.md', 'src/domain/presupuesto.js', 'src/pages/index.astro', 'public/favicon.svg', 'astro.config.mjs', 'AGENTS.md', 'package.json', 'package-lock.json']
+  const files = ['policy/risk.yaml', 'scripts/gate.mjs', 'lib/policy.js', '.github/workflows/gate.yml', 'functions/api/peticion.js', 'factory/profiles.yaml', 'brain/marca.md', 'design/system.md', 'design/system.html', 'src/domain/presupuesto.js', 'src/pages/index.astro', 'public/favicon.svg', 'astro.config.mjs', 'AGENTS.md', 'package.json', 'package-lock.json']
   for (const file of files) assert.equal(routeFor(policy, [file]).route, 'human', file)
 })
 
@@ -94,6 +94,14 @@ test('verdict: human fails until a listed approver approves', () => {
 
 test('verdict: approver names are compared case-insensitively', () => {
   assert.equal(verdict({ route: 'human', approvals: ['Ana'], approvers: ['ana'] }).pass, true)
+})
+
+test('verdict: a pull request an approver opened from this repository is already the human decision (never merged by the gate)', () => {
+  assert.deepEqual(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'Ana', sameRepo: true } }), { pass: true, merge: false, reason: 'opened by approver Ana' })
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: false } }).pass, false, 'from a fork')
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'manolito', sameRepo: true } }).pass, false, 'not an approver')
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: [], author: { login: 'ana', sameRepo: true } }).pass, false, 'no approvers configured')
+  assert.deepEqual(verdict({ route: 'auto', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: true } }), { pass: true, merge: true, reason: 'low risk: merges by itself' }, 'auto is unchanged')
 })
 
 test('verdict: with no approvers configured nothing high-risk can pass', () => {

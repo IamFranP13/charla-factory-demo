@@ -43,6 +43,18 @@ test('factory.yml: runs the factory with provider vars and the API key secret', 
   assert.equal(step.env.FACTORY_API_KEY, '${{ secrets.FACTORY_API_KEY }}')
 })
 
+test('factory.yml: installs the dev dependencies and gives the factory a browser and the review model, for the screenshots of a visual change', () => {
+  const list = steps(load('factory'), 'factory')
+  const install = list.find((s) => s.run?.startsWith('npm ci'))
+  assert.equal(install.run, 'npm ci', 'Astro (a dev dependency) is needed to render the candidate site')
+  const step = list.find((s) => s.id === 'factory')
+  assert.equal(step.env.FACTORY_BROWSER, 'google-chrome')
+  assert.equal(step.env.FACTORY_REVIEW_MODEL, '${{ vars.FACTORY_REVIEW_MODEL }}')
+  assert.equal(step.env.FACTORY_REVIEW_API_URL, '${{ vars.FACTORY_REVIEW_API_URL }}')
+  assert.equal(step.env.FACTORY_REVIEW_API_KEY, '${{ secrets.FACTORY_REVIEW_API_KEY }}')
+  assert.equal(step.env.FACTORY_API_KEY, '${{ secrets.FACTORY_API_KEY }}', 'the key stays in this step only')
+})
+
 test('gate.yml: triggers, stable job name and permissions', () => {
   const wf = load('gate')
   assert.deepEqual(Object.keys(wf.on).sort(), ['pull_request_review', 'pull_request_target'])

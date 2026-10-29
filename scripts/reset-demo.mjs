@@ -8,7 +8,7 @@
 //
 // Files: removes the audience's files (content/*/tarea-N.json, catalogo/*/tarea-N.json, the feature folders
 // src/features/tarea-N/ and the domain files src/domain/tarea-N*), copies the seed back (factory/seed/: the
-// data, and the code with its two planted bugs, so a merged fix is undone) and reopens the policy hole (default: auto).
+// data, the code with its two planted bugs and the broken home hero, so a merged fix is undone) and reopens the policy hole (default: auto).
 // GitHub: closes open factory PRs (branches tarea/N) and open requests, and removes the "entrada"
 // label from every request so the board starts empty and the intake cap is free again.
 

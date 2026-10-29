@@ -63,7 +63,8 @@ jobs:
           cache: npm
 
       - if: steps.guard.outputs.proceed == 'true'
-        run: npm ci --omit=dev
+        # The dev dependencies too (Astro): a visual change is built and screenshotted before the reviewers see it.
+        run: npm ci
 
       - id: factory
         if: steps.guard.outputs.proceed == 'true'
@@ -73,7 +74,13 @@ jobs:
           FACTORY_API_URL: ${{ vars.FACTORY_API_URL }}
           FACTORY_MODEL: ${{ vars.FACTORY_MODEL }}
           FACTORY_CODE_MODEL: ${{ vars.FACTORY_CODE_MODEL }}
+          # The reviewers of a visual change receive screenshots: this model must be a vision model.
+          FACTORY_REVIEW_MODEL: ${{ vars.FACTORY_REVIEW_MODEL }}
+          FACTORY_REVIEW_API_URL: ${{ vars.FACTORY_REVIEW_API_URL }}
           FACTORY_API_KEY: ${{ secrets.FACTORY_API_KEY }}
+          FACTORY_REVIEW_API_KEY: ${{ secrets.FACTORY_REVIEW_API_KEY }}
+          # ubuntu-latest ships Google Chrome; the renderer takes its screenshots with it (and never forwards the keys above).
+          FACTORY_BROWSER: google-chrome
 
       - id: pr
         if: steps.guard.outputs.proceed == 'true' && steps.factory.outputs.status == 'ok'

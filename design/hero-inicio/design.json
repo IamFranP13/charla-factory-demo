@@ -1,0 +1,27 @@
+{
+  "title": "Hero de inicio",
+  "brief": "Rehacer el hero de la página de inicio de LIMONIA: el paisaje de Murcia no debe invadir el texto ni los botones a ningún ancho, usando solo design/system.md",
+  "artboards": [
+    {
+      "file": "01-franja-inferior.html",
+      "title": "Franja inferior",
+      "tradeoff": "Cambio mínimo y fiel a la web actual: el paisaje vive en una franja de altura fija bajo el texto y nunca lo invade; pierde algo de profundidad.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-dividido.html",
+      "title": "Dividido",
+      "tradeoff": "El texto nunca se cruza con la ilustración en ningún ancho y en el móvil se apila limpio; pierde el paisaje a sangre, más sobrio y menos emocional.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-tarjeta-sobre-paisaje.html",
+      "title": "Tarjeta sobre el paisaje",
+      "tradeoff": "El paisaje gana protagonismo a sangre y la tarjeta blanca garantiza el contraste del texto; es la opción más ilustrada y la que más cambia el aspecto.",
+      "width": 1440,
+      "height": 900
+    }
+  ]
+}

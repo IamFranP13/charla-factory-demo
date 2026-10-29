@@ -13,6 +13,7 @@ default: auto
 # Empty or missing: nothing is ever auto (fails closed).
 factory: murciatech-factory[bot]
 
+# A pull request one of them opens from this repository is already their decision: it passes, never auto-merged.
 approvers:
   - IamFranP13
 
@@ -22,6 +23,18 @@ rules:
   - paths:
       - "src/features/*/index.js"
       - "src/features/*/index.test.mjs"
+    route: auto
+
+  # Estilo: the look of the site (the stylesheet and the presentational components) goes alone to production when the
+  # static check of lib/estilo.js passes. Exactly these six files, placed before the src/** rule (the first match wins):
+  # the pages, the other components, the layouts and the rest of src/ stay human.
+  - paths:
+      - "src/styles/global.css"
+      - "src/components/Paisaje.astro"
+      - "src/components/CampanaCard.astro"
+      - "src/components/ProductoCard.astro"
+      - "src/components/Header.astro"
+      - "src/components/Footer.astro"
     route: auto
 
   # The business rules of the quote calculator, like data/: a human decides.
@@ -36,6 +49,7 @@ rules:
       - "lib/**"
       - "functions/**"
       - "brain/**"
+      - "design/**"
       - "src/**"
       - "public/**"
       - "site/**"

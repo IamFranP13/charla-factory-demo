@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Hero · Franja inferior</title>
+<style>
+:root{--oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;--blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;--radio:18px;--sombra:0 1px 2px rgb(42 48 26 / 6%),0 8px 24px rgb(42 48 26 / 8%);--fuente:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;--fuente-titulo:ui-serif,'Iowan Old Style','Palatino Linotype',Georgia,serif}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--fuente);font-size:1.0625rem;line-height:1.6;color:var(--tinta);background:var(--blanco)}
+h1{font-family:var(--fuente-titulo);line-height:1.15;color:var(--oliva-oscuro);margin:0 0 .5em;font-size:clamp(2.2rem,5vw,3.6rem);letter-spacing:-.02em}
+p{margin:0 0 1em}
+a{color:var(--oliva)}
+:focus-visible{outline:3px solid var(--oliva);outline-offset:3px;border-radius:6px}
+.contenedor{width:min(1120px,100% - 2.5rem);margin-inline:auto}
+.sobretitulo{text-transform:uppercase;letter-spacing:.14em;font-size:.8rem;font-weight:700;color:var(--tierra);margin-bottom:.6rem}
+.cabecera{position:sticky;top:0;z-index:50;background:rgb(251 248 241 / 88%);backdrop-filter:blur(10px);border-bottom:1px solid var(--borde)}
+.cabecera__fila{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:64px}
+.marca{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--fuente-titulo);font-weight:700;font-size:1.35rem;letter-spacing:.08em;color:var(--oliva-oscuro);text-decoration:none}
+.menu ul{display:flex;gap:.25rem;list-style:none;margin:0;padding:0}
+.menu a{display:block;padding:.5rem .9rem;border-radius:999px;text-decoration:none;color:var(--tinta);font-weight:500}
+.menu a:hover{background:var(--crema)}
+.menu a[aria-current='page']{background:var(--oliva);color:#fff}
+.boton{display:inline-block;font:inherit;font-weight:600;text-decoration:none;text-align:center;background:var(--oliva);color:#fff;border:2px solid var(--oliva);border-radius:999px;padding:.7rem 1.5rem;transition:transform .2s,background .2s,box-shadow .2s}
+.boton:hover{background:var(--oliva-oscuro);border-color:var(--oliva-oscuro);transform:translateY(-1px);box-shadow:var(--sombra)}
+.boton--borde{background:transparent;color:var(--oliva-oscuro)}
+.boton--borde:hover{color:#fff}
+.hero__texto{font-size:1.2rem;color:var(--tinta-suave);max-width:38rem}
+.hero__acciones{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:1.5rem}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+.cifra{background:#fff;border:1px solid var(--borde);border-radius:var(--radio);box-shadow:var(--sombra);padding:1.1rem 1.4rem;display:flex;flex-direction:column}
+.cifra strong{font-family:var(--fuente-titulo);font-size:1.9rem;color:var(--oliva)}
+.cifra span{color:var(--tinta-suave);font-size:.95rem}
+.siguiente{padding-block:3rem;color:var(--tinta-suave)}
+.siguiente h2{font-family:var(--fuente-titulo);color:var(--oliva-oscuro);font-size:clamp(1.5rem,3vw,2.1rem);margin:0 0 .3em}
+.paisaje__sol{animation:flota 9s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media (max-width:720px){.menu{display:none}}
+
+.hero{position:relative;overflow:hidden;background:linear-gradient(180deg,var(--limon-suave) 0%,var(--blanco) 100%);padding-block:clamp(3rem,7vw,5rem) 0}
+.hero__contenido{position:relative;z-index:1}
+.hero__contenido>*{max-width:46rem}
+
+.hero__sol{position:absolute;right:max(1.25rem,calc((100% - 1120px)/2));top:2.5rem;width:clamp(5rem,10vw,8rem);aspect-ratio:1;border-radius:50%;background:var(--limon)}
+.paisaje{display:block;width:100%;height:clamp(8rem,16vw,13rem);margin-top:clamp(2rem,5vw,3.5rem)}
+.cifras{margin-top:-3rem;position:relative;z-index:2}
+@media (max-width:720px){.hero__sol{display:none}.paisaje{height:13rem;margin-top:0}.cifras{margin-top:-2rem}}
+</style></head>
+<body><a class="skip" href="#contenido" style="position:absolute;left:-999px">Saltar al contenido</a>
+<header class="cabecera"><div class="contenedor cabecera__fila">
+<a class="marca" href="#" aria-label="LIMONIA, inicio"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><ellipse cx="16" cy="18" rx="12" ry="9" fill="var(--limon)" transform="rotate(-20 16 18)"/><path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="var(--oliva)"/></svg><span>LIMONIA</span></a>
+<nav class="menu" aria-label="Principal"><ul><li><a href="#" aria-current="page">Inicio</a></li><li><a href="#">Catálogo</a></li><li><a href="#">Presupuesto</a></li><li><a href="#">Factory</a></li></ul></nav>
+</div></header>
+<main id="contenido"><section class="hero"><span class="hero__sol paisaje__sol" aria-hidden="true"></span>
+<div class="contenedor hero__contenido"><div><p class="sobretitulo">Murcia · Exportación agroalimentaria</p>
+<h1>De la huerta de Murcia a las mesas de Europa</h1>
+<p class="hero__texto">Limones, naranjas, mandarinas y hortalizas de temporada para mayoristas. Consulta el catálogo, calcula tu presupuesto y recíbelo en pocos días.</p>
+<div class="hero__acciones"><a class="boton" href="#">Calcular presupuesto</a><a class="boton boton--borde" href="#">Ver catálogo</a></div></div></div>
+<svg class="paisaje" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false"><path d="M0 230 C150 170 300 200 460 180 C640 158 760 215 940 190 C1060 175 1140 195 1200 210 V360 H0Z" fill="var(--oliva-claro)" opacity=".55"/><path d="M0 270 C180 215 340 255 520 235 C700 215 860 270 1040 245 C1120 235 1170 245 1200 250 V360 H0Z" fill="var(--oliva)" opacity=".85"/><path d="M0 315 C200 285 380 320 600 300 C820 280 1000 325 1200 300 V360 H0Z" fill="var(--tierra)"/><g fill="var(--limon)"><circle cx="150" cy="302" r="7"/><circle cx="210" cy="302" r="7"/><circle cx="270" cy="302" r="7"/><circle cx="560" cy="306" r="7"/><circle cx="620" cy="306" r="7"/><circle cx="680" cy="306" r="7"/><circle cx="940" cy="304" r="7"/><circle cx="1000" cy="304" r="7"/><circle cx="1060" cy="304" r="7"/></g></svg></section>
+<section class="contenedor cifras" aria-label="LIMONIA en cifras">
+<div class="cifra"><strong>9</strong><span>productos disponibles</span></div>
+<div class="cifra"><strong>6</strong><span>destinos en Europa</span></div>
+<div class="cifra"><strong>2 días</strong><span>desde el campo al primer destino</span></div>
+</section><section class="contenedor siguiente" aria-labelledby="campanas"><h2 id="campanas">Campañas</h2><p>Las campañas de temporada siguen aquí, sin cambios.</p></section></main></body></html>
