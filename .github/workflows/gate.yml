@@ -79,7 +79,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: gh pr merge "$PR" --auto --squash --match-head-commit "$HEAD"
 
-      - if: steps.gate.outputs.route == 'human'
+      - if: steps.gate.outputs.route == 'human' && steps.gate.outputs.pass != 'true'
         run: |
           gh label create necesita-humano --force >/dev/null
           gh pr edit "$PR" --add-label necesita-humano

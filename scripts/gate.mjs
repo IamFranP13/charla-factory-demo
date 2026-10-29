@@ -58,7 +58,7 @@ function judgePullRequest(policy, number) {
   const reviews = result.route === 'human' ? pullRequestReviews(number) : []
   const approvals = approvalsAtHead(reviews, head)
   const sameRepo = typeof pr.head?.repo?.full_name === 'string' && pr.head.repo.full_name.toLowerCase() === repoSlug().toLowerCase()
-  const decision = verdict({ route: result.route, approvals, approvers: policy.approvers, author: { login: pr.user?.login, sameRepo } })
+  const decision = verdict({ route: result.route, approvals, approvers: policy.approvers, author: { login: pr.user?.login, sameRepo }, fromFactory: origin.ok })
 
   const why = files.route === 'auto' && !origin.ok ? `\nOrigin: ${origin.reason}` : ''
   const report = `${table(result)}${why}\n\n${decision.pass ? 'PASS' : 'BLOCKED'}: ${decision.reason}`

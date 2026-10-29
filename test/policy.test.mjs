@@ -104,6 +104,14 @@ test('verdict: a pull request an approver opened from this repository is already
   assert.deepEqual(verdict({ route: 'auto', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: true } }), { pass: true, merge: true, reason: 'low risk: merges by itself' }, 'auto is unchanged')
 })
 
+test('verdict: a factory pull request an approver approved merges by itself; any other approved one waits for a person to merge it', () => {
+  assert.deepEqual(verdict({ route: 'human', approvals: ['ana'], approvers: ['ana'], fromFactory: true }), { pass: true, merge: true, reason: 'approved by ana: the factory change merges by itself' })
+  assert.deepEqual(verdict({ route: 'human', approvals: ['ana'], approvers: ['ana'], fromFactory: false }), { pass: true, merge: false, reason: 'approved by ana' })
+  assert.equal(verdict({ route: 'human', approvals: ['ana'], approvers: ['ana'] }).merge, false, 'unknown origin is not the factory')
+  assert.deepEqual(verdict({ route: 'human', approvals: ['manolito'], approvers: ['ana'], fromFactory: true }).pass, false, 'only an approver')
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: true }, fromFactory: false }).merge, false, 'a person merges their own')
+})
+
 test('verdict: with no approvers configured nothing high-risk can pass', () => {
   assert.equal(verdict({ route: 'human', approvals: ['ana'], approvers: [] }).pass, false)
 })
