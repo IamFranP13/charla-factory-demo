@@ -96,6 +96,14 @@ test('verdict: approver names are compared case-insensitively', () => {
   assert.equal(verdict({ route: 'human', approvals: ['Ana'], approvers: ['ana'] }).pass, true)
 })
 
+test('verdict: a pull request an approver opened from this repository is already the human decision (never merged by the gate)', () => {
+  assert.deepEqual(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'Ana', sameRepo: true } }), { pass: true, merge: false, reason: 'opened by approver Ana' })
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: false } }).pass, false, 'from a fork')
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: ['ana'], author: { login: 'manolito', sameRepo: true } }).pass, false, 'not an approver')
+  assert.equal(verdict({ route: 'human', approvals: [], approvers: [], author: { login: 'ana', sameRepo: true } }).pass, false, 'no approvers configured')
+  assert.deepEqual(verdict({ route: 'auto', approvals: [], approvers: ['ana'], author: { login: 'ana', sameRepo: true } }), { pass: true, merge: true, reason: 'low risk: merges by itself' }, 'auto is unchanged')
+})
+
 test('verdict: with no approvers configured nothing high-risk can pass', () => {
   assert.equal(verdict({ route: 'human', approvals: ['ana'], approvers: [] }).pass, false)
 })

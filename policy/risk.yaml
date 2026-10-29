@@ -13,6 +13,7 @@ default: auto
 # Empty or missing: nothing is ever auto (fails closed).
 factory: murciatech-factory[bot]
 
+# A pull request one of them opens from this repository is already their decision: it passes, never auto-merged.
 approvers:
   - IamFranP13
 
