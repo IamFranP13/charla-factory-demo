@@ -17,8 +17,8 @@ https://github.com/cathrynlavery/diagram-design (MIT), keeping the LIMONIA brand
 
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
-| T1 ✅ | S2 | worker: design/system.md + system.html become "LIMONIA editorial" | design |
-| T2 ✅ | S2-S6 | worker: interactive board artboard(s), responsive, in design/factory-diagrama/ | design |
+| T1 ✅ | S2 | worker: design/system.md + system.html become "LIMONIA editorial" | dade0d1 |
+| T2 ✅ | S2-S6 | worker: interactive board artboard(s), responsive, in design/factory-diagrama/ | dade0d1 |
 | T3 | S3-S6 | worker: implement the board on /factory/ | |
 | T4 | S2, S6, S7 | worker: site artboards (home, catálogo, presupuesto, tarea) | |
 | T5 | S2, S7 | worker: implement the site, seed hero updated keeping the bug | |
