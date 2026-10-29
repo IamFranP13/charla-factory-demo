@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory · Sala de control (móvil)</title>
+<style>
+:root{--oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;--blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;--radio:18px;--sombra:0 1px 2px rgb(42 48 26 / 6%),0 8px 24px rgb(42 48 26 / 8%);
+--fuente:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;--fuente-titulo:ui-serif,'Iowan Old Style','Palatino Linotype',Georgia,serif}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden}
+body{background:var(--blanco);color:var(--tinta);font-family:var(--fuente);font-size:20px;line-height:1.3}
+h1,h2,h3,.serif{font-family:var(--fuente-titulo);color:var(--oliva-oscuro);line-height:1.15}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.marca{display:flex;align-items:center;gap:12px;font-family:var(--fuente-titulo);font-weight:700;font-size:32px;color:var(--oliva-oscuro);letter-spacing:.02em}
+.sobretitulo{font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-suave)}
+.sigue{display:flex;align-items:center;gap:12px}
+.sigue label{font-weight:600;font-size:20px}
+.sigue input{width:120px;height:52px;font:700 28px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.boton{height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--oliva);color:#fff;font:600 20px var(--fuente);cursor:pointer}
+.boton:hover{background:var(--oliva-oscuro)}
+:focus-visible{outline:3px solid var(--oliva);outline-offset:2px}
+.s-ok{background:#e3ecc2;color:#33401a;border-color:var(--oliva-claro)}
+.s-en_curso{background:var(--limon);color:var(--tinta);border-color:var(--tinta)}
+.s-rechazada,.s-error{background:#fbe6dc;color:#7a2b0e;border-color:#c4511f}
+.s-pendiente{background:var(--crema);color:var(--tinta-suave);border-color:var(--borde)}
+.mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-weight:800;font-size:20px;line-height:1;flex:none;border:2px solid currentColor}
+.s-en_curso .mark,.mark.s-en_curso{animation:pulso 1.8s ease-in-out infinite}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgb(42 48 26 / 35%)}50%{box-shadow:0 0 0 7px rgb(42 48 26 / 0%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.leyenda{display:flex;gap:26px;align-items:center;font-size:20px;color:var(--tinta-suave)}
+.leyenda span{display:inline-flex;gap:8px;align-items:center}
+.leyenda .mark{width:26px;height:26px;font-size:18px}
+.num{font-family:var(--fuente-titulo);font-weight:700;color:var(--oliva-oscuro)}
+.tag{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--crema);color:var(--tinta-suave);font-size:20px;font-weight:600;line-height:1.35}
+.tu{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--oliva-oscuro);color:#fff;font-size:20px;font-weight:700;line-height:1.35}
+
+html,body{width:auto;height:auto;overflow:visible;overflow-x:hidden}
+body{font-size:16px;line-height:1.4;min-width:0}
+.pg{padding:16px 16px 28px;display:flex;flex-direction:column;gap:16px;max-width:100%}
+.cab{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--borde);background:var(--blanco);min-height:60px}
+.mar{display:flex;align-items:center;gap:8px;font:700 22px var(--fuente-titulo);color:var(--oliva-oscuro);text-decoration:none;letter-spacing:.02em;min-height:44px}
+.menu-b{min-width:44px;min-height:44px;font:600 16px var(--fuente);background:var(--crema);color:var(--oliva-oscuro);border:1px solid var(--borde);border-radius:999px;padding:0 18px;cursor:pointer}
+.sobretitulo{font-size:16px}
+.tt h1{font-size:30px}
+.sig{background:#fff;border:2px solid var(--oliva);border-radius:var(--radio);box-shadow:var(--sombra);padding:12px 14px}
+.sig label{display:block;font-weight:700;font-size:18px;margin-bottom:6px}
+.sig .fl{display:flex;gap:10px}
+.sig input{flex:1;min-width:0;width:auto;height:48px;font:700 24px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.sig .boton{height:48px;min-width:110px;font-size:18px;padding:0 22px}
+.sg{margin-top:8px;font-size:16px;color:var(--tinta-suave)}
+.totales{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.total{display:flex;flex-direction:column-reverse;background:#fff;border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);padding:6px 14px}
+.total dd{font:700 34px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.total dt{font-size:16px;color:var(--tinta-suave)}
+.t-ok dd{color:var(--oliva)}.t-esp{background:var(--limon-suave)}.t-esp dt{color:var(--oliva-oscuro)}.t-no dd{color:#7a2b0e}
+.ley{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:16px;color:var(--tinta-suave)}
+.ley span{display:inline-flex;gap:6px;align-items:center}
+.ley .mark{width:24px;height:24px;font-size:16px}
+.mark{width:28px;height:28px;font-size:18px}
+h2.sec{font-size:24px}
+.tag,.tu{font-size:16px;padding:1px 10px;white-space:nowrap}
+.mo{background:#fbe6dc;color:#7a2b0e;border-left:6px solid #c4511f;border-radius:8px;padding:8px 10px;font-size:16px;line-height:1.3}
+.mo b{display:block}
+.r2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.rv{display:grid;grid-template-columns:auto 1fr;column-gap:6px;align-items:center;border:2px solid;border-radius:12px;padding:5px 6px;font-weight:700;font-size:16px;line-height:1.15;min-height:52px}
+.rv .mark{grid-row:span 2}
+.rv small{font:500 16px var(--fuente);grid-column:2}
+.rv .mark{width:24px;height:24px;font-size:16px}
+.rv{min-width:0}
+@media (max-width:385px){.rv{display:block;padding:4px 6px}.rv .mark{display:none}.rv small{display:block}.pg{padding-inline:12px}}
+.pr{font:700 26px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.fork{align-items:start;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;padding-top:34px}
+.gt+.fork,.foot+.fork{margin-top:10px}
+.fork::before{content:'';position:absolute;top:0;left:25%;right:25%;height:18px;border:3px solid var(--oliva-oscuro);border-bottom:0;border-radius:14px 14px 0 0}
+.fork::after{content:'';position:absolute;top:-18px;left:calc(50% - 1.5px);width:3px;height:18px;background:var(--oliva-oscuro)}
+.lane{border:3px solid;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:8px;position:relative}
+.lane::before{content:'';position:absolute;top:-17px;left:calc(50% - 1.5px);width:3px;height:15px;background:var(--oliva-oscuro)}
+.lane h3{font:700 20px/1.15 var(--fuente-titulo);color:inherit}
+.lane h3 small{display:block;font:500 16px var(--fuente)}
+.lane.a{background:#e3ecc2;color:#33401a;border-color:var(--oliva)}
+.lane.p{background:var(--limon-suave);color:var(--oliva-oscuro);border-color:var(--oliva-oscuro);border-style:dashed}
+.gt{background:#fff;border:3px solid var(--oliva-oscuro);border-radius:var(--radio);padding:10px 14px;text-align:center}
+.gt b{display:block;font:700 28px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.gt span{font-size:16px;color:var(--tinta-suave)}
+.mini{background:#fff;border:2px solid var(--borde);border-radius:12px;padding:8px 10px}
+.mini .n{display:flex;align-items:baseline;gap:8px}
+.mini .num{font-size:24px}
+.mini p{font-size:16px;font-weight:600;line-height:1.25}
+.mini.s-en_curso{background:var(--limon-suave);border-color:var(--tinta)}
+.mini.seg{outline:3px solid var(--oliva-oscuro);outline-offset:2px}
+.mini.s-rechazada{border-color:#c4511f;background:#fff}
+.mini .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.foot{font-size:16px;color:var(--tinta-suave)}
+
+.card{background:#fff;border:2px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.card.seg{background:var(--limon-suave);border:3px solid var(--oliva-oscuro)}
+.card.rec{border:3px solid #c4511f}
+.cl{display:flex;gap:10px;align-items:baseline}
+.cl .num{font-size:28px}
+.cl p{font-weight:600;font-size:17px;line-height:1.25;flex:1}
+.ahora{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
+.ahora .est{display:inline-flex;align-items:center;gap:6px;padding:2px 12px 2px 6px;border:2px solid;border-radius:999px}
+.ahora .est .mark{width:24px;height:24px;font-size:16px;border-width:2px}
+.prog{display:grid;grid-template-columns:repeat(3,1fr) 6px repeat(4,1fr) 6px repeat(4,1fr);gap:3px;align-items:center}
+.prog i{font-style:normal;height:28px;border-radius:7px;border:2px solid;display:grid;place-items:center;font-weight:800;font-size:16px;line-height:1}
+.prog .sp{border:0;height:28px;background:var(--oliva-oscuro);width:2px;justify-self:center;border-radius:2px;display:block}
+.pl{display:grid;grid-template-columns:repeat(3,1fr) 6px repeat(4,1fr) 6px repeat(4,1fr);gap:3px;font-size:16px;color:var(--tinta-suave);margin-top:-4px}
+.pl span{grid-column:4/9;text-align:center;font-weight:600;color:var(--oliva-oscuro);background:var(--limon);border-radius:6px;font-size:16px;line-height:1.3;color:var(--tinta)}
+.pl span.l1{grid-column:1/4;background:none;color:var(--tinta-suave);text-align:left}
+.pl span.l3{grid-column:10/15;background:none;color:var(--tinta-suave);text-align:right}
+.sec2{display:flex;flex-direction:column;gap:10px}
+.dec{background:#fff;border:3px solid var(--oliva-oscuro);border-radius:var(--radio);padding:12px 14px}
+.dec .fork{margin-top:4px}
+.q{background:var(--limon-suave);border:3px dashed var(--oliva-oscuro);border-radius:var(--radio);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.q li{list-style:none;background:#fff;border:2px solid var(--oliva-oscuro);border-radius:12px;padding:8px 12px}
+.q ol{padding:0;display:flex;flex-direction:column;gap:10px}
+.q li p{font-size:16px;line-height:1.25}
+.q small{font-size:16px;color:var(--tinta-suave)}
+</style>
+</head>
+<body>
+<header class="cab"><a class="mar" href="#"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><ellipse cx="16" cy="18" rx="12" ry="9" fill="#f2d643" transform="rotate(-20 16 18)"/><path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="#5b6b2e"/></svg><span>LIMONIA</span></a><button class="menu-b" type="button" aria-expanded="false" aria-controls="menu">Menú</button></header><main class="pg">
+<div class="tt"><p class="sobretitulo">Factory</p><h1>La factory en directo</h1></div><section class="sig" aria-label="Sigue tu petición"><form autocomplete="off" onsubmit="return false"><label for="sigue-n">Sigue tu petición #</label><div class="fl"><input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" value="43"><button class="boton" type="submit">Seguir</button></div></form><p class="sg" role="status">Siguiendo #43: «El botón del hero no se ve bien» · ahora en Revisión</p></section><dl class="totales"><div class="total"><dd>49</dd><dt>Peticiones</dt></div><div class="total t-ok"><dd>31</dd><dt>En producción</dt></div><div class="total t-esp"><dd>2</dd><dt>Esperando</dt></div><div class="total t-no"><dd>6</dd><dt>Rechazadas</dt></div></dl>
+<section class="sec2"><h2 class="sec">Peticiones</h2>
+<p class="foot">Cada barra son las 11 estaciones: Entrada, Spec writer, Builder · <b>Seguridad, UX, UI, Código a la vez</b> · Approver, ¿Humano?, Main o PR, Producción.</p>
+<article class="card seg "><div class="cl"><span class="num">#43</span><p>El botón del hero no se ve bien</p><span class="tu">Tu petición</span></div><div class="prog" role="img" aria-label="Progreso: UX En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>UX</span><span>en curso</span></div></article><article class="card  rec"><div class="cl"><span class="num">#46</span><p>Una lista con las claves del servidor</p></div><div class="prog" role="img" aria-label="Progreso: Seguridad Rechazada"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-rechazada" aria-hidden="true">!</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-rechazada"><span class="mark">!</span>Seguridad</span><span>rechazada</span></div><div class="mo"><b>Rechazada por Seguridad</b>el código intenta leer process.env. Una feature solo recibe datos, nunca secretos.</div></article><article class="card  "><div class="cl"><span class="num">#41</span><p>Banner de naranjas para Alemania</p></div><div class="prog" role="img" aria-label="Progreso: UI En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>UI</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#47</span><p>Descuento del 15 % desde 50.000 kg</p></div><div class="prog" role="img" aria-label="Progreso: Approver En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>Approver</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#45</span><p>Lista de productos más baratos</p></div><div class="prog" role="img" aria-label="Progreso: Builder En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>Builder</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#49</span><p>Transporte a Lisboa más barato</p></div><div class="prog" role="img" aria-label="Progreso: Entrada Ok"><i class="s-ok" aria-hidden="true">✓</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-ok"><span class="mark">✓</span>Entrada</span><span>ok</span></div></article><article class="card  "><div class="cl"><span class="num">#48</span><p>Campaña de limones de temporada</p></div><div class="prog" role="img" aria-label="Progreso: Spec writer En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-pendiente" aria-hidden="true">–</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="sp" aria-hidden="true"></i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>Spec writer</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#44</span><p>Nuevo destino: Lyon</p></div><div class="prog" role="img" aria-label="Progreso: Producción En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>Producción</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#42</span><p>Baja el precio del limón a 1 €</p></div><div class="prog" role="img" aria-label="Progreso: ¿Humano? En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>¿Humano?</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#39</span><p>Cambia el redondeo del presupuesto</p></div><div class="prog" role="img" aria-label="Progreso: ¿Humano? En curso"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-en_curso" aria-hidden="true">●</i><i class="s-pendiente" aria-hidden="true">–</i><i class="s-pendiente" aria-hidden="true">–</i></div><div class="ahora"><span class="est s-en_curso"><span class="mark">●</span>¿Humano?</span><span>en curso</span></div></article><article class="card  "><div class="cl"><span class="num">#40</span><p>Producto nuevo: mandarina Clemenules</p></div><div class="prog" role="img" aria-label="Progreso: Producción Ok"><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="sp" aria-hidden="true"></i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i><i class="s-ok" aria-hidden="true">✓</i></div><div class="ahora"><span class="est s-ok"><span class="mark">✓</span>Producción</span><span>ok</span></div></article></section>
+<section class="dec"><h2 class="sec">¿Humano?</h2><p class="foot">Lo decide lo que toca el diff, no quien lo pide.</p><div class="fork" style="margin-top:14px"><div class="lane a"><h3>Automático<small>→ Main, directo</small></h3><p class="pr">2</p></div><div class="lane p"><h3>Una persona<small>→ PR, espera</small></h3><p class="pr">2</p></div></div></section>
+<section class="q"><h2 class="sec">Esperando a una persona</h2><ol><li><span class="pr">PR #57</span> <small>petición #42</small><p>Baja el precio del limón a 1 €</p></li><li><span class="pr">PR #55</span> <small>petición #39</small><p>Cambia el redondeo del presupuesto</p></li></ol></section>
+<div class="ley" aria-label="Leyenda de estados"><span><b class="mark s-ok">✓</b>Ok</span><span><b class="mark s-en_curso">●</b>En curso</span><span><b class="mark s-rechazada">!</b>Rechazada</span><span><b class="mark s-pendiente">–</b>Pendiente</span></div>
+</main>
+</body>
+</html>

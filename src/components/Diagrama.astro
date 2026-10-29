@@ -2,15 +2,13 @@
 import { PASOS } from '../lib/diagrama.js'
 
 // The factory scheme as a stepper of cards, drawn at build time from the steps in src/lib/diagrama.js. Cards start
-// neutral; diagrama-cliente.js paints a task on them. `tablero` adds the counter and the chips of the big board.
-const { tablero = false } = Astro.props
+// neutral; diagrama-cliente.js paints a task on them.
 ---
-<ol class={`ruta${tablero ? ' ruta--tablero' : ''}`} data-diagrama aria-label="Recorrido de una petición por la factory">
+<ol class="ruta" data-diagrama aria-label="Recorrido de una petición por la factory">
   {PASOS.map((paso) => (
     <li class="paso" data-paso={paso.id} data-estado="neutro">
       <span class="paso__marca" aria-hidden="true"></span>
       <h3 class="paso__nombre" data-nombre>{paso.label}</h3>
-      {tablero && <span class="paso__n" data-n hidden></span>}
       {paso.nota && <p class="paso__nota">{paso.nota}</p>}
       {paso.subpasos && (
         <ul class="revisores" aria-label="Revisores en paralelo">
@@ -18,7 +16,6 @@ const { tablero = false } = Astro.props
         </ul>
       )}
       <p class="paso__etiqueta" data-etiqueta hidden></p>
-      {tablero && <div class="paso__fichas" data-fichas></div>}
     </li>
   ))}
 </ol>

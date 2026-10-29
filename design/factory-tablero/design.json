@@ -1,0 +1,55 @@
+{
+  "title": "Tablero de la factory (/factory/)",
+  "brief": "El tablero en vivo que se proyecta durante la charla «Vibe Engineering a escala de empresa»: cada petición de la audiencia recorre Entrada → Spec writer → Builder → Revisión en paralelo (Seguridad · UX · UI · Código) → Approver → ¿Humano? → Main o PR → Producción. Hay que leerlo desde el fondo de la sala; la revisión en paralelo y la puerta de riesgo (automático o una persona) son el centro. Usa solo los tokens de design/system.md.",
+  "artboards": [
+    {
+      "file": "01-linea-de-montaje.html",
+      "title": "Línea de montaje",
+      "tradeoff": "Cuenta la historia del orden de las estaciones de un vistazo y la puerta se ve como una bifurcación real (Main directo / PR esperando a una persona); pero el ancho de columna limita los títulos a 3-4 líneas y las columnas vacías dejan huecos cuando hay pocas peticiones.",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "02-sala-de-control.html",
+      "title": "Sala de control",
+      "tradeoff": "Una fila por petición: se encuentra la propia al instante y se comparan estados de un vistazo, con la revisión en paralelo como grupo de cuatro columnas; es lo más denso y exacto, pero la puerta y la cola quedan en un panel lateral y el título se corta con muchas peticiones.",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "03-foco-y-cinta.html",
+      "title": "Foco y cinta",
+      "tradeoff": "La petición seguida recorre la cadena en grande (cuatro revisores enormes, bifurcación de la puerta) y es lo más legible desde lejos y lo mejor para contar la tesis; las demás peticiones se reducen a una cinta lateral con progreso en miniatura, así que solo se ve una petición completa a la vez.",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "file": "01-linea-de-montaje-movil.html",
+      "title": "Línea de montaje · móvil",
+      "tradeoff": "La línea pasa a un stepper vertical (Entrada arriba, Producción abajo) con la revisión en 2×2 por petición y la puerta como bifurcación en dos carriles: conserva la historia y el orden de la versión de sala; es la más larga de las tres y en 360 px se ocultan los iconos de los revisores y queda solo la palabra de estado.",
+      "width": 390,
+      "height": 2765
+    },
+    {
+      "file": "02-sala-de-control-movil.html",
+      "title": "Sala de control · móvil",
+      "tradeoff": "La tabla no cabe, así que cada fila es una tarjeta con barra de 11 segmentos y la estación actual nombrada: se encuentra la propia y se compara de un vistazo; la puerta y la cola quedan al final, lejos de lo primero que se ve, y la barra necesita la leyenda para leerla.",
+      "width": 390,
+      "height": 3045
+    },
+    {
+      "file": "03-foco-y-cinta-movil.html",
+      "title": "Foco y cinta · móvil",
+      "tradeoff": "La petición seguida va primero y grande (revisores en 2×2, bifurcación de la puerta), luego la cola de personas y el resto como lista con progreso en miniatura: es lo más claro para quien llega del QR, pero las demás peticiones quedan muy abajo.",
+      "width": 390,
+      "height": 3257
+    },
+    {
+      "file": "04-sala-de-control-adaptable.html",
+      "title": "Sala de control · adaptable (la página real)",
+      "tradeoff": "Un solo HTML para móvil, tablet y sala: tarjetas con barra de 11 segmentos por debajo de 720 px, dos columnas con puerta y cola en paralelo de 720 a 1199 px, y tabla con una fila por petición desde 1200 px (panel lateral desde 1600 px, contenido a 1760 px como máximo). Se ve bien a cualquier ancho, pero hay que comprobarlo en varios anchos (390, 1024, 1440, 1920, 2560); la tabla de 1200 a 1599 px lleva el panel debajo y el título puede ocupar dos líneas.",
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}

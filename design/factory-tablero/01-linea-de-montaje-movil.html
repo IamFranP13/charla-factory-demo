@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory · Línea de montaje (móvil)</title>
+<style>
+:root{--oliva:#5b6b2e;--oliva-oscuro:#3b4720;--oliva-claro:#a7b36a;--limon:#f2d643;--limon-suave:#fbf0b0;--blanco:#fbf8f1;--crema:#f3ecdc;--tierra:#9a6b46;--tierra-suave:#ead9c4;--tinta:#2a301a;--tinta-suave:#5c6245;--borde:#e2d9c3;--radio:18px;--sombra:0 1px 2px rgb(42 48 26 / 6%),0 8px 24px rgb(42 48 26 / 8%);
+--fuente:'Inter',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;--fuente-titulo:ui-serif,'Iowan Old Style','Palatino Linotype',Georgia,serif}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden}
+body{background:var(--blanco);color:var(--tinta);font-family:var(--fuente);font-size:20px;line-height:1.3}
+h1,h2,h3,.serif{font-family:var(--fuente-titulo);color:var(--oliva-oscuro);line-height:1.15}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.marca{display:flex;align-items:center;gap:12px;font-family:var(--fuente-titulo);font-weight:700;font-size:32px;color:var(--oliva-oscuro);letter-spacing:.02em}
+.sobretitulo{font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--tinta-suave)}
+.sigue{display:flex;align-items:center;gap:12px}
+.sigue label{font-weight:600;font-size:20px}
+.sigue input{width:120px;height:52px;font:700 28px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.boton{height:52px;padding:0 26px;border:0;border-radius:999px;background:var(--oliva);color:#fff;font:600 20px var(--fuente);cursor:pointer}
+.boton:hover{background:var(--oliva-oscuro)}
+:focus-visible{outline:3px solid var(--oliva);outline-offset:2px}
+.s-ok{background:#e3ecc2;color:#33401a;border-color:var(--oliva-claro)}
+.s-en_curso{background:var(--limon);color:var(--tinta);border-color:var(--tinta)}
+.s-rechazada,.s-error{background:#fbe6dc;color:#7a2b0e;border-color:#c4511f}
+.s-pendiente{background:var(--crema);color:var(--tinta-suave);border-color:var(--borde)}
+.mark{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;font-weight:800;font-size:20px;line-height:1;flex:none;border:2px solid currentColor}
+.s-en_curso .mark,.mark.s-en_curso{animation:pulso 1.8s ease-in-out infinite}
+@keyframes pulso{0%,100%{box-shadow:0 0 0 0 rgb(42 48 26 / 35%)}50%{box-shadow:0 0 0 7px rgb(42 48 26 / 0%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.leyenda{display:flex;gap:26px;align-items:center;font-size:20px;color:var(--tinta-suave)}
+.leyenda span{display:inline-flex;gap:8px;align-items:center}
+.leyenda .mark{width:26px;height:26px;font-size:18px}
+.num{font-family:var(--fuente-titulo);font-weight:700;color:var(--oliva-oscuro)}
+.tag{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--crema);color:var(--tinta-suave);font-size:20px;font-weight:600;line-height:1.35}
+.tu{display:inline-block;padding:1px 12px;border-radius:999px;background:var(--oliva-oscuro);color:#fff;font-size:20px;font-weight:700;line-height:1.35}
+
+html,body{width:auto;height:auto;overflow:visible;overflow-x:hidden}
+body{font-size:16px;line-height:1.4;min-width:0}
+.pg{padding:16px 16px 28px;display:flex;flex-direction:column;gap:16px;max-width:100%}
+.cab{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-bottom:1px solid var(--borde);background:var(--blanco);min-height:60px}
+.mar{display:flex;align-items:center;gap:8px;font:700 22px var(--fuente-titulo);color:var(--oliva-oscuro);text-decoration:none;letter-spacing:.02em;min-height:44px}
+.menu-b{min-width:44px;min-height:44px;font:600 16px var(--fuente);background:var(--crema);color:var(--oliva-oscuro);border:1px solid var(--borde);border-radius:999px;padding:0 18px;cursor:pointer}
+.sobretitulo{font-size:16px}
+.tt h1{font-size:30px}
+.sig{background:#fff;border:2px solid var(--oliva);border-radius:var(--radio);box-shadow:var(--sombra);padding:12px 14px}
+.sig label{display:block;font-weight:700;font-size:18px;margin-bottom:6px}
+.sig .fl{display:flex;gap:10px}
+.sig input{flex:1;min-width:0;width:auto;height:48px;font:700 24px var(--fuente);text-align:center;border:2px solid var(--oliva);border-radius:12px;background:#fff;color:var(--tinta)}
+.sig .boton{height:48px;min-width:110px;font-size:18px;padding:0 22px}
+.sg{margin-top:8px;font-size:16px;color:var(--tinta-suave)}
+.totales{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.total{display:flex;flex-direction:column-reverse;background:#fff;border:1px solid var(--borde);border-radius:14px;box-shadow:var(--sombra);padding:6px 14px}
+.total dd{font:700 34px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.total dt{font-size:16px;color:var(--tinta-suave)}
+.t-ok dd{color:var(--oliva)}.t-esp{background:var(--limon-suave)}.t-esp dt{color:var(--oliva-oscuro)}.t-no dd{color:#7a2b0e}
+.ley{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:16px;color:var(--tinta-suave)}
+.ley span{display:inline-flex;gap:6px;align-items:center}
+.ley .mark{width:24px;height:24px;font-size:16px}
+.mark{width:28px;height:28px;font-size:18px}
+h2.sec{font-size:24px}
+.tag,.tu{font-size:16px;padding:1px 10px;white-space:nowrap}
+.mo{background:#fbe6dc;color:#7a2b0e;border-left:6px solid #c4511f;border-radius:8px;padding:8px 10px;font-size:16px;line-height:1.3}
+.mo b{display:block}
+.r2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.rv{display:grid;grid-template-columns:auto 1fr;column-gap:6px;align-items:center;border:2px solid;border-radius:12px;padding:5px 6px;font-weight:700;font-size:16px;line-height:1.15;min-height:52px}
+.rv .mark{grid-row:span 2}
+.rv small{font:500 16px var(--fuente);grid-column:2}
+.rv .mark{width:24px;height:24px;font-size:16px}
+.rv{min-width:0}
+@media (max-width:385px){.rv{display:block;padding:4px 6px}.rv .mark{display:none}.rv small{display:block}.pg{padding-inline:12px}}
+.pr{font:700 26px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.fork{align-items:start;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;position:relative;padding-top:34px}
+.gt+.fork,.foot+.fork{margin-top:10px}
+.fork::before{content:'';position:absolute;top:0;left:25%;right:25%;height:18px;border:3px solid var(--oliva-oscuro);border-bottom:0;border-radius:14px 14px 0 0}
+.fork::after{content:'';position:absolute;top:-18px;left:calc(50% - 1.5px);width:3px;height:18px;background:var(--oliva-oscuro)}
+.lane{border:3px solid;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:8px;position:relative}
+.lane::before{content:'';position:absolute;top:-17px;left:calc(50% - 1.5px);width:3px;height:15px;background:var(--oliva-oscuro)}
+.lane h3{font:700 20px/1.15 var(--fuente-titulo);color:inherit}
+.lane h3 small{display:block;font:500 16px var(--fuente)}
+.lane.a{background:#e3ecc2;color:#33401a;border-color:var(--oliva)}
+.lane.p{background:var(--limon-suave);color:var(--oliva-oscuro);border-color:var(--oliva-oscuro);border-style:dashed}
+.gt{background:#fff;border:3px solid var(--oliva-oscuro);border-radius:var(--radio);padding:10px 14px;text-align:center}
+.gt b{display:block;font:700 28px/1.1 var(--fuente-titulo);color:var(--oliva-oscuro)}
+.gt span{font-size:16px;color:var(--tinta-suave)}
+.mini{background:#fff;border:2px solid var(--borde);border-radius:12px;padding:8px 10px}
+.mini .n{display:flex;align-items:baseline;gap:8px}
+.mini .num{font-size:24px}
+.mini p{font-size:16px;font-weight:600;line-height:1.25}
+.mini.s-en_curso{background:var(--limon-suave);border-color:var(--tinta)}
+.mini.seg{outline:3px solid var(--oliva-oscuro);outline-offset:2px}
+.mini.s-rechazada{border-color:#c4511f;background:#fff}
+.mini .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.foot{font-size:16px;color:var(--tinta-suave)}
+
+.paso{display:grid;grid-template-columns:44px 1fr;gap:0 10px}
+.riel{display:flex;flex-direction:column;align-items:center}
+.riel .mark{width:40px;height:40px;font-size:22px;font-family:var(--fuente-titulo);font-weight:700;background:var(--crema);color:var(--oliva-oscuro);border-color:var(--oliva-oscuro);animation:none}
+.riel i{flex:1;width:4px;background:var(--oliva-claro);min-height:14px}
+.paso:last-child .riel i{display:none}
+.paso>div:last-child{padding-bottom:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.paso h2{font-size:24px;line-height:40px}
+.paso h2 small{font:600 16px var(--fuente);color:var(--tinta-suave);margin-left:6px}
+.paso.rvp>div:last-child{background:var(--limon-suave);border:2px solid var(--oliva-claro);border-radius:var(--radio);padding:8px 10px 10px;margin-bottom:16px}
+.paso.rvp .riel i{margin-bottom:16px}
+.paso.rvp .mark{background:var(--limon);}
+@media (max-width:385px){.paso{grid-template-columns:34px 1fr;gap:0 8px}.riel .mark{width:32px;height:32px;font-size:18px}.paso h2{line-height:32px}.paso.rvp>div:last-child{padding:8px 6px}.rq{padding:8px 6px!important}}
+.rq{background:#fff;border:2px solid var(--borde);border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;gap:8px}
+.rq.seg{outline:3px solid var(--oliva-oscuro);outline-offset:2px}
+.rq.rec{border-color:#c4511f}
+.rq .n{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rq .n .num{font-size:26px}
+.rq .n p{font-weight:600;font-size:16px;flex:1;min-width:150px}
+.vacio{font-size:16px;color:var(--tinta-suave)}
+</style>
+</head>
+<body>
+<header class="cab"><a class="mar" href="#"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><ellipse cx="16" cy="18" rx="12" ry="9" fill="#f2d643" transform="rotate(-20 16 18)"/><path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="#5b6b2e"/></svg><span>LIMONIA</span></a><button class="menu-b" type="button" aria-expanded="false" aria-controls="menu">Menú</button></header><main class="pg">
+<div class="tt"><p class="sobretitulo">Factory</p><h1>La factory en directo</h1></div><section class="sig" aria-label="Sigue tu petición"><form autocomplete="off" onsubmit="return false"><label for="sigue-n">Sigue tu petición #</label><div class="fl"><input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" value="43"><button class="boton" type="submit">Seguir</button></div></form><p class="sg" role="status">Siguiendo #43: «El botón del hero no se ve bien» · ahora en Revisión</p></section><dl class="totales"><div class="total"><dd>49</dd><dt>Peticiones</dt></div><div class="total t-ok"><dd>31</dd><dt>En producción</dt></div><div class="total t-esp"><dd>2</dd><dt>Esperando</dt></div><div class="total t-no"><dd>6</dd><dt>Rechazadas</dt></div></dl>
+<div>
+<section class="paso "><div class="riel"><span class="mark">1</span><i></i></div><div><h2>Entrada</h2><div class="mini s-ok "><div class="n"><span class="num">#49</span></div><p>Transporte a Lisboa más barato</p></div></div></section>
+<section class="paso "><div class="riel"><span class="mark">2</span><i></i></div><div><h2>Spec writer</h2><div class="mini s-en_curso "><div class="n"><span class="num">#48</span></div><p>Campaña de limones de temporada</p></div></div></section>
+<section class="paso "><div class="riel"><span class="mark">3</span><i></i></div><div><h2>Builder</h2><div class="mini s-en_curso "><div class="n"><span class="num">#45</span></div><p>Lista de productos más baratos</p></div></div></section>
+<section class="paso rvp"><div class="riel"><span class="mark">4</span><i></i></div><div><h2>Revisión<small>los 4 a la vez</small></h2><article class="rq  "><div class="n"><span class="num">#41</span><p>Banner de naranjas para Alemania</p></div><div class="r2"><div class="rv s-ok"><span class="mark">✓</span>Seguridad<small>ok</small></div><div class="rv s-ok"><span class="mark">✓</span>UX<small>ok</small></div><div class="rv s-en_curso"><span class="mark">●</span>UI<small>en curso</small></div><div class="rv s-ok"><span class="mark">✓</span>Código<small>ok</small></div></div></article><article class="rq  seg"><div class="n"><span class="num">#43</span><span class="tu">Tu petición</span><p>El botón del hero no se ve bien</p></div><div class="r2"><div class="rv s-ok"><span class="mark">✓</span>Seguridad<small>ok</small></div><div class="rv s-en_curso"><span class="mark">●</span>UX<small>en curso</small></div><div class="rv s-en_curso"><span class="mark">●</span>UI<small>en curso</small></div><div class="rv s-ok"><span class="mark">✓</span>Código<small>ok</small></div></div></article><article class="rq rec "><div class="n"><span class="num">#46</span><p>Una lista con las claves del servidor</p></div><div class="r2"><div class="rv s-rechazada"><span class="mark">!</span>Seguridad<small>rechazada</small></div><div class="rv s-en_curso"><span class="mark">●</span>UX<small>en curso</small></div><div class="rv s-en_curso"><span class="mark">●</span>UI<small>en curso</small></div><div class="rv s-ok"><span class="mark">✓</span>Código<small>ok</small></div></div><div class="mo"><b>Rechazada por Seguridad</b>el código intenta leer process.env. Una feature solo recibe datos, nunca secretos.</div></article></div></section>
+<section class="paso "><div class="riel"><span class="mark">5</span><i></i></div><div><h2>Approver<small>cuatro sí</small></h2><div class="mini s-en_curso "><div class="n"><span class="num">#47</span></div><p>Descuento del 15 % desde 50.000 kg</p><div class="tags"><span class="tag">4 de 4 ✓</span></div></div></div></section>
+<section class="paso "><div class="riel"><span class="mark">6</span><i></i></div><div><h2>¿Humano?<small>decide el diff</small></h2><div class="gt"><b>¿Humano?</b><span>Lo decide lo que toca el diff, no quien lo pide.</span></div><div class="fork"><div class="lane a"><h3>Automático<small>→ Main, directo</small></h3><div class="mini s-en_curso "><div class="n"><span class="num">#44</span></div><p>Nuevo destino: Lyon</p></div></div><div class="lane p"><h3>Una persona<small>→ PR, espera</small></h3><div class="mini s-en_curso "><div class="n"><span class="num">#42</span></div><p>Baja el precio del limón a 1 €</p><div class="tags"><span class="tag">PR #57</span></div></div><div class="mini s-en_curso "><div class="n"><span class="num">#39</span></div><p>Cambia el redondeo del presupuesto</p><div class="tags"><span class="tag">PR #55</span></div></div></div></div></div></section>
+<section class="paso "><div class="riel"><span class="mark">7</span><i></i></div><div><h2>Producción</h2><div class="mini s-ok "><div class="n"><span class="num">#40</span></div><p>Producto nuevo: mandarina Clemenules</p><div class="tags"><span class="tag">Desplegada</span></div></div></div></section>
+</div>
+<div class="ley" aria-label="Leyenda de estados"><span><b class="mark s-ok">✓</b>Ok</span><span><b class="mark s-en_curso">●</b>En curso</span><span><b class="mark s-rechazada">!</b>Rechazada</span><span><b class="mark s-pendiente">–</b>Pendiente</span></div>
+</main>
+</body>
+</html>
