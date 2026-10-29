@@ -1,266 +1,527 @@
 ---
 import Base from '../layouts/Base.astro'
-import { CELDAS } from '../lib/tablero.js'
+import DiagramaFactory from '../components/DiagramaFactory.astro'
 
 const totales = [
   ['peticiones', 'Peticiones', ''],
-  ['desplegadas', 'En producción', 't-ok'],
-  ['esperando', 'Esperando', 't-esp'],
-  ['rechazadas', 'Rechazadas', 't-no'],
-]
-const leyenda = [
-  ['ok', '✓', 'Ok'],
-  ['en_curso', '●', 'En curso'],
-  ['rechazada', '!', 'Rechazada'],
-  ['pendiente', '–', 'Pendiente'],
+  ['desplegadas', 'En producción', ''],
+  ['esperando', 'Esperando', ''],
+  ['rechazadas', 'Rechazadas', ' fd-contador--rech'],
 ]
 ---
-<Base title="Factory" description="La factory de LIMONIA en directo: cada petición, estación a estación.">
-  <div class="sala">
-    <div class="tt">
-      <p class="sobretitulo">Factory</p>
-      <h1>La factory en directo</h1>
-      <p id="tablero-estado" class="modo" role="status" aria-live="polite"></p>
-    </div>
+<Base title="Factory" description="La factory de LIMONIA en directo: cada petición viaja por el diagrama, estación a estación.">
+  <div class="fd" id="fd">
+    <header class="fd-cab">
+      <div>
+        <p class="fd-eyebrow">LIMONIA · Factory · en vivo</p>
+        <h1>La línea de la factory</h1>
+        <p class="fd-sub">Cada petición viaja por el diagrama. Toca una petición o una estación.</p>
+      </div>
+      <div class="fd-acc">
+        <form class="fd-sigue" id="sigue" autocomplete="off">
+          <label class="fd-eyebrow" for="sigue-n">Sigue tu petición #</label>
+          <div class="fd-sigue__fila">
+            <input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" placeholder="43" aria-describedby="sigue-msg" />
+            <button class="fd-boton" type="submit">Seguir</button>
+          </div>
+        </form>
+      </div>
+      <div class="fd-estados">
+        <p class="fd-msg" id="sigue-msg" role="status"></p>
+        <p class="fd-msg fd-modo" id="tablero-estado" role="status"></p>
+        <p class="fd-msg fd-siguiendo" id="siguiendo" role="status" aria-live="polite"></p>
+      </div>
+    </header>
 
-    <section class="sig" aria-label="Sigue tu petición">
-      <form id="sigue" autocomplete="off">
-        <label for="sigue-n">Sigue tu petición #</label>
-        <div class="fl">
-          <input id="sigue-n" name="n" type="text" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" />
-          <button class="boton" type="submit">Seguir</button>
+    <section class="fd-cont" aria-label="Diagrama de la factory">
+      <dl class="fd-contadores" aria-label="Contadores">
+        {totales.map(([id, label, clase]) => (
+          <div class={`fd-contador${clase}`}><dd data-total={id}>0</dd><dt>{label}</dt></div>
+        ))}
+      </dl>
+      <div class="papel" id="papel">
+        <DiagramaFactory vertical={false} />
+        <DiagramaFactory vertical={true} />
+      </div>
+      <div class="fd-leyenda" role="group" aria-label="Leyenda">
+        <span class="fd-eyebrow">Leyenda</span>
+        <span class="it"><svg width="34" height="16" aria-hidden="true"><rect x=".5" y=".5" width="33" height="15" rx="4" fill="#fff" stroke="#5c6245"></rect></svg>Estación</span>
+        <span class="it"><svg width="34" height="16" aria-hidden="true"><rect x=".5" y=".5" width="33" height="15" rx="7" fill="#f3ecdc" stroke="#5c6245"></rect></svg>Entrada · salida</span>
+        <span class="it"><svg width="34" height="18" aria-hidden="true"><path d="M17 .5L33 9L17 17.5L1 9Z" fill="#fff" stroke="#2a301a"></path></svg>Decisión</span>
+        <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"></polygon></svg>Flujo</span>
+        <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"></polygon></svg>Vuelta a Build</span>
+        <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5b6b2e" stroke-width="2.2"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5b6b2e"></polygon></svg>Camino de la petición que sigues</span>
+        <span class="it"><span class="lg-chip lg-curso">● #n</span>trabajando</span>
+        <span class="it"><span class="lg-chip lg-espera">– #n</span>espera a una persona</span>
+        <span class="it"><span class="lg-chip lg-ok">✓ #n</span>en producción</span>
+        <span class="it"><span class="lg-chip lg-rech">! #n</span>rechazada</span>
+        <span class="it fd-marcas">✓ hecho · ● en curso · ! rechazada · – pendiente</span>
+      </div>
+    </section>
+
+    <aside class="fd-lat" id="lateral" aria-label="Detalle y cola">
+      <section class="fd-panel fd-detalle" id="detalle" aria-labelledby="det-t">
+        <div class="fd-panel__cab"><span class="fd-eyebrow" id="det-t">Detalle</span><button class="fd-cerrar" id="b-cerrar" type="button" aria-label="Cerrar el detalle (Esc)">×</button></div>
+        <div class="fd-panel__cuerpo" id="det-cuerpo">
+          <p class="fd-vacio">Toca una petición para ver su camino y el estado de cada estación, o una estación para saber qué hace y qué peticiones tiene ahora.</p>
         </div>
-      </form>
-      <p class="sg" id="siguiendo" role="status" aria-live="polite"></p>
-    </section>
-
-    <dl class="totales" aria-label="Contadores">
-      {totales.map(([id, label, clase]) => (
-        <div class={`total ${clase}`.trim()}><dd data-total={id}>0</dd><dt>{label}</dt></div>
-      ))}
-    </dl>
-
-    <section class="fila-lista" aria-labelledby="h-pet">
-      <h2 id="h-pet" class="sr-only">Peticiones</h2>
-      <div class="cab-t" aria-hidden="true">
-        <div></div><div></div>
-        <div class="gr" style="grid-column:3/6">Preparación</div>
-        <div class="gr rv" style="grid-column:6/10">Revisión en paralelo</div>
-        <div class="gr" style="grid-column:10/11">&nbsp;</div>
-        <div class="gr rg" style="grid-column:11/13">Puerta de riesgo</div>
-        <div class="gr" style="grid-column:13/14">&nbsp;</div>
-        <div class="nn2">N.º</div><div class="peti">Petición</div>
-        {CELDAS.map(({ etiqueta }) => <div class="h">{etiqueta}</div>)}
-      </div>
-      <ol class="filas" id="filas"></ol>
-      <p class="vacio" id="filas-vacio">No hay peticiones en la factory ahora mismo.</p>
-    </section>
-
-    <section class="puerta" aria-labelledby="h-pu">
-      <h2 id="h-pu">¿Humano?</h2>
-      <p>Lo decide el diff, no quien lo pide.</p>
-      <div class="ramas">
-        <div class="rama a"><span class="k2" data-puerta="auto">0</span><span>Automático<span class="dest"> → Main</span><small>sin esperar</small></span></div>
-        <div class="rama p"><span class="k2" data-puerta="persona">0</span><span>Una persona<span class="dest"> → PR</span><small>espera su aprobación</small></span></div>
-      </div>
-    </section>
-
-    <section class="cola" aria-labelledby="h-co">
-      <h2 id="h-co">Esperando a una persona</h2>
-      <ol id="cola"></ol>
-      <p class="vacio" id="cola-vacia">Nadie espera ahora mismo.</p>
-    </section>
-
-    <div class="ley" aria-label="Leyenda de estados">
-      {leyenda.map(([estado, simbolo, texto]) => <span><b class={`mark s-${estado}`}>{simbolo}</b>{texto}</span>)}
-    </div>
+      </section>
+      <section class="fd-panel fd-cola" id="cola" aria-labelledby="cola-t">
+        <div class="fd-panel__cab"><span class="fd-eyebrow" id="cola-t">Esperando a una persona</span><span class="fd-num" id="cola-n" aria-hidden="true">0</span></div>
+        <div class="fd-panel__cuerpo"><ul class="fd-lista" id="cola-lista"><li class="fd-vacio" id="cola-vacia">Nadie espera ahora mismo.</li></ul></div>
+      </section>
+    </aside>
   </div>
+  <div id="tip" role="tooltip" hidden></div>
+
 <script>
-  import { CELDAS, ahora, celdas, puertas, rechazo, retencion, siguiendo } from '../lib/tablero.js'
+  import { geometria, camino, slotsDe, NODOS, IDS_NODOS, TOKEN } from '../lib/geometria.js'
+  import {
+    CLASE_MARCA, GLIFOS, aristasEncendidas, claseFicha, marcaFicha, marcaNodo, nombreAccesible, ordenFichas, panelEstacion,
+    panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
+  } from '../lib/tablero.js'
   import { esDemo, sondearDemo } from '../components/demo-datos.js'
   import { sondear } from '../lib/sondeo.js'
 
-  const lista = document.getElementById('filas')
-  const sinFilas = document.getElementById('filas-vacio')
-  const estado = document.getElementById('tablero-estado')
-  const linea = document.getElementById('siguiendo')
-  const cola = document.getElementById('cola')
-  const colaVacia = document.getElementById('cola-vacia')
-  const formulario = document.getElementById('sigue')
-  const entrada = document.getElementById('sigue-n')
-  const estrecha = matchMedia('(max-width: 1199.98px)')
-  const demo = esDemo()
-
-  const nodo = (etiqueta, clase, texto) => {
-    const el = document.createElement(etiqueta)
+  const $ = (selector, raiz = document) => raiz.querySelector(selector)
+  const nodoHtml = (tag, clase, texto) => {
+    const el = document.createElement(tag)
     if (clase) el.className = clase
     if (texto !== undefined) el.textContent = texto
     return el
   }
+  // A DOM element with attributes and children; every text goes through textContent / text nodes.
+  const h = (tag, atributos, ...hijos) => {
+    const el = document.createElement(tag)
+    for (const [k, v] of Object.entries(atributos ?? {})) {
+      if (k === 'class') el.className = v
+      else if (k === 'text') el.textContent = v
+      else el.setAttribute(k, v)
+    }
+    for (const hijo of hijos.flat()) if (hijo != null) el.append(hijo.nodeType ? hijo : document.createTextNode(hijo))
+    return el
+  }
   const numeroValido = (valor) => (/^\d{1,9}$/.test(valor ?? '') ? Number(valor) : null)
 
-  let ultimo = null
+  const PAPEL = $('#papel')
+  const demo = esDemo()
+  const ancha = matchMedia('(min-width: 1500px)')
+  const reducido = matchMedia('(prefers-reduced-motion: reduce)')
+  const GEOS = { h: geometria(false), v: geometria(true) }
+  // Everything the script touches in each layout, found once.
+  const CAPAS = {}
+  for (const capa of ['h', 'v']) {
+    const stage = $(`.stage--${capa}`, PAPEL)
+    CAPAS[capa] = {
+      stage,
+      geo: GEOS[capa],
+      lit: Object.fromEntries([...stage.querySelectorAll('[data-arista]')].map((p) => [p.dataset.arista, p])),
+      lab: Object.fromEntries([...stage.querySelectorAll('[data-etiqueta]')].map((g) => [g.dataset.etiqueta, g])),
+      nodoG: Object.fromEntries([...stage.querySelectorAll('[data-nodo-g]')].map((g) => [g.dataset.nodoG, g])),
+      nodoBtn: Object.fromEntries([...stage.querySelectorAll('[data-nodo]')].map((b) => [b.dataset.nodo, b])),
+      mas: Object.fromEntries([...stage.querySelectorAll('[data-mas]')].map((b) => [b.dataset.mas, b])),
+    }
+  }
+  let capa = ancha.matches ? CAPAS.h : CAPAS.v
+
+  const detalle = $('#detalle')
+  const cuerpo = $('#det-cuerpo')
+  const detTitulo = $('#det-t')
+  const lineaSigue = $('#siguiendo')
+  const mensaje = $('#sigue-msg')
+  const estadoModo = $('#tablero-estado')
+  const entrada = $('#sigue-n')
+  const tip = $('#tip')
+
+  let datos = null
+  let tareas = new Map() // number → task, every one the API lists
+  let visiblesAhora = []
   let primera = true
+  let SEL = null // the request whose panel is open (and which is followed)
+  let SELEST = null // the station whose panel is open
   let seguida = numeroValido(new URLSearchParams(location.search).get('n'))
+  let panelFirma = ''
+  const vistas = new Map()
+  const TK = {} // number → { el, nodo, pos, vueltas, inst }
   if (seguida) entrada.value = String(seguida)
-  const vistas = new Map() // number → { desde: first time seen in a final state, retirada }
-  const filas = new Map() // number → the row's elements
 
-  // One row: the title, 11 cells in the order of the stations, "ahora en" (phones) and the motivo of a rejection.
-  function crearFila() {
-    const li = nodo('li', 'fila')
-    const nn = nodo('span', 'nn')
-    nn.append(nodo('span', 'sr-only', 'Petición '), document.createTextNode(''))
-    const titulo = nodo('span', 'pt', '')
-    const tu = nodo('span', 'tu')
-    tu.append(nodo('span', 'sr-only', 'Tu petición'), nodo('span', 'lg', 'Tu petición'), nodo('span', 'sh', 'Tú'))
-    tu.lastChild.setAttribute('aria-hidden', 'true')
-    tu.children[1].setAttribute('aria-hidden', 'true')
-    const cl = nodo('div', 'cl')
-    cl.append(nn, titulo)
-    li.append(cl)
-    const casillas = CELDAS.map((_, i) => {
-      if (i === 3 || i === 7) {
-        const sp = nodo('span', 'sp')
-        sp.setAttribute('aria-hidden', 'true')
-        li.append(sp)
+  // --- the stage: scale it to the paper, centre it ---
+  function ajusta() {
+    const w = PAPEL.clientWidth
+    const { W, H } = capa.geo
+    capa.stage.style.transform = ''
+    if (ancha.matches) {
+      PAPEL.style.height = ''
+      const alto = PAPEL.clientHeight
+      const esc = Math.min(w / W, alto / H, 1.3)
+      capa.stage.style.transform = `translate(${Math.max(0, (w - W * esc) / 2)}px, ${Math.max(0, (alto - H * esc) / 2)}px) scale(${esc})`
+    } else {
+      const esc = Math.min(1, w / W)
+      PAPEL.style.height = `${Math.ceil(H * esc) + 2}px`
+      capa.stage.style.transform = `translate(${Math.max(0, (w - W * esc) / 2)}px, 0) scale(${esc})`
+    }
+  }
+
+  // --- tokens: keyed elements, they only move ---
+  function mueve(rec, x, y, trayecto) {
+    const destino = `translate(${x}px, ${y}px)`
+    if (!reducido.matches && rec.pos && !rec.inst && (rec.pos.x !== x || rec.pos.y !== y)) {
+      let marcos
+      if (trayecto) {
+        const ps = [{ x: rec.pos.x + TOKEN.ancho / 2, y: rec.pos.y + TOKEN.alto / 2 }, ...trayecto.puntos, { x: x + TOKEN.ancho / 2, y: y + TOKEN.alto / 2 }]
+        let total = 0
+        const acum = [0]
+        for (let i = 1; i < ps.length; i++) {
+          total += Math.hypot(ps[i].x - ps[i - 1].x, ps[i].y - ps[i - 1].y)
+          acum.push(total)
+        }
+        marcos = ps.map((p, i) => ({ transform: `translate(${p.x - TOKEN.ancho / 2}px, ${p.y - TOKEN.alto / 2}px)`, offset: total ? acum[i] / total : i / (ps.length - 1) }))
+      } else {
+        marcos = [{ transform: `translate(${rec.pos.x}px, ${rec.pos.y}px)` }, { transform: destino }]
       }
-      const k = nodo('span', `k${i >= 3 && i <= 6 ? ' rv' : ''}${i === 3 ? ' i' : ''}`)
-      const c = nodo('span', 'c')
-      const g = nodo('span', 'g', '')
-      const d = nodo('span', 'd', '')
-      const lectura = nodo('span', 'sr-only', '')
-      g.setAttribute('aria-hidden', 'true')
-      d.setAttribute('aria-hidden', 'true')
-      c.append(g, d, lectura)
-      k.append(c)
-      li.append(k)
-      return { c, g, d, lectura }
-    })
-    const est = nodo('span', 'est')
-    const marca = nodo('span', 'mark', '')
-    marca.setAttribute('aria-hidden', 'true')
-    const nombre = document.createTextNode('')
-    est.append(marca, nombre)
-    const palabra = nodo('span', '', '')
-    const ahoraEn = nodo('p', 'ahora')
-    ahoraEn.append(est, palabra)
-    const motivo = nodo('p', 'mo')
-    const motivoTitulo = nodo('b', '', '')
-    const motivoTexto = nodo('span', '', '')
-    motivo.append(motivoTitulo, motivoTexto)
-    li.append(ahoraEn, motivo)
-    return { li, nn, titulo, tu, casillas, est, marca, nombre, palabra, motivo, motivoTitulo, motivoTexto }
-  }
-
-  // Everything written goes through textContent: titles and motivos come from the audience.
-  function pintarFila(fila, t) {
-    const suya = t.numero === seguida
-    const rec = rechazo(t)
-    fila.li.className = `fila${suya ? ' seg' : ''}${rec ? ' rec' : ''}`
-    fila.nn.lastChild.textContent = `#${t.numero}`
-    fila.titulo.textContent = t.titulo ?? ''
-    fila.titulo.append(fila.tu)
-    fila.tu.hidden = !suya
-    celdas(t).forEach((celda, i) => {
-      const { c, g, d, lectura } = fila.casillas[i]
-      const ruta = t.ruta === 'human' ? ' pers' : ' auto'
-      c.className = `c s-${celda.estado}${celda.texto ? ` tx${ruta}` : ''}`
-      g.textContent = celda.glifo
-      d.textContent = celda.texto ?? ''
-      lectura.textContent = celda.lectura
-    })
-    const donde = ahora(t)
-    fila.est.className = `est s-${donde.estado}`
-    fila.marca.textContent = donde.glifo
-    fila.nombre.textContent = donde.etiqueta
-    fila.palabra.textContent = donde.palabra
-    fila.motivo.hidden = !rec
-    fila.motivoTitulo.textContent = rec?.titulo ?? ''
-    fila.motivoTexto.textContent = rec?.motivo ?? ''
-  }
-
-  // A finished task stays in the table for a while (30 s a rejection, 4 s a deployment) and then leaves for its counter.
-  // One already finished when the page opened goes straight to the counters, except in the demo, which must show them.
-  // The request being followed never leaves.
-  function visibles(tareas) {
-    const ahoraMs = Date.now()
-    return tareas.filter((t) => {
-      const espera = retencion(t.resultadoFinal)
-      if (!espera || t.numero === seguida) return true
-      const vista = vistas.get(t.numero)
-      if (!vista || vista.retirada) return false
-      if (ahoraMs - vista.desde >= espera) vista.retirada = true
-      return !vista.retirada
-    })
-  }
-
-  function pintar(datos) {
-    ultimo = datos
-    const tareas = datos.tareas ?? []
-    const vivas = new Set(tareas.map((t) => t.numero))
-    for (const n of [...vistas.keys()]) if (!vivas.has(n)) vistas.delete(n)
-    for (const t of tareas) {
-      if (retencion(t.resultadoFinal) && !vistas.has(t.numero)) vistas.set(t.numero, { desde: Date.now(), retirada: primera && !demo })
+      const duracion = Math.min(1200, 480 * (trayecto ? trayecto.aristas.length : 1))
+      rec.el.style.zIndex = rec.el.classList.contains('is-sel') ? '4' : '3'
+      rec.el.animate(marcos, { duration: duracion, easing: 'cubic-bezier(.2, .8, .2, 1)' })
+      setTimeout(() => { rec.el.style.zIndex = '' }, duracion + 60)
     }
-    primera = false
-    for (const [n, fila] of filas) if (!vivas.has(n)) filas.delete(n)
+    rec.el.style.transform = destino
+    rec.pos = { x, y }
+  }
 
-    const c = datos.contadores ?? {}
-    for (const total of document.querySelectorAll('[data-total]')) {
-      const id = total.dataset.total
-      total.textContent = String(id === 'rechazadas' ? (c.rechazadas ?? 0) + (c.fallidas ?? 0) + (c.cerradas ?? 0) + (c.bloqueadas_tests ?? 0) : (c[id] ?? 0))
+  function sincroniza() {
+    const vis = visiblesAhora
+    const numeros = new Set(vis.map((t) => t.numero))
+    for (const t of vis) {
+      if (TK[t.numero]) continue
+      const el = h('button', { class: 'tk', type: 'button', 'data-n': t.numero }, '')
+      capa.stage.append(el)
+      TK[t.numero] = { el, nodo: null, pos: null, vueltas: t.vueltas ?? 0, inst: true }
+      if (!primera && !reducido.matches) {
+        el.classList.add('is-new')
+        setTimeout(() => el.classList.remove('is-new'), 60)
+      }
     }
-    const rutas = puertas(tareas)
-    for (const k of document.querySelectorAll('[data-puerta]')) k.textContent = String(rutas[k.dataset.puerta])
-    cola.replaceChildren(...(datos.cola ?? []).map((q) => {
-      const item = nodo('li')
-      const pr = nodo('div', 'pr')
-      const link = nodo('a', '', `PR #${q.pr}`)
-      link.href = q.url
-      pr.append(link, nodo('span', '', `petición #${q.tarea ?? '?'}`))
-      item.append(pr, nodo('p', '', q.titulo ?? ''))
-      return item
-    }))
-    colaVacia.hidden = (datos.cola ?? []).length > 0
-    estado.textContent = demo ? 'MODO DEMO · datos de ejemplo' : ''
-    linea.textContent = siguiendo(seguida, tareas.find((t) => t.numero === seguida))
-    dibujar()
-    return false
+    for (const n of Object.keys(TK)) {
+      if (numeros.has(Number(n))) continue
+      const el = TK[n].el
+      el.classList.add('is-hid')
+      el.tabIndex = -1
+      delete TK[n]
+      setTimeout(() => el.remove(), 520)
+    }
+    const grupos = {}
+    for (const t of vis) (grupos[ubica(t)] ??= []).push(t.numero)
+    for (const [nodo, lista] of Object.entries(grupos)) {
+      const s = slotsDe(capa.geo.N[nodo], ordenFichas(lista, SEL))
+      for (const o of s.out) {
+        const rec = TK[o.numero]
+        const t = tareas.get(o.numero)
+        const antes = rec.nodo
+        const vuelve = (t.vueltas ?? 0) > rec.vueltas
+        const trayecto = antes && (antes !== nodo || vuelve) ? camino(capa.geo, antes, nodo, { conVuelta: vuelve }) : null
+        rec.nodo = nodo
+        rec.vueltas = t.vueltas ?? 0
+        mueve(rec, o.x, o.y, trayecto)
+        rec.inst = false
+        rec.el.classList.toggle('is-hid', !o.visible)
+        rec.el.tabIndex = o.visible ? 0 : -1
+      }
+      const mas = capa.mas[nodo]
+      if (s.colapsa) {
+        mas.hidden = false
+        mas.style.transform = `translate(${s.masX}px, ${s.masY}px)`
+        mas.textContent = `+${s.resto}`
+        mas.setAttribute('aria-label', `Ver las ${lista.length} peticiones en ${NODOS[nodo].nombre}`)
+      } else {
+        mas.hidden = true
+      }
+    }
+    for (const nodo of IDS_NODOS) if (!grupos[nodo]) capa.mas[nodo].hidden = true
+    for (const t of vis) {
+      const { el } = TK[t.numero]
+      const marca = `${marcaFicha(t)}#${t.numero}`
+      if (el.firstChild.nodeValue !== marca) el.firstChild.nodeValue = marca
+      el.className = `tk tk--${claseFicha(t)}${SEL === t.numero ? ' is-sel' : ''}${el.classList.contains('is-hid') ? ' is-hid' : ''}${el.classList.contains('is-new') ? ' is-new' : ''}`
+      el.setAttribute('aria-label', nombreAccesible(t))
+      el.setAttribute('aria-pressed', String(SEL === t.numero))
+    }
+    PAPEL.classList.toggle('hay-sel', SEL !== null)
   }
 
-  // Newest first; on a phone or tablet the followed request goes first in the DOM too (screen readers read it first).
-  function dibujar() {
-    if (!ultimo) return
-    const tareas = visibles([...(ultimo.tareas ?? [])].sort((a, b) => b.numero - a.numero))
-    if (estrecha.matches) tareas.sort((a, b) => Number(b.numero === seguida) - Number(a.numero === seguida))
-    const elementos = tareas.map((t) => {
-      const fila = filas.get(t.numero) ?? crearFila()
-      filas.set(t.numero, fila)
-      pintarFila(fila, t)
-      return fila.li
-    })
-    lista.replaceChildren(...elementos)
-    sinFilas.hidden = elementos.length > 0
+  // --- the path of the followed request, the marks of the nodes ---
+  function pintaSeleccion() {
+    const t = SEL !== null ? tareas.get(SEL) : null
+    for (const c of Object.values(CAPAS)) {
+      const vertical = c === CAPAS.v
+      const on = t ? aristasEncendidas(t, vertical) : new Set()
+      for (const id in c.lit) c.lit[id].classList.toggle('on', on.has(id))
+      for (const id in c.lab) c.lab[id].classList.toggle('on', on.has(id))
+      for (const nodo of IDS_NODOS) {
+        const g = c.nodoG[nodo]
+        const marca = $('.n-marca', g)
+        if (!t) {
+          marca.classList.remove('on')
+          g.classList.remove('on-path')
+          continue
+        }
+        const estado = marcaNodo(t, nodo)
+        marca.setAttribute('class', `n-marca on ${CLASE_MARCA[estado]}`)
+        $('text', marca).textContent = GLIFOS[estado]
+        g.classList.toggle('on-path', estado !== 'pendiente')
+      }
+    }
   }
-  setInterval(dibujar, 500)
-  estrecha.addEventListener('change', dibujar)
 
-  formulario.addEventListener('submit', (event) => {
-    event.preventDefault()
-    seguida = numeroValido(entrada.value.trim().replace(/^#/, ''))
+  // --- the side panel ---
+  function abre() {
+    detalle.classList.add('abierto')
+    document.body.classList.add('sheet-open')
+  }
+  function cierra() {
+    SEL = null
+    SELEST = null
+    seguida = null
+    detalle.classList.remove('abierto')
+    document.body.classList.remove('sheet-open')
+    actualizaUrl()
+    pintaPanel()
+    pintaSeleccion()
+    sincroniza()
+    lineaSigue.textContent = ''
+  }
+  function actualizaUrl() {
     const url = new URL(location.href)
     if (seguida) url.searchParams.set('n', String(seguida))
     else url.searchParams.delete('n')
     history.replaceState(null, '', url)
-    if (ultimo) pintar(ultimo)
+  }
+  function pintaPanel() {
+    const t = SEL !== null ? tareas.get(SEL) : null
+    const cola = datos?.cola ?? []
+    const modelo = t ? { p: panelPeticion(t, cola) } : SELEST ? { e: panelEstacion(SELEST, visiblesAhora) } : null
+    const firma = JSON.stringify(modelo && modelo.p ? [modelo.p, t.estacion] : modelo && modelo.e ? [modelo.e.titulo, modelo.e.aqui.map((x) => [x.numero, x.titulo, nombreAccesible(x)])] : null)
+    if (firma === panelFirma) return
+    panelFirma = firma
+    cuerpo.replaceChildren()
+    if (modelo?.p) {
+      const p = modelo.p
+      detTitulo.textContent = `Petición #${p.numero}`
+      cuerpo.append(...[
+        h('h2', { text: p.titulo }),
+        h('div', { class: 'fd-etiquetas' }, p.etiquetas.map((e) => h('span', { class: 'fd-etq', text: e }))),
+        h('p', { class: 'fd-estado-msg', text: p.mensaje }),
+        p.vueltas > 0 ? h('p', { class: 'fd-vacio', text: p.vueltas === 1 ? 'Volvió a Builder una vez.' : 'Volvió a Builder dos veces.' }) : null,
+        p.motivo ? h('div', { class: 'fd-motivo' }, h('b', { text: 'Motivo del rechazo' }), `${p.motivo.titulo} ${p.motivo.motivo}`.trim()) : null,
+        p.pr ? (p.pr.url ? h('a', { class: 'fd-enlace', href: p.pr.url, text: `Ver el PR #${p.pr.numero} →` }) : h('p', { class: 'fd-vacio', text: `PR #${p.pr.numero}` })) : null,
+        p.enlace ? h('a', { class: 'fd-enlace', href: p.enlace, text: 'Ver el cambio en la web →' }) : null,
+        h('ol', { class: 'fd-pasos', 'aria-label': 'Estado de las 11 estaciones' }, p.filas.map((f) => h(
+          'li', { class: f.aqui ? 'aqui' : '' },
+          h('span', { class: `mk ${CLASE_MARCA[f.estado]}`, 'aria-hidden': 'true', text: f.glifo }),
+          h('span', { text: f.etiqueta }),
+          h('span', { class: 'w', text: f.texto ? `${f.palabra} · ${f.texto}` : f.palabra }),
+        ))),
+        h('button', { class: 'fd-boton fd-boton--borde', type: 'button', id: 'b-dejar', text: 'Dejar de seguir' }),
+      ].filter(Boolean))
+      $('#b-dejar').addEventListener('click', cierra)
+    } else if (modelo?.e) {
+      const e = modelo.e
+      detTitulo.textContent = e.paso
+      cuerpo.append(
+        h('h2', { text: e.titulo }),
+        h('p', { text: e.hace }),
+        h('div', { class: 'fd-eyebrow', text: `Ahora aquí (${e.aqui.length})` }),
+        e.aqui.length
+          ? h('ul', { class: 'fd-lista' }, e.aqui.map((x) => h('li', {}, h('button', { type: 'button', 'data-ver': x.numero, 'aria-label': nombreAccesible(x) }, h('span', { class: 'n', text: `#${x.numero}` }), h('span', { text: x.titulo })))))
+          : h('p', { class: 'fd-vacio', text: 'Ninguna petición ahora mismo.' }),
+      )
+    } else {
+      detTitulo.textContent = 'Detalle'
+      cuerpo.append(h('p', { class: 'fd-vacio', text: 'Toca una petición para ver su camino y el estado de cada estación, o una estación para saber qué hace y qué peticiones tiene ahora.' }))
+    }
+  }
+
+  // The queue waiting for a person: keyed items, only the ones that change are added or removed.
+  function pintaCola(cola) {
+    $('#cola-n').textContent = String(cola.length)
+    const ul = $('#cola-lista')
+    const hay = new Set(cola.map((c) => `c${c.pr}`))
+    for (const li of [...ul.children]) if (li.dataset.k && !hay.has(li.dataset.k)) li.remove()
+    for (const c of cola) {
+      let li = ul.querySelector(`[data-k="c${c.pr}"]`)
+      const etiqueta = `Petición #${c.tarea ?? '?'}: ${c.titulo ?? ''}, PR #${c.pr} esperando a una persona`
+      if (!li) {
+        li = h('li', { 'data-k': `c${c.pr}` }, h('button', { type: 'button' }, h('span', { class: 'n' }), h('span', {})))
+        ul.append(li)
+      }
+      const boton = li.firstChild
+      if (c.tarea != null) boton.setAttribute('data-ver', String(c.tarea))
+      boton.setAttribute('aria-label', etiqueta)
+      boton.children[0].textContent = `PR #${c.pr}`
+      boton.children[1].textContent = `#${c.tarea ?? '?'} · ${c.titulo ?? ''}`
+    }
+    $('#cola-vacia').hidden = cola.length > 0
+  }
+
+  // --- the follow: tap a request, type its number ---
+  function sigue(n) {
+    SELEST = null
+    SEL = n
+    seguida = n
+    actualizaUrl()
+    pintaPanel()
+    pintaSeleccion()
+    sincroniza()
+    abre()
+    lineaSigue.textContent = siguiendo(n, tareas.get(n))
+    if (!ancha.matches) setTimeout(() => {
+      const r = TK[n]?.el.getBoundingClientRect()
+      if (r) scrollBy({ top: r.top - innerHeight * 0.18, behavior: reducido.matches ? 'auto' : 'smooth' })
+    }, 60)
+  }
+  function estacion(id) {
+    SEL = null
+    seguida = null
+    SELEST = id
+    actualizaUrl()
+    pintaPanel()
+    pintaSeleccion()
+    sincroniza()
+    abre()
+    lineaSigue.textContent = ''
+    if (!ancha.matches) setTimeout(() => {
+      scrollBy({ top: capa.nodoBtn[id].getBoundingClientRect().top - innerHeight * 0.18, behavior: reducido.matches ? 'auto' : 'smooth' })
+    }, 60)
+  }
+
+  PAPEL.addEventListener('click', (ev) => {
+    const tk = ev.target.closest('.tk')
+    const mas = ev.target.closest('.mas')
+    const nb = ev.target.closest('.nodo-btn')
+    if (tk) sigue(Number(tk.dataset.n))
+    else if (mas) estacion(mas.dataset.mas)
+    else if (nb) estacion(nb.dataset.nodo)
   })
+  document.addEventListener('click', (ev) => {
+    const v = ev.target.closest('[data-ver]')
+    if (v && !v.closest('.papel')) sigue(Number(v.dataset.ver))
+  })
+  $('#sigue').addEventListener('submit', (ev) => {
+    ev.preventDefault()
+    const texto = entrada.value.trim().replace(/^#/, '')
+    const n = numeroValido(texto)
+    if (!n) {
+      mensaje.className = 'fd-msg err'
+      mensaje.textContent = texto ? 'Escribe solo el número de tu petición.' : 'Escribe el número de tu petición.'
+      return
+    }
+    mensaje.className = 'fd-msg'
+    mensaje.textContent = ''
+    if (tareas.has(n)) {
+      sigue(n)
+    } else {
+      SEL = null
+      SELEST = null
+      seguida = n
+      actualizaUrl()
+      pintaPanel()
+      pintaSeleccion()
+      sincroniza()
+      lineaSigue.textContent = siguiendo(n, null)
+    }
+  })
+  $('#b-cerrar').addEventListener('click', cierra)
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && (SEL !== null || SELEST)) cierra()
+  })
+
+  // A tooltip with the title of a request (mouse and keyboard).
+  function muestraTip(b) {
+    const t = tareas.get(Number(b.dataset.n))
+    if (!t) return
+    tip.replaceChildren(h('b', { text: `#${t.numero} · ` }), t.titulo ?? '')
+    tip.hidden = false
+    const r = b.getBoundingClientRect()
+    const w = tip.offsetWidth
+    tip.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`
+    tip.style.top = `${r.top > 60 ? r.top - tip.offsetHeight - 8 : r.bottom + 8}px`
+  }
+  PAPEL.addEventListener('pointerover', (ev) => {
+    const b = ev.target.closest('.tk')
+    if (b && !b.classList.contains('is-hid')) muestraTip(b)
+  })
+  PAPEL.addEventListener('pointerout', (ev) => { if (ev.target.closest('.tk')) tip.hidden = true })
+  PAPEL.addEventListener('focusin', (ev) => {
+    const b = ev.target.closest('.tk')
+    if (b) muestraTip(b)
+  })
+  PAPEL.addEventListener('focusout', () => { tip.hidden = true })
+
+  // --- one repaint per data: tokens, counters, queue, panel; the board itself is never rebuilt ---
+  function repinta() {
+    if (!datos) return
+    visiblesAhora = visibles([...datos.tareas ?? []].sort((a, b) => b.numero - a.numero), vistas, seguida, Date.now())
+    sincroniza()
+  }
+
+  function pintar(nuevos) {
+    datos = nuevos
+    const lista = datos.tareas ?? []
+    tareas = new Map(lista.map((t) => [t.numero, t]))
+    registrarVistas(vistas, lista, Date.now(), { alAbrir: primera, demo })
+    const c = totales(datos.contadores)
+    for (const total of document.querySelectorAll('[data-total]')) total.textContent = String(c[total.dataset.total] ?? 0)
+    repinta()
+    primera = false
+    pintaCola(datos.cola ?? [])
+    estadoModo.textContent = demo ? 'MODO DEMO · datos de ejemplo' : ''
+    if (SEL !== null && !tareas.has(SEL)) {
+      SEL = null
+      detalle.classList.remove('abierto')
+      document.body.classList.remove('sheet-open')
+    }
+    // The request typed in the form or in ?n= opens its panel the first time it shows up.
+    if (seguida && SEL === null && !SELEST && tareas.has(seguida)) {
+      sigue(seguida)
+    } else {
+      pintaPanel()
+      pintaSeleccion()
+      const linea = siguiendo(seguida, tareas.get(seguida))
+      if (lineaSigue.textContent !== linea) lineaSigue.textContent = linea
+    }
+    if (SEL !== null) {
+      const linea = siguiendo(SEL, tareas.get(SEL))
+      if (lineaSigue.textContent !== linea) lineaSigue.textContent = linea
+    }
+    return false
+  }
+
+  // --- layout: horizontal on a wide screen, vertical below; the tokens change stage without travelling ---
+  function cambiaCapa() {
+    const nueva = ancha.matches ? CAPAS.h : CAPAS.v
+    if (nueva === capa) return
+    capa = nueva
+    for (const rec of Object.values(TK)) {
+      capa.stage.append(rec.el)
+      rec.nodo = null
+      rec.pos = null
+      rec.inst = true
+    }
+    ajusta()
+    sincroniza()
+    pintaSeleccion()
+  }
+  ancha.addEventListener('change', cambiaCapa)
+  new ResizeObserver(ajusta).observe(PAPEL)
+  addEventListener('resize', ajusta)
+  ajusta()
+  // A finished request leaves when its time is up, even if no new data arrives.
+  setInterval(repinta, 1000)
 
   if (demo) {
     sondearDemo(pintar)
   } else {
     sondear('/api/estado', pintar, () => {
-      estado.textContent = 'Sin conexión con la factory. Reintentando…'
+      estadoModo.textContent = 'Sin conexión con la factory. Reintentando…'
     })
   }
 </script>

@@ -4,7 +4,7 @@ Synced by people (gentle-design "design system sync"); only humans change it. Th
 
 **LIMONIA editorial** keeps the LIMONIA brand (oliva, limón, tierra, warm paper) and takes its grammar from [diagram-design](https://github.com/cathrynlavery/diagram-design) by Cathryn Lavery (MIT licence): flat, hairline borders, dot-grid paper, monospace for details, uppercase tracked labels, one accent for what matters, a legend, one motion clock. The colours, the serif and the sans are the brand's; the grammar is borrowed. Nothing is copied from its files.
 
-> **Migration status.** The site is being migrated to this grammar (`odd/tasks/diseno-editorial.md`). Until then `src/styles/global.css` still has the previous look. These values change there: `--radio` 18px → 8px for cards and 6px for controls, `--sombra` removed (no shadows; a 1px `--borde` hairline instead), buttons and badges stop being pills (radius 6px; only chips stay pills), the overline (`.sobretitulo`) moves from `--tierra` to `--tinta-suave`, and a monospace stack is added. No brand colour changes.
+> **Migration status.** The factory board (`/factory/`, `.fd` in `src/styles/global.css`) already follows it; the rest of the site is being migrated (`odd/tasks/diseno-editorial.md`) and still has the previous look. These values change there: `--radio` 18px → 8px for cards and 6px for controls, `--sombra` removed (no shadows; a 1px `--borde` hairline instead), buttons and badges stop being pills (radius 6px; only chips stay pills), the overline (`.sobretitulo`) moves from `--tierra` to `--tinta-suave`, and a monospace stack is added. No brand colour changes.
 
 ## Colors
 

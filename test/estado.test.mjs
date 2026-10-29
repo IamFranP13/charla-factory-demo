@@ -292,6 +292,13 @@ test('derivar: the files rule says where a deployed change is visible', () => {
   assert.equal(derivar(issue(1, 'negocio', null), { cola: new Set() }).enlace, null, 'no link until it is deployed')
 })
 
+test('derivar: vueltas says how many times the approver sent the task back; an old state without it derives 0', () => {
+  assert.equal(derivar(issue(5, 'marketing', { ...withState('marketing', {}), vueltas: 1 }), { cola: new Set() }).vueltas, 1)
+  assert.equal(derivar(issue(5, 'marketing', withState('marketing', {})), { cola: new Set() }).vueltas, 0)
+  assert.equal(derivar(issue(6, 'marketing', null), { cola: new Set() }).vueltas, 0, 'no marker yet')
+  assert.equal(derivar(issue(7, 'marketing', { ...withState('marketing', {}), vueltas: '2' }), { cola: new Set() }).vueltas, 0, 'a forged value never reaches the board')
+})
+
 test('the station labels are the ones of the talk diagram', () => {
   assert.deepEqual(STATIONS.map((s) => STATION_LABELS[s]), ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción'])
 })

@@ -171,37 +171,56 @@ needsSandbox('/tarea/ draws the factory scheme as a stepper and polls the status
 })
 
 const ESTACIONES_TABLERO = ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción']
+// The two layouts of the diagram are drawn on the server: a horizontal one (wide screens) and a vertical one.
+const capa = (html, c) => html.match(new RegExp(`<div class="stage stage--${c}"[\\s\\S]*?(?=<div class="stage stage--|<div class="fd-leyenda")`))?.[0] ?? ''
 
-needsSandbox('/factory/ is the control room: 11 station headers in order, grouped, with the legend, counters, follow form, gate and queue', () => {
+needsSandbox('/factory/ is a flow diagram drawn on the server: the stations, the gate with AUTO and PERSONA, the dashed loop and Rechazadas', () => {
   const html = pages.factory
-  const cabecera = html.match(/<div class="cab-t"[^>]*>([\s\S]*?)<\/div>\s*<ol class="filas"/)?.[1] ?? ''
-  const cabeceras = [...cabecera.matchAll(/<div class="h">([^<]+)<\/div>/g)].map((m) => m[1])
-  assert.deepEqual(cabeceras, ESTACIONES_TABLERO, 'the 11 station headers, in order, with their literal names')
-  assert.match(html, />Revisión en paralelo</)
-  assert.match(html, />Puerta de riesgo</)
-  assert.match(html, />Preparación</)
+  for (const c of ['h', 'v']) {
+    const svg = capa(html, c)
+    assert.ok(svg, `layout ${c}`)
+    const nombres = [...svg.matchAll(/<text class="n-nombre[^"]*"[^>]*>([^<]+)<\/text>/g)].map((m) => m[1])
+    for (const nombre of ESTACIONES_TABLERO.filter((n) => n !== 'Main o PR')) assert.ok(nombres.includes(nombre), `${c}: station ${nombre}`)
+    for (const nodo of ['Main', 'PR', 'Rechazadas']) assert.ok(nombres.includes(nodo), `${c}: node ${nodo}`)
+    assert.match(svg, /<polygon class="n-forma dec"/, `${c}: the gate is a diamond`)
+    assert.match(svg, /data-etiqueta="e-auto"[^>]*>[\s\S]*?<text[^>]*>AUTO<\/text>/, `${c}: AUTO edge`)
+    assert.match(svg, /data-etiqueta="e-per"[^>]*>[\s\S]*?<text[^>]*>PERSONA<\/text>/, `${c}: PERSONA edge`)
+    assert.match(svg, /class="e-base vuelta"/, `${c}: the dashed loop back to Build`)
+    assert.match(svg, /data-etiqueta="e-vuelta"/, `${c}: the loop is labelled`)
+    assert.match(svg, /data-nodo-g="rechazadas"/, `${c}: the Rechazadas terminal`)
+    assert.match(svg, /REVISIÓN EN PARALELO/, `${c}: the parallel review frame`)
+    for (const id of ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui', 'codigo', 'approver', 'puerta', 'main', 'pr', 'produccion', 'rechazadas']) {
+      assert.match(svg, new RegExp(`<button class="nodo-btn" type="button" data-nodo="${id}" aria-label="Estación [^"]+"`), `${c}: a button for ${id}`)
+    }
+    assert.match(svg, /<title id="svg-t-/)
+  }
+  assert.match(capa(html, 'h'), /VUELVE A BUILD · SOLO 1 VEZ/)
   assert.match(html, /class="cabecera"/, 'the site header')
   assert.match(html, /<a class="marca"/)
   assert.doesNotMatch(html, /tema-charla|Chivo/)
-  assert.match(html, /<ol class="filas"[^>]*id="filas"/, 'the rows are drawn by the client script')
-  assert.match(html, /<form[^>]*id="sigue"/)
-  assert.match(html, /<label for="sigue-n">Sigue tu petición #<\/label>/)
-  assert.match(html, /<input[^>]*name="n"[^>]*inputmode="numeric"/)
+  assert.doesNotMatch(html, /class="tk[ "]/, 'the tokens are created by the script, the diagram itself is complete without it')
+})
+
+needsSandbox('/factory/ has the counters, the follow form, the legend, the detail panel and the queue; no prototype controls', () => {
+  const html = pages.factory
   for (const [id, label] of [['peticiones', 'Peticiones'], ['desplegadas', 'En producción'], ['esperando', 'Esperando'], ['rechazadas', 'Rechazadas']]) {
     assert.match(html, new RegExp(`data-total="${id}"[^>]*>0</dd><dt>${label}</dt>`), label)
   }
-  assert.match(html, /data-puerta="auto"/)
-  assert.match(html, /data-puerta="persona"/)
-  assert.match(html, /Automático/)
-  assert.match(html, /Una persona/)
-  assert.match(html, /<h2[^>]*>Esperando a una persona<\/h2>/)
+  assert.match(html, /<form[^>]*id="sigue"/)
+  assert.match(html, /<label[^>]*for="sigue-n">Sigue tu petición #<\/label>/)
+  assert.match(html, /<input[^>]*name="n"[^>]*inputmode="numeric"/)
+  assert.match(html, /id="siguiendo"[^>]*aria-live="polite"/, 'polite live region for the followed request')
+  for (const texto of ['Leyenda', 'Estación', 'Entrada · salida', 'Decisión', 'Flujo', 'Vuelta a Build', 'Camino de la petición que sigues', 'trabajando', 'espera a una persona', 'en producción', 'rechazada']) assert.ok(html.includes(texto), `legend: ${texto}`)
+  assert.match(html, /✓ hecho · ● en curso · ! rechazada · – pendiente/)
+  assert.match(html, /id="detalle"/)
+  assert.match(html, /aria-label="Cerrar el detalle \(Esc\)"/)
   assert.match(html, /id="cola"/)
+  assert.match(html, /Esperando a una persona/)
   assert.match(html, /Nadie espera ahora mismo/)
-  for (const leyenda of ['Ok', 'En curso', 'Rechazada', 'Pendiente']) assert.ok(html.includes(`</b>${leyenda}</span>`), `legend: ${leyenda}`)
-  for (const simbolo of ['✓', '●', '!', '–']) assert.ok(html.includes(`>${simbolo}</b>`), `legend symbol: ${simbolo}`)
+  assert.doesNotMatch(html, /Pausa|Reiniciar|prototipo/i, 'the prototype controls are not on the page')
 })
 
-needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode and paints every text with textContent', () => {
+needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode, animates with WAAPI and paints every text with textContent', () => {
   const bundle = clientCode(pages.factory)
   const entry = [...pages.factory.matchAll(/<script type="module" src="(\/_astro\/[^"]+)"/g)].map((m) => readFileSync(join(out, m[1]), 'utf8')).join('\n')
   assert.ok(entry.includes('/api/estado') || bundle.includes('/api/estado'))
@@ -210,8 +229,11 @@ needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode and pai
   assert.match(bundle, /get\(["'`]demo["'`]\)/)
   assert.match(bundle, /textContent/)
   assert.doesNotMatch(bundle, /innerHTML|insertAdjacentHTML|outerHTML/)
+  assert.match(bundle, /\.animate\(/, 'tokens travel with the Web Animations API')
+  assert.match(bundle, /prefers-reduced-motion/)
   assert.match(bundle, /3e4|30000/, 'a rejection stays 30 s')
   assert.match(bundle, /bloqueadas_tests/)
+  assert.match(bundle, /Escape/)
 })
 
 needsSandbox('the demo mode (?demo=1) is built in, driven by a fake sequence, and only switched on by the parameter', () => {

@@ -1,0 +1,65 @@
+---
+// One layout of the factory flow diagram (horizontal or vertical), drawn on the server: the stations, the connectors
+// and their labels are complete without JavaScript. The page script only moves the request tokens and lights the path
+// of the one you follow. Geometry and texts come from src/lib/geometria.js.
+import { geometria, trazo, etiquetaPos, anchoEtiqueta, NODOS, IDS_NODOS, cx, cy } from '../lib/geometria.js'
+
+const { vertical = false } = Astro.props
+const capa = vertical ? 'v' : 'h'
+const { W, H, N, E, F } = geometria(vertical)
+const aristas = E.filter((e) => !e.oculta).map((e) => {
+  const rotulo = e.lab ? { texto: e.lab, ancho: anchoEtiqueta(e.lab), ...etiquetaPos(e, anchoEtiqueta(e.lab)) } : null
+  return { ...e, d: trazo(e.pts), rotulo }
+})
+const nodos = IDS_NODOS.map((id) => {
+  const n = N[id]
+  const dec = Boolean(n.dec)
+  const tx = dec ? cx(n) : n.x + 12
+  const marcaX = dec ? cx(n) : n.x + n.w - 19
+  const marcaY = dec ? n.y + 16 : n.y + 17
+  return { id, n, dec, tx, ...NODOS[id], marcaX, marcaY, rombo: dec ? `${cx(n)},${n.y} ${n.x + n.w},${cy(n)} ${cx(n)},${n.y + n.h} ${n.x},${cy(n)}` : null }
+})
+---
+<div class={`stage stage--${capa}`} data-capa={capa} data-w={W} data-h={H} style={`width:${W}px;height:${H}px`}>
+  <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`svg-t-${capa} svg-d-${capa}`}>
+    <title id={`svg-t-${capa}`}>Diagrama de la factory</title>
+    <desc id={`svg-d-${capa}`}>Entrada, Spec writer y Builder, cuatro revisores en paralelo (Seguridad, UX, UI y Código), Approver y la puerta ¿Humano?, que lleva a Main si es automático o a un PR si espera a una persona, y de ahí a Producción. Un camino de vuelta lleva de Approver a Builder y otro a Rechazadas.</desc>
+    <defs>
+      <marker id={`ah-${capa}`} markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 8 3, 0 6" fill="#5c6245"></polygon></marker>
+      <marker id={`ah-a-${capa}`} markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><polygon points="0 0, 9 3.5, 0 7" fill="#5b6b2e"></polygon></marker>
+    </defs>
+    <rect class="marco" x={F.x} y={F.y} width={F.w} height={F.h} rx="8"></rect>
+    <text class="marco-t" x={F.x + 14} y={F.y + (vertical ? 22 : 20)}>{F.t}</text>
+    {aristas.map((e) => (
+      <>
+        <path class={`e-base${e.vuelta ? ' vuelta' : ''}`} d={e.d} marker-end={`url(#ah-${capa})`}></path>
+        <path class={`e-lit${e.vuelta ? ' vuelta' : ''}`} d={e.d} marker-end={`url(#ah-a-${capa})`} data-arista={e.id}></path>
+        {e.rotulo && (
+          <g class="e-lab" data-etiqueta={e.id}>
+            <rect x={e.rotulo.x - e.rotulo.ancho / 2} y={e.rotulo.y - 8} width={e.rotulo.ancho} height="16" rx="2"></rect>
+            <text x={e.rotulo.x} y={e.rotulo.y + 4}>{e.rotulo.texto}</text>
+          </g>
+        )}
+      </>
+    ))}
+    {nodos.map((o) => (
+      <g class={`nodo${vertical ? ' movil' : ''}`} data-nodo-g={o.id}>
+        {o.dec
+          ? <polygon class="n-forma dec" points={o.rombo}></polygon>
+          : <rect class={`n-forma${o.n.focal ? ' focal' : ''}${o.n.term ? ' term' : ''}${o.n.err ? ' err' : ''}`} x={o.n.x} y={o.n.y} width={o.n.w} height={o.n.h} rx={o.n.term ? 20 : 6}></rect>}
+        <text class={`n-nombre${o.id === 'rechazadas' ? ' t-rech' : ''}`} x={o.tx} y={o.dec ? cy(o.n) - 14 : o.n.y + 25} text-anchor={o.dec ? 'middle' : 'start'}>{o.nombre}</text>
+        {o.sub && <text class="n-sub" x={o.tx} y={o.n.y + 44} text-anchor={o.dec ? 'middle' : 'start'}>{o.sub}</text>}
+        <g class="n-marca m-pend">
+          <circle cx={o.marcaX} cy={o.marcaY} r="11"></circle>
+          <text x={o.marcaX} y={o.marcaY + 4.5}>–</text>
+        </g>
+      </g>
+    ))}
+  </svg>
+  {nodos.map((o) => (
+    <>
+      <button class="nodo-btn" type="button" data-nodo={o.id} aria-label={`Estación ${o.nombre}`} style={`left:${o.n.x}px;top:${o.n.y}px;width:${o.n.w}px;height:${o.n.h}px`}></button>
+      <button class="mas" type="button" hidden data-mas={o.id}></button>
+    </>
+  ))}
+</div>
