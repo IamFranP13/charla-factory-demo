@@ -96,7 +96,7 @@ test('gate.yml: judges the PR, merges on merge=true, labels the human route, and
   assert.equal(merge.env.HEAD, '${{ steps.gate.outputs.head }}')
   assert.equal(merge.if, "steps.gate.outputs.merge == 'true'")
   const human = list.find((s) => s.run?.includes('necesita-humano'))
-  assert.equal(human.if, "steps.gate.outputs.route == 'human'")
+  assert.equal(human.if, "steps.gate.outputs.route == 'human' && steps.gate.outputs.pass != 'true'", 'only a pull request still waiting for a person is labelled and asks for one')
   const last = list.at(-1)
   assert.match(last.if, /always\(\)/)
   assert.match(last.run, /exit 1/)
