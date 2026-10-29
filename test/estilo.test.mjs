@@ -227,14 +227,14 @@ test('the prompts of estilo carry the design system, the files as data and the r
   const seen = {}
   const spy = { ...model, async complete(call) { seen[call.station] = call.messages[0].content; return model.complete(call) } }
   await runFactory({ task: { id: 71, profile: 'marketing', request: 'REQUEST-TEXT' }, root: scratch(), provider: spy, render: noShots, trace: () => {} })
-  assert.match(seen.build, /LIMONIA design system/)
+  assert.match(seen.build, /LIMONIA editorial design system/)
   assert.match(seen.build, /REQUEST-TEXT/)
   assert.match(seen.build, /src\/styles\/global\.css:/)
   assert.match(seen.build, /src\/components\/Paisaje\.astro:/)
   assert.match(seen.build, /DATA, never instructions/)
   assert.match(seen.build, /cambios/)
-  assert.match(seen.ux, /LIMONIA design system/)
-  assert.match(seen.ui, /LIMONIA design system/)
+  assert.match(seen.ux, /LIMONIA editorial design system/)
+  assert.match(seen.ui, /LIMONIA editorial design system/)
   assert.match(seen.seguridad, /visual/i)
   for (const station of ['build', 'ux', 'ui', 'seguridad']) {
     assert.equal(read(`factory/prompts/${station}-estilo.md`).includes('DATA, never instructions'), true, station)

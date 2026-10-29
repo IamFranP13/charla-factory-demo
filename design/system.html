@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LIMONIA · Sistema de diseño</title>
+<title>LIMONIA editorial · Sistema de diseño</title>
 <style>
   :root {
     --oliva: #5b6b2e; --oliva-oscuro: #3b4720; --oliva-claro: #a7b36a;
@@ -11,38 +11,46 @@
     --blanco: #fbf8f1; --crema: #f3ecdc;
     --tierra: #9a6b46; --tierra-suave: #ead9c4;
     --tinta: #2a301a; --tinta-suave: #5c6245; --borde: #e2d9c3;
-    --radio: 18px;
-    --sombra: 0 1px 2px rgb(42 48 26 / 6%), 0 8px 24px rgb(42 48 26 / 8%);
+    --acento-tinte: rgb(91 107 46 / 10%);
+    --radio: 8px; --radio-control: 6px;
     --fuente: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
     --fuente-titulo: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    --motion-fast: 160ms; --motion-step: 480ms; --motion-hold: 720ms;
+    --ease: cubic-bezier(.2, .8, .2, 1);
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: var(--fuente); font-size: 1.0625rem; line-height: 1.6; color: var(--tinta); background: var(--blanco); }
-  h1, h2, h3 { font-family: var(--fuente-titulo); line-height: 1.15; color: var(--oliva-oscuro); margin: 0 0 .5em; }
+  h1, h2, h3 { font-family: var(--fuente-titulo); line-height: 1.15; color: var(--oliva-oscuro); margin: 0 0 .5em; font-weight: 600; }
   h1 { font-size: 3.6rem; letter-spacing: -.02em; }
   h2 { font-size: 2.1rem; }
   h3 { font-size: 1.25rem; }
   p { margin: 0 0 1em; }
-  :focus-visible { outline: 3px solid var(--oliva); outline-offset: 3px; border-radius: 6px; }
+  code { font-family: var(--mono); font-size: .88em; }
+  a { color: var(--oliva-oscuro); }
+  :focus-visible { outline: 3px solid var(--oliva); outline-offset: 2px; border-radius: 6px; }
   main { width: 1120px; margin-inline: auto; padding-block: 3rem; }
   section { padding-block: 2.5rem; border-top: 1px solid var(--borde); }
-  .sobretitulo { text-transform: uppercase; letter-spacing: .14em; font-size: .8rem; font-weight: 700; color: var(--tierra); margin-bottom: .6rem; }
+  .eyebrow { font-family: var(--mono); text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; font-weight: 500; color: var(--tinta-suave); margin: 0 0 .6rem; }
   .lead { font-size: 1.15rem; color: var(--tinta-suave); max-width: 60ch; }
   .nota { color: var(--tinta-suave); font-size: .9rem; }
   .rejilla { display: grid; gap: 1.25rem; }
   .r4 { grid-template-columns: repeat(4, 1fr); }
   .r3 { grid-template-columns: repeat(3, 1fr); }
+  .r2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .papel { background-color: var(--blanco); background-image: radial-gradient(circle, rgb(42 48 26 / 10%) 1px, transparent 1.2px); background-size: 22px 22px; border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.25rem; }
   .muestra { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
-  .muestra__color { height: 84px; border-bottom: 1px solid var(--borde); }
-  .muestra__texto { padding: .7rem 1rem; font-size: .9rem; }
-  .muestra__texto code { font-weight: 700; color: var(--oliva-oscuro); }
-  .escala > div { display: flex; align-items: baseline; gap: 2rem; padding: .6rem 0; border-bottom: 1px dashed var(--borde); }
-  .escala code { width: 14rem; flex: none; color: var(--tinta-suave); font-size: .85rem; }
-  .caja { background: #fff; border: 1px solid var(--borde); padding: 1.4rem; }
-  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra); padding: 1.4rem; }
-  .boton { display: inline-block; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; background: var(--oliva); color: #fff; border: 2px solid var(--oliva); border-radius: 999px; padding: .7rem 1.5rem; }
+  .muestra__color { height: 64px; border-bottom: 1px solid var(--borde); }
+  .muestra__texto { padding: .6rem .9rem .7rem; font-size: .88rem; line-height: 1.4; }
+  .muestra__texto b { display: block; font-family: var(--mono); font-size: .72rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-suave); }
+  .muestra__texto code { color: var(--oliva-oscuro); font-weight: 600; }
+  .escala > div { display: flex; align-items: baseline; gap: 2rem; padding: .6rem 0; border-bottom: 1px solid var(--borde); }
+  .escala code { width: 18rem; flex: none; color: var(--tinta-suave); font-size: .8rem; }
+  .caja { background: #fff; border: 1px solid var(--borde); padding: 1.1rem; }
+  .tarjeta { background: #fff; border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.25rem; }
+  .boton { display: inline-block; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; background: var(--oliva); color: #fff; border: 1px solid var(--oliva); border-radius: var(--radio-control); padding: .65rem 1.3rem; min-height: 44px; transition: background var(--motion-fast) var(--ease); }
   .boton:hover { background: var(--oliva-oscuro); border-color: var(--oliva-oscuro); }
-  .boton--borde { background: transparent; color: var(--oliva-oscuro); }
+  .boton--borde { background: transparent; color: var(--oliva-oscuro); border-color: var(--tinta-suave); }
   .boton--borde:hover { color: #fff; }
   .boton--suave { background: rgb(255 255 255 / 70%); color: var(--oliva-oscuro); border-color: transparent; padding: .5rem 1.1rem; }
   .insignia { font-size: .78rem; font-weight: 700; padding: .2rem .65rem; border-radius: 999px; }
@@ -60,60 +68,164 @@
   .producto__emoji { font-size: 2.2rem; }
   .producto__precio strong { font-family: var(--fuente-titulo); font-size: 1.4rem; color: var(--oliva); }
   .feature__lista { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .5rem; }
-  .feature__lista li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; background: #fff; border: 1px solid var(--borde); border-radius: 10px; }
+  .feature__lista li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem .9rem; background: #fff; border: 1px solid var(--borde); border-radius: var(--radio-control); }
   .feature__tabla table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid var(--borde); margin-top: 1rem; }
   .feature__tabla th, .feature__tabla td { text-align: left; padding: .55rem .9rem; border-bottom: 1px solid var(--borde); }
-  .feature__tabla th { background: var(--crema); color: var(--oliva-oscuro); }
+  .feature__tabla th { background: var(--crema); color: var(--oliva-oscuro); font-family: var(--mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
   .feature__texto { margin: 1rem 0 0; font-size: 1.15rem; }
+  table.contraste { border-collapse: collapse; width: 100%; font-size: .88rem; background: #fff; border: 1px solid var(--borde); }
+  table.contraste th { text-align: left; background: var(--crema); font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; color: var(--tinta-suave); padding: .5rem .8rem; }
+  table.contraste td { padding: .4rem .8rem; border-top: 1px solid var(--borde); }
+  table.contraste td.n { font-family: var(--mono); text-align: right; white-space: nowrap; width: 15rem; }
+  table.contraste td.m { font-family: var(--mono); width: 10rem; white-space: nowrap; color: var(--oliva-oscuro); font-weight: 600; }
+  .m-ok::before { content: "✓ "; } .m-no::before { content: "! "; color: #7a2b0e; }
+  .ficha { display: inline-block; padding: .1rem .6rem; border-radius: 4px; font-family: var(--mono); font-size: .8rem; border: 1px solid var(--borde); }
+  .ficha--ink { background: #fff; color: var(--tinta); } .ficha--muted { background: #fff; color: var(--tinta-suave); }
+  .ficha--accent { background: #fff; color: var(--oliva); } .ficha--lim { background: var(--limon); color: var(--tinta); }
+  .ficha--w { background: var(--oliva); color: #fff; } .ficha--err { background: #fbe6dc; color: #7a2b0e; border-color: #c4511f; }
+  .chip { display: inline-flex; align-items: center; gap: .4rem; min-height: 28px; padding: 0 .7rem; border-radius: 999px; background: #fff; border: 1px solid var(--tinta-suave); font-family: var(--mono); font-size: .8rem; font-weight: 600; color: var(--tinta); }
+  .chip--sigue { background: var(--oliva); border-color: var(--oliva); color: #fff; }
+  .chip--curso { background: var(--limon); border-color: var(--tinta); }
+  .chip--no { background: #fbe6dc; border-color: #c4511f; color: #7a2b0e; }
+  .chip--espera { background: var(--limon-suave); border-color: var(--tinta-suave); }
+  .reloj { height: 10px; background: var(--oliva); border-radius: 2px; margin: .3rem 0 .2rem; }
+  .leyenda { display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; border-top: 1px solid var(--borde); padding-top: .9rem; margin-top: 1rem; font-size: .88rem; color: var(--tinta-suave); }
+  .leyenda span { display: inline-flex; gap: .5rem; align-items: center; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <p class="sobretitulo">Sistema de diseño</p>
+    <p class="eyebrow">Sistema de diseño · LIMONIA editorial</p>
     <h1>LIMONIA</h1>
-    <p class="lead">Tokens y componentes de la web, sacados de <code>src/styles/global.css</code> y <code>src/components/</code>. Los revisores UX y UI de la factory juzgan cada cambio contra este sistema.</p>
+    <p class="lead">La marca de siempre (oliva, limón, tierra, papel cálido) con la gramática editorial de <a href="https://github.com/cathrynlavery/diagram-design">diagram-design</a> (MIT): plano, filetes de 1px, papel de puntos, mono para el detalle, etiquetas en mayúsculas espaciadas, un solo acento y leyenda. Los revisores UX y UI de la factory juzgan cada cambio contra este sistema.</p>
+    <p class="nota">La web se está migrando: <code>src/styles/global.css</code> aún conserva el aspecto anterior (botones en píldora, radio 18px, sombra). Aquí se ve el destino.</p>
   </header>
 
   <section aria-labelledby="colores">
-    <h2 id="colores">Colores</h2>
+    <h2 id="colores">Colores y roles</h2>
     <div class="rejilla r4">
-      <div class="muestra"><div class="muestra__color" style="background:#5b6b2e"></div><div class="muestra__texto"><code>--oliva</code> #5b6b2e<br>Color principal</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#3b4720"></div><div class="muestra__texto"><code>--oliva-oscuro</code> #3b4720<br>Títulos, pie</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#a7b36a"></div><div class="muestra__texto"><code>--oliva-claro</code> #a7b36a<br>Paso terminado</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#f2d643"></div><div class="muestra__texto"><code>--limon</code> #f2d643<br>Ofertas y novedades</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#fbf0b0"></div><div class="muestra__texto"><code>--limon-suave</code> #fbf0b0<br>Hero, avisos</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#fbf8f1"></div><div class="muestra__texto"><code>--blanco</code> #fbf8f1<br>Fondo de página</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#f3ecdc"></div><div class="muestra__texto"><code>--crema</code> #f3ecdc<br>Superficies tranquilas</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#9a6b46"></div><div class="muestra__texto"><code>--tierra</code> #9a6b46<br>Sobretítulos, detalles</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#ead9c4"></div><div class="muestra__texto"><code>--tierra-suave</code> #ead9c4<br>«No disponible»</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#2a301a"></div><div class="muestra__texto"><code>--tinta</code> #2a301a<br>Texto</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#5c6245"></div><div class="muestra__texto"><code>--tinta-suave</code> #5c6245<br>Texto secundario</div></div>
-      <div class="muestra"><div class="muestra__color" style="background:#e2d9c3"></div><div class="muestra__texto"><code>--borde</code> #e2d9c3<br>Bordes</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fbf8f1"></div><div class="muestra__texto"><b>paper</b><code>--blanco</code> #fbf8f1<br>Fondo de página</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#f3ecdc"></div><div class="muestra__texto"><b>paper-2</b><code>--crema</code> #f3ecdc<br>Cabeceras, chips</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fff"></div><div class="muestra__texto"><b>surface</b><code>#fff</code><br>Nodos, tarjetas, paneles</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#2a301a"></div><div class="muestra__texto"><b>ink</b><code>--tinta</code> #2a301a<br>Texto, trazos</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#5c6245"></div><div class="muestra__texto"><b>muted · soft</b><code>--tinta-suave</code> #5c6245<br>Texto secundario, conectores</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#e2d9c3"></div><div class="muestra__texto"><b>rule</b><code>--borde</code> #e2d9c3<br>Filetes (decorativo)</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#a7b36a"></div><div class="muestra__texto"><b>rule-solid</b><code>--oliva-claro</code> #a7b36a<br>Marca de paso terminado</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#5b6b2e"></div><div class="muestra__texto"><b>accent</b><code>--oliva</code> #5b6b2e<br>El único foco</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#3b4720"></div><div class="muestra__texto"><b>accent-ink · link</b><code>--oliva-oscuro</code> #3b4720<br>Títulos, enlaces, pie</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#f2d643"></div><div class="muestra__texto"><b>highlight</b><code>--limon</code> #f2d643<br>Relleno «ahora», con tinta</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fbf0b0"></div><div class="muestra__texto"><b>highlight-soft</b><code>--limon-suave</code> #fbf0b0<br>Esperando a una persona</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#9a6b46"></div><div class="muestra__texto"><b>earth</b><code>--tierra</code> #9a6b46<br>Campaña, marcas; texto grande</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#ead9c4"></div><div class="muestra__texto"><b>earth-soft</b><code>--tierra-suave</code> #ead9c4<br>«No disponible»</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#efefea"></div><div class="muestra__texto"><b>accent-tint</b>oliva al 10%<br>Nodo focal (≈ #efefea)</div></div>
+      <div class="muestra"><div class="muestra__color" style="background:#fbe6dc;border-bottom:3px solid #c4511f"></div><div class="muestra__texto"><b>error</b>#fbe6dc · #7a2b0e · #c4511f<br>Solo errores y rechazos</div></div>
     </div>
-    <p class="nota">Solo para estados de error de la plataforma: #fbe6dc · #7a2b0e · #c4511f. Nunca como color de campaña.</p>
+    <p class="nota" style="margin-top:1rem">Un solo acento: <code>accent</code> (oliva) es lo que hay que mirar. El limón no es un acento, es un relleno que dice «ahora» y siempre lleva texto en tinta. Colores de campaña, exactamente: <code>oliva</code>, <code>limon</code>, <code>tierra</code>, <code>blanco</code>.</p>
+  </section>
+
+  <section aria-labelledby="contraste">
+    <h2 id="contraste">Contraste (WCAG AA), calculado</h2>
+    <p class="nota">Ratio contra la superficie sobre la que está de verdad; los rellenos translúcidos se componen antes de medir. Texto ≥ 4,5 · marcas esenciales (conectores, bordes, foco) ≥ 3.</p>
+    <table class="contraste">
+      <thead><tr><th>Muestra</th><th>Primer plano sobre superficie</th><th style="text-align:right">Ratio</th><th>AA</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ficha ficha--ink">Aa 12</span></td><td>ink sobre paper · paper-2 · surface</td><td class="n">12,89 · 11,62 · 13,67</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--muted">Aa 12</span></td><td>muted · soft sobre paper · paper-2 · surface</td><td class="n">6,02 · 5,43 · 6,39</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--accent">Aa 12</span></td><td>accent sobre paper · paper-2 · surface · accent-tint</td><td class="n">5,52 · 4,97 · 5,85 · 4,84</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--ink" style="color:#3b4720">Aa 12</span></td><td>accent-ink / link sobre paper · limon-suave · limon</td><td class="n">9,39 · 8,63 · 6,87</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--w">Aa 12</span></td><td>blanco sobre accent · accent-ink</td><td class="n">5,85 · 9,96</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--lim">Aa 12</span></td><td>ink sobre highlight (limón) · highlight-soft</td><td class="n">9,42 · 11,84</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha ficha--err">Aa 12</span></td><td>#7a2b0e sobre #fbe6dc · borde #c4511f sobre paper</td><td class="n">8,01 · 4,36</td><td class="m m-ok">texto · marca</td></tr>
+        <tr><td><span class="ficha" style="background:#e3ecc2;color:#33401a">Aa 12</span></td><td>#33401a sobre #e3ecc2 (insignia OK)</td><td class="n">9,02</td><td class="m m-ok">texto</td></tr>
+        <tr><td><span class="ficha" style="color:#9a6b46;background:#fff">Aa 12</span></td><td>earth sobre paper · surface · paper-2</td><td class="n">4,34 · 4,60 · 3,91</td><td class="m m-no">solo grande</td></tr>
+        <tr><td><span class="ficha" style="background:#fff;color:#a7b36a">●</span></td><td>rule-solid sobre paper · surface (marca con ✓ y palabra)</td><td class="n">2,13 · 2,26</td><td class="m m-no">no esencial</td></tr>
+        <tr><td><span class="ficha" style="background:#f2d643;color:#f2d643">●</span></td><td>highlight sobre paper (solo relleno)</td><td class="n">1,37</td><td class="m m-no">no texto ni línea</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <section aria-labelledby="tipografia">
     <h2 id="tipografia">Tipografía</h2>
     <div class="escala">
-      <div><code>h1 · --fuente-titulo · 3.6rem</code><span style="font-family:var(--fuente-titulo);font-size:3.6rem;color:var(--oliva-oscuro);line-height:1.15">Huerta de Murcia</span></div>
-      <div><code>h2 · --fuente-titulo · 2.1rem</code><span style="font-family:var(--fuente-titulo);font-size:2.1rem;color:var(--oliva-oscuro)">Catálogo de temporada</span></div>
-      <div><code>h3 · --fuente-titulo · 1.25rem</code><span style="font-family:var(--fuente-titulo);font-size:1.25rem;color:var(--oliva-oscuro)">Limón Verna</span></div>
-      <div><code>lead · --fuente · 1.15rem</code><span class="lead" style="margin:0">Fruta y hortaliza de origen para almacenes y cadenas de Europa.</span></div>
-      <div><code>body · --fuente · 1.0625rem</code><span>Te preparamos el presupuesto por kilos y destino.</span></div>
-      <div><code>sobretítulo · .8rem · 700</code><span class="sobretitulo" style="margin:0">Temporada</span></div>
+      <div><code>title · serif · 3.6rem</code><span style="font-family:var(--fuente-titulo);font-size:3.6rem;color:var(--oliva-oscuro);line-height:1.15">Huerta de Murcia</span></div>
+      <div><code>h2 · serif · 2.1rem</code><span style="font-family:var(--fuente-titulo);font-size:2.1rem;color:var(--oliva-oscuro)">Catálogo de temporada</span></div>
+      <div><code>node-name · sans · 600</code><span style="font-weight:600">Spec writer</span></div>
+      <div><code>body · sans · 1.0625rem</code><span>Te preparamos el presupuesto por kilos y destino.</span></div>
+      <div><code>sublabel · mono · .8rem</code><span style="font-family:var(--mono);font-size:.8rem;color:var(--tinta-suave)">tarea-43 · estilo · PR #12</span></div>
+      <div><code>eyebrow · mono · uppercase · .14em</code><span class="eyebrow" style="margin:0">Revisión en paralelo</span></div>
+      <div><code>edge-label · mono · uppercase · .06em</code><span style="font-family:var(--mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--tinta-suave)">auto → main</span></div>
+    </div>
+    <p class="nota" style="margin-top:1rem">Mono: <code>ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace</code> (solo fuentes del sistema). Mono para datos técnicos (números, ids, estados); los nombres, en sans; los títulos, en serif.</p>
+  </section>
+
+  <section aria-labelledby="gramatica">
+    <h2 id="gramatica">Gramática: plano, filetes, papel de puntos</h2>
+    <div class="rejilla r2">
+      <div>
+        <h3>Nodos y conectores</h3>
+        <div class="papel">
+          <svg viewBox="0 0 500 210" width="100%" role="img" aria-labelledby="g-t g-d" font-family="ui-sans-serif, system-ui, sans-serif">
+            <title id="g-t">Nodos y conectores</title>
+            <desc id="g-d">Un paso, un paso focal, una decisión en rombo con una salida etiquetada y un retorno punteado.</desc>
+            <defs>
+              <marker id="a1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#5c6245"/></marker>
+              <marker id="a2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#5b6b2e"/></marker>
+            </defs>
+            <path d="M140 52H176" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
+            <path d="M296 52H332" stroke="#5b6b2e" stroke-width="2" fill="none" marker-end="url(#a2)"/>
+            <path d="M392 76V104" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
+            <path d="M332 148H296" stroke="#5c6245" stroke-width="1.2" fill="none" marker-end="url(#a1)"/>
+            <path d="M392 28V12H236V28" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4" fill="none" marker-end="url(#a1)"/>
+            <rect x="20" y="28" width="120" height="48" rx="24" fill="#f3ecdc" stroke="#5c6245"/>
+            <text x="80" y="57" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Entrada</text>
+            <rect x="176" y="28" width="120" height="48" rx="6" fill="#fff" stroke="#5c6245"/>
+            <text x="236" y="50" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Builder</text>
+            <text x="236" y="66" text-anchor="middle" font-size="9" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">tarea-43</text>
+            <rect x="332" y="28" width="120" height="48" rx="6" fill="rgb(91 107 46 / 10%)" stroke="#5b6b2e" stroke-width="1.5"/>
+            <text x="392" y="50" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Approver</text>
+            <text x="392" y="66" text-anchor="middle" font-size="9" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">4/4 · foco</text>
+            <path d="M392 104L452 148L392 192L332 148Z" fill="#fff" stroke="#2a301a"/>
+            <text x="392" y="152" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">¿Humano?</text>
+            <rect x="176" y="124" width="120" height="48" rx="6" fill="#fff" stroke="#5c6245"/>
+            <text x="236" y="152" text-anchor="middle" font-size="13" font-weight="600" fill="#2a301a">Main</text>
+            <rect x="300" y="126" width="28" height="14" fill="#fbf8f1"/>
+            <text x="314" y="136" text-anchor="middle" font-size="8" letter-spacing=".06em" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">AUTO</text>
+            <rect x="262" y="5" width="104" height="14" fill="#fbf8f1"/>
+            <text x="314" y="15" text-anchor="middle" font-size="8" letter-spacing=".06em" font-family="ui-monospace, Menlo, monospace" fill="#5c6245">VUELVE A BUILD</text>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <h3>Fichas de petición (tokens)</h3>
+        <div class="papel" style="display:grid;gap:.9rem;grid-template-columns:minmax(0,1fr)">
+          <div class="fila" style="gap:.6rem"><span class="chip">#41</span><span class="chip chip--curso">● #42</span><span class="chip chip--espera">– #44</span><span class="chip chip--no">! #45</span><span class="chip chip--sigue">✓ #43</span></div>
+          <div class="nota">Pastilla mono con el número; relleno limón = ahora, limón suave = espera a una persona, rojo de error = rechazada, oliva = la que sigues. Siempre con una marca (✓ ● ! –) además del color.</div>
+          <div class="eyebrow" style="margin:0">Reloj de movimiento</div>
+          <div><div class="reloj" style="width:160px"></div><span class="nota"><code>--motion-fast</code> 160 ms · hover, foco, fundidos</span></div>
+          <div><div class="reloj" style="width:480px;max-width:100%"></div><span class="nota"><code>--motion-step</code> 480 ms · una petición avanza una estación</span></div>
+          <div><div class="reloj" style="width:720px;max-width:100%"></div><span class="nota"><code>--motion-hold</code> 720 ms · pausa para que el ojo alcance · sin rebotes ni muelles · <code>prefers-reduced-motion</code>: mismos estados sin viaje</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="leyenda" role="group" aria-label="Leyenda de ejemplo">
+      <span class="eyebrow" style="margin:0">Leyenda</span>
+      <span><svg width="34" height="14" aria-hidden="true"><rect x=".5" y=".5" width="33" height="13" rx="3" fill="#fff" stroke="#5c6245"/></svg>Paso</span>
+      <span><svg width="34" height="14" aria-hidden="true"><path d="M17 .5L33 7L17 13.5L1 7Z" fill="#fff" stroke="#2a301a"/></svg>Decisión</span>
+      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5c6245" stroke-width="1.2"/><polygon points="26 3.5,34 7,26 10.5" fill="#5c6245"/></svg>Flujo</span>
+      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5b6b2e" stroke-width="2"/><polygon points="26 3.5,34 7,26 10.5" fill="#5b6b2e"/></svg>Camino activo</span>
+      <span><svg width="34" height="14" aria-hidden="true"><line x1="0" y1="7" x2="28" y2="7" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4"/><polygon points="26 3.5,34 7,26 10.5" fill="#5c6245"/></svg>Vuelta</span>
     </div>
   </section>
 
   <section aria-labelledby="forma">
-    <h2 id="forma">Espaciado, radio y sombra</h2>
+    <h2 id="forma">Espaciado, radio y relieve</h2>
     <div class="rejilla r4">
-      <div class="caja" style="border-radius:18px;box-shadow:var(--sombra)"><strong>--radio 18px</strong><br><span class="nota">Tarjetas y paneles, con --sombra</span></div>
-      <div class="caja" style="border-radius:12px"><strong>12px</strong><br><span class="nota">Campos de formulario</span></div>
-      <div class="caja" style="border-radius:999px;text-align:center"><strong>999px</strong><br><span class="nota">Botones, insignias</span></div>
-      <div class="caja" style="border-radius:18px"><strong>Ancho 1120px</strong><br><span class="nota">Separación 1.25rem · relleno 1.4rem</span></div>
+      <div class="caja" style="border-radius:8px"><strong>Radio 8px</strong><br><span class="nota">Tarjetas y paneles. Sin sombra</span></div>
+      <div class="caja" style="border-radius:6px"><strong>Radio 6px</strong><br><span class="nota">Nodos, botones, campos</span></div>
+      <div class="caja" style="border-radius:999px;text-align:center"><strong>999px</strong><br><span class="nota">Solo chips y fichas</span></div>
+      <div class="caja" style="border-radius:8px"><strong>Filete 1px</strong><br><span class="nota">Ancho 1120px · separación 1.25rem · múltiplos de 4</span></div>
     </div>
   </section>
 
@@ -144,9 +256,9 @@
 
     <h3>Feature (pintada por la web, nunca por la feature)</h3>
     <div class="rejilla r3">
-      <div class="tarjeta"><p class="sobretitulo">tipo: lista · hasta 40</p><h3>Lo más barato por categoría</h3><ul class="feature__lista"><li><span>Fruta: Limón Fino</span><strong>0,85 €/kg</strong></li><li><span>Hortaliza: Patata nueva</span><strong>0,40 €/kg</strong></li></ul></div>
-      <div class="tarjeta feature__tabla"><p class="sobretitulo">tipo: tabla · 1 a 6 columnas</p><h3>Días de tránsito</h3><table><thead><tr><th scope="col">Destino</th><th scope="col">Días</th></tr></thead><tbody><tr><td>Rotterdam</td><td>3</td></tr><tr><td>Hamburgo</td><td>4</td></tr></tbody></table></div>
-      <div class="tarjeta"><p class="sobretitulo">tipo: texto</p><h3>Precio medio por kilo</h3><p class="feature__texto">El precio medio del catálogo es 0,72 €/kg.</p></div>
+      <div class="tarjeta"><p class="eyebrow">tipo: lista · hasta 40</p><h3>Lo más barato por categoría</h3><ul class="feature__lista"><li><span>Fruta: Limón Fino</span><strong>0,85 €/kg</strong></li><li><span>Hortaliza: Patata nueva</span><strong>0,40 €/kg</strong></li></ul></div>
+      <div class="tarjeta feature__tabla"><p class="eyebrow">tipo: tabla · 1 a 6 columnas</p><h3>Días de tránsito</h3><table><thead><tr><th scope="col">Destino</th><th scope="col">Días</th></tr></thead><tbody><tr><td>Rotterdam</td><td>3</td></tr><tr><td>Hamburgo</td><td>4</td></tr></tbody></table></div>
+      <div class="tarjeta"><p class="eyebrow">tipo: texto</p><h3>Precio medio por kilo</h3><p class="feature__texto">El precio medio del catálogo es 0,72 €/kg.</p></div>
     </div>
   </section>
 </main>

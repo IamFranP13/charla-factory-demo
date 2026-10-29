@@ -102,9 +102,39 @@ test('applyEvent: the approver sending the work back resets the builder and the 
   for (const station of ['spec', 'build', 'seguridad', 'ux', 'codigo']) s = applyEvent(s, { station, status: 'ok' }, NOW)
   s = applyEvent(s, { station: 'ui', status: 'rejected' }, NOW)
   s = applyEvent(s, { station: 'approver', status: 'retry' }, NOW)
-  for (const station of ['build', 'seguridad', 'ux', 'ui', 'codigo']) assert.equal(s.estaciones[station], 'pendiente', station)
+  for (const station of ['seguridad', 'ux', 'ui', 'codigo']) assert.equal(s.estaciones[station], 'pendiente', station)
+  assert.equal(s.estaciones.build, 'en_curso')
   assert.equal(s.estaciones.spec, 'ok')
-  assert.equal(s.estaciones.approver, 'en_curso')
+  assert.equal(s.estaciones.approver, 'pendiente', 'the approver waits for the new round')
+})
+
+test('applyEvent: a retry puts Builder en_curso, the approver and the reviewers pending, and counts one vuelta', () => {
+  let s = initialState('marketing', NOW)
+  assert.equal('vueltas' in s, false, 'no vueltas until the approver sends the task back')
+  for (const station of ['spec', 'build', 'seguridad', 'ux', 'ui', 'codigo']) s = applyEvent(s, { station, status: 'ok' }, NOW)
+  s = applyEvent(s, { station: 'approver', status: 'en_curso' }, NOW)
+  s = applyEvent(s, { station: 'approver', status: 'retry' }, NOW)
+  assert.equal(s.vueltas, 1)
+  assert.equal(s.estaciones.build, 'en_curso')
+  assert.equal(s.fase, 'build')
+  for (const station of ['seguridad', 'ux', 'ui', 'codigo', 'approver']) assert.equal(s.estaciones[station], 'pendiente', station)
+  s = applyEvent(s, { station: 'approver', status: 'retry' }, NOW)
+  assert.equal(s.vueltas, 2)
+  s = applyEvent(s, { station: 'approver', status: 'retry' }, NOW)
+  assert.equal(s.vueltas, 2, 'never more than the two rounds the factory allows')
+})
+
+test('parseState keeps a valid vueltas and drops a forged one; a state without it still parses', () => {
+  const body = (extra) => replaceState(requestBlock('hola'), initialState('marketing', NOW)).replace(/ -->/, ` -->`).replace('"actualizado"', `${extra}"actualizado"`)
+  assert.equal(parseState(body('"vueltas":1,')).vueltas, 1)
+  assert.equal(parseState(body('"vueltas":2,')).vueltas, 2)
+  for (const forged of ['"1"', '-1', '3', '1.5', 'true', 'null', '{"a":1}', '[1]', '0']) {
+    assert.equal('vueltas' in parseState(body(`"vueltas":${forged},`)), false, forged)
+  }
+  const sinVueltas = parseState(replaceState(requestBlock('hola'), initialState('marketing', NOW)))
+  assert.equal('vueltas' in sinVueltas, false)
+  assert.doesNotMatch(renderState({ ...initialState('marketing', NOW), vueltas: 7, extra: 'x' }), /vueltas|extra/)
+  assert.match(renderState({ ...initialState('marketing', NOW), vueltas: 2 }), /"vueltas":2/)
 })
 
 test('applyEvent ignores unknown stations and does not mutate its input', () => {
