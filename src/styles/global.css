@@ -584,6 +584,16 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .fd .n-nombre { font-family: var(--fuente); font-size: 18px; font-weight: 600; fill: var(--tinta); }
 .fd .nodo.movil .n-nombre.t-rech { font-size: 16px; }
 .fd .n-sub { font-family: var(--mono); font-size: 12px; fill: var(--tinta-suave); }
+.fd .n-linea { font-family: var(--fuente); font-size: 14px; fill: var(--tinta); }
+.fd .n-quien { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.fd rect.q-pill { stroke-width: 1; }
+.fd rect.q-modelo { fill: #fff; stroke: var(--tinta-suave); } .fd text.q-modelo { fill: var(--tinta); }
+.fd rect.q-codigo { fill: var(--tinta); stroke: var(--tinta); } .fd text.q-codigo { fill: #fff; }
+.fd rect.q-persona { fill: var(--limon); stroke: var(--tinta); } .fd text.q-persona { fill: var(--tinta); }
+.fd .nodo { transition: opacity var(--motion-fast) var(--ease); }
+.fd .en-recorrido .nodo:not(.rec-on) { opacity: .3; }
+.fd .en-recorrido .nodo.rec-on .n-forma { stroke: var(--oliva); stroke-width: 3.5; }
+.fd .en-recorrido .tk { opacity: .35; }
 .fd .n-marca { display: none; }
 .fd .n-marca.on { display: block; }
 .fd .n-marca circle { stroke-width: 1.2; }
@@ -603,6 +613,30 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .fd .marco { fill: none; stroke: var(--borde); stroke-width: 1; }
 .fd .marco-t { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; fill: var(--tinta-suave); }
 #tip { position: fixed; z-index: 30; max-width: 300px; background: var(--tinta); color: #fff; border-radius: 6px; padding: 6px 10px; font-size: 14px; line-height: 1.35; pointer-events: none; }
+
+/* what each station is, the story of the request you follow, the guided tour */
+.fd-quien { display: inline-block; align-self: start; justify-self: start; width: fit-content; border: 1px solid var(--tinta-suave); border-radius: 3px; background: #fff; padding: 1px 8px; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta); }
+.fd-quien.q-codigo { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.fd-quien.q-persona { background: var(--limon); border-color: var(--tinta); }
+.fd-fila-quien { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.fd-narra { display: grid; gap: 6px; border-left: 4px solid var(--oliva); padding: 2px 0 2px 14px; }
+.fd-panel .fd-narra__texto { font-family: var(--fuente-titulo); font-size: 22px; font-weight: 600; line-height: 1.25; color: var(--oliva-oscuro); }
+.fd-paso__cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.fd-pasos .fd-paso { display: grid; gap: 1px; min-width: 0; }
+.fd-pasos .fr { font-size: 14px; color: var(--tinta-suave); line-height: 1.35; }
+.fd-recorrido { position: fixed; z-index: 70; right: 28px; top: 190px; width: 384px; max-height: calc(100dvh - 210px); overflow: auto; background: #fff; border: 1px solid var(--oliva); border-radius: 8px; box-shadow: 0 8px 30px rgb(42 48 26 / 18%); }
+.fd-recorrido:focus { outline: none; }
+.fd-recorrido :where(h2, p, ol, span) { margin: 0; }
+.fd-recorrido .fd-panel__cab { border-radius: 8px 8px 0 0; }
+.fd-rec-pasos { list-style: none; margin: 0; padding: 0; }
+.fd-rec-pasos li { display: grid; gap: 10px; }
+.fd-rec-pasos li[hidden] { display: none; }
+.fd-recorrido h2 { font-family: var(--fuente-titulo); font-size: 26px; font-weight: 600; color: var(--oliva-oscuro); line-height: 1.12; }
+.fd-recorrido p { font-size: 17px; line-height: 1.45; }
+.fd-rec-acc { display: flex; flex-wrap: wrap; gap: 8px; }
+.fd-rec-acc .fd-boton { padding: 0 16px; }
+.fd-rec-acc .fd-boton:disabled { opacity: .45; cursor: default; }
+.fd-recorrido .fd-rec-ayuda { font-size: 14px; }
 
 /* legend */
 .fd-leyenda { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: center; border-top: 1px solid var(--borde); padding-top: 12px; font-size: 14px; color: var(--tinta-suave); }
@@ -630,7 +664,7 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .fd-motivo { border: 1px solid #c4511f; border-radius: 6px; background: #fbe6dc; color: #7a2b0e; padding: 10px 12px; font-size: 15px; overflow-wrap: anywhere; }
 .fd-motivo b { display: block; font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; margin-bottom: 2px; }
 .fd-pasos { display: grid; border: 1px solid var(--borde); border-radius: 6px; }
-.fd-pasos li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 5px 10px; border-top: 1px solid var(--borde); font-size: 15px; }
+.fd-pasos li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; padding: 6px 10px; border-top: 1px solid var(--borde); font-size: 15px; }
 .fd-pasos li:first-child { border-top: 0; }
 .fd-pasos .mk { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid; font-family: var(--mono); font-weight: 700; font-size: 12px; }
 .fd-pasos .mk.m-ok { background: #e3ecc2; border-color: var(--oliva); color: #33401a; }
@@ -650,6 +684,7 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .fd-lista button span:last-child { overflow-wrap: anywhere; }
 
 /* a laptop: the vertical diagram next to the panel, the page scrolls */
+@media (min-width: 1101px) { .fd-recorrido { top: 110px; width: 340px; max-height: calc(100dvh - 130px); } }
 @media (min-width: 1101px) { .fd-lat { position: sticky; top: 80px; align-self: start; max-height: calc(100dvh - 96px); } }
 /* a wide screen: the horizontal diagram fills the window under the header; the request form and the footer are below it */
 @media (min-width: 1500px) {
@@ -659,6 +694,7 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
   .fd .stage--v { display: none; }
   .fd-lat { position: static; max-height: none; }
 }
+@media (min-width: 1500px) { .fd-recorrido { top: 190px; } }
 @media (min-width: 1600px) { .fd { grid-template-columns: minmax(0, 1fr) 384px; } }
 /* a phone: one column, the detail is a bottom sheet */
 @media (max-width: 1100px) {
@@ -666,6 +702,8 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
   .fd-cab, .fd-cont, .fd-lat { grid-column: 1; }
   .fd-lat { grid-row: 3; }
   .fd-lat { overflow: visible; padding-bottom: 12px; }
+  .fd-recorrido { left: 0; right: 0; top: auto; bottom: 0; width: auto; max-height: 46vh; border-radius: 12px 12px 0 0; border-bottom: 0; }
+  body.rec-open .fd { padding-bottom: 48vh; }
   .fd-cab h1 { font-size: 28px; }
   .fd-acc { width: 100%; }
   .fd-sigue { flex: 1; }

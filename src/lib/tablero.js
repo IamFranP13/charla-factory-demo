@@ -3,6 +3,7 @@
 // of finished requests. No DOM: the page only paints these values, always with textContent.
 import { STATIONS, STATION_LABELS } from '../../lib/estado.js'
 import { NODOS, REVISORES } from './geometria.js'
+import { ESTACIONES, etiquetaQuien, narrativa, quienDe } from './explica.js'
 
 export const GLIFOS = { ok: '✓', en_curso: '●', rechazada: '!', error: '!', pendiente: '–' }
 const PALABRAS = { ok: 'hecho', en_curso: 'en curso', rechazada: 'rechazada', error: 'error', pendiente: 'pendiente' }
@@ -138,6 +139,7 @@ export function panelPeticion(t, cola = []) {
     pr,
     enlace: rutaDelSitio(t.enlace),
     vueltas: t.vueltas ?? 0,
+    narrativa: narrativa(t),
     filas: filas(t),
   }
 }
@@ -145,7 +147,7 @@ export function panelPeticion(t, cola = []) {
 // What the side panel shows for a tapped station: what it does and the requests in it (newest first).
 export function panelEstacion(nodo, tareas = []) {
   const { nombre, paso, hace } = NODOS[nodo]
-  return { titulo: nombre, paso: paso ? `Estación ${paso} de 11` : 'Estación final', hace, aqui: tareas.filter((t) => ubica(t) === nodo).sort((a, b) => b.numero - a.numero) }
+  return { titulo: nombre, paso: paso ? `Estación ${paso} de 11` : 'Estación final', hace, quien: etiquetaQuien(nodo), quienClave: quienDe(nodo), linea: ESTACIONES[nodo].linea, aqui: tareas.filter((t) => ubica(t) === nodo).sort((a, b) => b.numero - a.numero) }
 }
 
 // --- counters, retention, the follow line ---
@@ -174,6 +176,14 @@ export function visibles(tareas, vistas, seguida, ahoraMs) {
     if (ahoraMs - vista.desde >= espera) vista.retirada = true
     return !vista.retirada
   })
+}
+
+// The sentence the polite live region announces when the followed request moves: what is happening to it now.
+export function lineaViva(numero, t) {
+  if (!numero) return ''
+  if (!t) return siguiendo(numero, null)
+  const n = narrativa(t)
+  return `Petición #${numero}: ${n.texto}${n.motivo ? ` Motivo: ${n.motivo}` : ''}`
 }
 
 // The line under "Sigue tu petición #".

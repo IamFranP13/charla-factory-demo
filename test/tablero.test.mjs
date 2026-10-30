@@ -4,7 +4,7 @@ import { STATIONS } from '../lib/estado.js'
 import { instantanea, PASOS_DEMO } from '../src/components/demo-datos.js'
 import {
   ubica, claseFicha, marcaFicha, nombreAccesible, marcaNodo, aristasEncendidas, filas, panelPeticion, panelEstacion,
-  totales, retencion, RETENCION_MS, registrarVistas, visibles, siguiendo, ordenFichas, rechazo,
+  totales, retencion, RETENCION_MS, registrarVistas, visibles, siguiendo, ordenFichas, rechazo, lineaViva,
 } from '../src/lib/tablero.js'
 import { geometria, camino, slotsDe, NODOS, IDS_NODOS, REVISORES, TOKEN, cx } from '../src/lib/geometria.js'
 
@@ -275,4 +275,14 @@ test('every step of the demo gives each request a node, a panel and a path (the 
   }
   for (const nodo of ['spec', 'build', 'seguridad', 'approver', 'puerta', 'pr', 'main', 'produccion', 'rechazadas']) assert.ok(vistos.has(nodo), `the demo passes through ${nodo}`)
   assert.ok(instantanea(PASOS_DEMO - 1).tareas.some((t) => t.vueltas === 1), 'the demo has a request that went back to Build')
+})
+
+test('the live region says what is happening to the followed request, with the motivo of a refusal', () => {
+  const t = tarea({ ok: HASTA_REVISION, estaciones: Object.fromEntries(REVISORES.map((r) => [r, 'en_curso'])) })
+  assert.equal(lineaViva(7, t), 'Petición #7: Cuatro revisores miran tu cambio a la vez: Seguridad, UX y UI son modelos; Código es código.')
+  const rech = tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'rechazada' }, resultadoFinal: 'rechazada', motivo: 'Lleva un enlace externo' })
+  assert.equal(lineaViva(7, rech), 'Petición #7: Seguridad ha rechazado tu petición. No se publica nada. Motivo: Lleva un enlace externo')
+  assert.equal(lineaViva(9, undefined), 'Todavía no vemos la petición #9.', 'a request the board does not list yet keeps the old line')
+  assert.equal(lineaViva(null, t), '')
+  assert.equal(panelPeticion(t).narrativa.pasos.length, 11, 'the panel carries the narrative')
 })

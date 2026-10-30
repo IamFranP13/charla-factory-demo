@@ -10,6 +10,7 @@ import { NAV } from '../src/lib/nav.js'
 import { PASOS, REVISORES } from '../src/lib/diagrama.js'
 import { cargarEstado } from '../lib/estado-node.js'
 import { checkEstilo } from '../lib/estilo.js'
+import { ESTACIONES, QUIEN, RECORRIDO } from '../src/lib/explica.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const state = cargarEstado(repo)
@@ -213,6 +214,42 @@ needsSandbox('/factory/ is a flow diagram drawn on the server: the stations, the
   assert.match(html, /<a class="marca"/)
   assert.doesNotMatch(html, /tema-charla|Chivo/)
   assert.doesNotMatch(html, /class="tk[ "]/, 'the tokens are created by the script, the diagram itself is complete without it')
+})
+
+needsSandbox('/factory/ says in every box of both layouts who does it and what it does, with the same texts as the panel', () => {
+  for (const c of ['h', 'v']) {
+    const svg = capa(pages.factory, c)
+    for (const [id, e] of Object.entries(ESTACIONES)) {
+      const nodo = svg.match(new RegExp(`<g class="nodo[^"]*" data-nodo-g="${id}">([\\s\\S]*?)</g>\\s*(?=<g class="nodo|</svg>)`))?.[1] ?? ''
+      assert.ok(nodo, `${c}: node ${id}`)
+      assert.match(nodo, new RegExp(`<text class="n-quien q-${e.quien}"[^>]*>${QUIEN[e.quien]}</text>`), `${c}/${id}: the word ${QUIEN[e.quien]}, not colour alone`)
+      const lineas = [...(nodo.match(/<text class="n-linea"[\s\S]*?<\/text>/)?.[0] ?? '').matchAll(/<tspan[^>]*>([^<]+)<\/tspan>/g)].map((m) => m[1])
+      assert.ok(lineas.length >= 1 && lineas.length <= 2, `${c}/${id}: one line in at most two rows`)
+      assert.equal(lineas.join(' '), e.linea, `${c}/${id}`)
+    }
+    assert.match(svg, /aria-label="Estación Builder\. MODELO: Escribe solo dentro de su tipo\."/, `${c}: the button says it too`)
+  }
+})
+
+needsSandbox('/factory/ has the "¿Cómo funciona?" button and the guided tour: 8 steps, one per group, written on the server', () => {
+  const html = pages.factory
+  assert.match(html, /<button[^>]*id="b-recorrido"[^>]*aria-haspopup="dialog"[^>]*aria-expanded="false"[^>]*>¿Cómo funciona\?<\/button>/)
+  const tour = html.match(/<section class="fd-recorrido"[\s\S]*?<\/section>/)?.[0] ?? ''
+  assert.match(tour, /role="dialog"[^>]*aria-modal="false"[^>]*aria-label="Recorrido por la factory"/)
+  assert.ok(/ hidden/.test(tour.split('>')[0]), 'closed until it is opened')
+  const pasos = [...tour.matchAll(/<li data-paso="(\d)" data-nodos="([^"]+)"[^>]*>\s*<h2>([^<]+)<\/h2>/g)]
+  assert.equal(pasos.length, 8)
+  assert.deepEqual(pasos.map((m) => m[3]), RECORRIDO.map((p) => p.titulo))
+  assert.deepEqual(pasos.map((m) => m[2]), RECORRIDO.map((p) => p.nodos.join(' ')))
+  assert.match(tour, /id="rec-n">1 de 8</)
+  for (const id of ['rec-ant', 'rec-sig', 'rec-saltar', 'rec-x']) assert.match(tour, new RegExp(`id="${id}"`), id)
+  for (const texto of ['Anterior', 'Siguiente', 'Saltar']) assert.ok(tour.includes(`>${texto}</button>`), texto)
+  const bundle = clientCode(html)
+  assert.match(bundle, /limonia:recorrido-visto/, 'it opens by itself the first time only')
+  assert.match(bundle, /ArrowRight/)
+  assert.match(bundle, /ArrowLeft/)
+  assert.match(bundle, /rec-on/)
+  assert.doesNotMatch(bundle, /innerHTML|insertAdjacentHTML|outerHTML/)
 })
 
 needsSandbox('/factory/ has the counters, the follow form, the legend, the detail panel and the queue; no prototype controls', () => {

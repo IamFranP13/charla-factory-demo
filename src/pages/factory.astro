@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro'
 import DiagramaFactory from '../components/DiagramaFactory.astro'
 import PeticionForm from '../components/PeticionForm.astro'
 import MisPeticiones from '../components/MisPeticiones.astro'
+import { RECORRIDO } from '../lib/explica.js'
 
 const totales = [
   ['peticiones', 'Peticiones', ''],
@@ -22,6 +23,7 @@ const totales = [
         <p class="fd-sub">Cada petición viaja por el diagrama. Toca una petición o una estación. <a class="fd-pedir" href="#pide">Pide un cambio ↓</a></p>
       </div>
       <div class="fd-acc">
+        <button class="fd-boton fd-boton--borde" id="b-recorrido" type="button" aria-haspopup="dialog" aria-controls="recorrido" aria-expanded="false">¿Cómo funciona?</button>
         <form class="fd-sigue" id="sigue" autocomplete="off">
           <label class="fd-eyebrow" for="sigue-n">Sigue tu petición #</label>
           <div class="fd-sigue__fila">
@@ -75,6 +77,26 @@ const totales = [
         <div class="fd-panel__cuerpo"><ul class="fd-lista" id="cola-lista"><li class="fd-vacio" id="cola-vacia">Nadie espera ahora mismo.</li></ul></div>
       </section>
     </aside>
+  <section class="fd-recorrido" id="recorrido" role="dialog" aria-modal="false" aria-label="Recorrido por la factory" tabindex="-1" hidden>
+    <div class="fd-panel__cab"><span class="fd-eyebrow" id="rec-n">1 de {RECORRIDO.length}</span><button class="fd-cerrar" id="rec-x" type="button" aria-label="Saltar el recorrido (Esc)">×</button></div>
+    <div class="fd-panel__cuerpo">
+      <ol class="fd-rec-pasos" id="rec-pasos" aria-live="polite">
+        {RECORRIDO.map((p, i) => (
+          <li data-paso={i} data-nodos={p.nodos.join(' ')} hidden={i !== 0}>
+            <h2>{p.titulo}</h2>
+            <span class="fd-quien">{p.quien}</span>
+            <p>{p.texto}</p>
+          </li>
+        ))}
+      </ol>
+      <div class="fd-rec-acc">
+        <button class="fd-boton fd-boton--borde" id="rec-ant" type="button">Anterior</button>
+        <button class="fd-boton" id="rec-sig" type="button">Siguiente</button>
+        <button class="fd-boton fd-boton--borde" id="rec-saltar" type="button">Saltar</button>
+      </div>
+      <p class="fd-vacio fd-rec-ayuda">Puedes usar las flechas ← → y Esc.</p>
+    </div>
+  </section>
   </div>
   <div id="tip" role="tooltip" hidden></div>
 
@@ -89,7 +111,7 @@ const totales = [
   import { geometria, camino, slotsDe, NODOS, IDS_NODOS, TOKEN } from '../lib/geometria.js'
   import {
     CLASE_MARCA, GLIFOS, aristasEncendidas, claseFicha, marcaFicha, marcaNodo, nombreAccesible, ordenFichas, panelEstacion,
-    panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
+    lineaViva, panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
   } from '../lib/tablero.js'
   import { esDemo, sondearDemo } from '../components/demo-datos.js'
   import { sondear } from '../lib/sondeo.js'
@@ -320,16 +342,20 @@ const totales = [
       cuerpo.append(...[
         h('h2', { text: p.titulo }),
         h('div', { class: 'fd-etiquetas' }, p.etiquetas.map((e) => h('span', { class: 'fd-etq', text: e }))),
-        h('p', { class: 'fd-estado-msg', text: p.mensaje }),
-        p.vueltas > 0 ? h('p', { class: 'fd-vacio', text: p.vueltas === 1 ? 'Volvió a Builder una vez.' : 'Volvió a Builder dos veces.' }) : null,
+        h('div', { class: 'fd-narra' },
+          h('span', { class: 'fd-eyebrow', text: p.narrativa.titulo }),
+          h('p', { class: 'fd-narra__texto', text: p.narrativa.texto }),
+          p.narrativa.vueltas ? h('p', { class: 'fd-vacio', text: p.narrativa.vueltas }) : null,
+        ),
         p.motivo ? h('div', { class: 'fd-motivo' }, h('b', { text: 'Motivo del rechazo' }), `${p.motivo.titulo} ${p.motivo.motivo}`.trim()) : null,
         p.pr ? (p.pr.url ? h('a', { class: 'fd-enlace', href: p.pr.url, text: `Ver el PR #${p.pr.numero} →` }) : h('p', { class: 'fd-vacio', text: `PR #${p.pr.numero}` })) : null,
         p.enlace ? h('a', { class: 'fd-enlace', href: p.enlace, text: 'Ver el cambio en la web →' }) : null,
-        h('ol', { class: 'fd-pasos', 'aria-label': 'Estado de las 11 estaciones' }, p.filas.map((f) => h(
+        h('ol', { class: 'fd-pasos', 'aria-label': 'Qué le ha pasado a tu petición en las 11 estaciones' }, p.filas.map((f, i) => h(
           'li', { class: f.aqui ? 'aqui' : '' },
           h('span', { class: `mk ${CLASE_MARCA[f.estado]}`, 'aria-hidden': 'true', text: f.glifo }),
-          h('span', { text: f.etiqueta }),
-          h('span', { class: 'w', text: f.texto ? `${f.palabra} · ${f.texto}` : f.palabra }),
+          h('span', { class: 'fd-paso' },
+            h('span', { class: 'fd-paso__cab' }, h('b', { text: f.etiqueta }), h('span', { class: 'w', text: f.texto ? `${f.palabra} · ${f.texto}` : f.palabra })),
+            h('span', { class: 'fr', text: p.narrativa.pasos[i].frase })),
         ))),
         h('button', { class: 'fd-boton fd-boton--borde', type: 'button', id: 'b-dejar', text: 'Dejar de seguir' }),
       ].filter(Boolean))
@@ -339,6 +365,7 @@ const totales = [
       detTitulo.textContent = e.paso
       cuerpo.append(
         h('h2', { text: e.titulo }),
+        h('p', { class: 'fd-fila-quien' }, h('span', { class: `fd-quien q-${e.quienClave}`, text: e.quien }), e.linea),
         h('p', { text: e.hace }),
         h('div', { class: 'fd-eyebrow', text: `Ahora aquí (${e.aqui.length})` }),
         e.aqui.length
@@ -375,6 +402,7 @@ const totales = [
 
   // --- the follow: tap a request, type its number ---
   function sigue(n) {
+    cierraRecorrido(false)
     SELEST = null
     SEL = n
     seguida = n
@@ -383,13 +411,14 @@ const totales = [
     pintaSeleccion()
     sincroniza()
     abre()
-    lineaSigue.textContent = siguiendo(n, tareas.get(n))
+    lineaSigue.textContent = lineaViva(n, tareas.get(n))
     if (!ancha.matches) setTimeout(() => {
       const r = TK[n]?.el.getBoundingClientRect()
       if (r) scrollBy({ top: r.top - innerHeight * 0.18, behavior: reducido.matches ? 'auto' : 'smooth' })
     }, 60)
   }
   function estacion(id) {
+    cierraRecorrido(false)
     SEL = null
     seguida = null
     SELEST = id
@@ -442,7 +471,68 @@ const totales = [
   })
   $('#b-cerrar').addEventListener('click', cierra)
   document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && (SEL !== null || SELEST)) cierra()
+    if (ev.key === 'Escape' && !recorrido.hidden) cierraRecorrido(true)
+    else if (ev.key === 'Escape' && (SEL !== null || SELEST)) cierra()
+  })
+
+  // --- the guided tour: eight steps, written on the server (src/lib/explica.js); the script only shows one and lights its stations ---
+  const recorrido = $('#recorrido')
+  const botonRec = $('#b-recorrido')
+  const pasosRec = [...recorrido.querySelectorAll('[data-paso]')]
+  const VISTO = 'limonia:recorrido-visto'
+  let pasoRec = 0
+  let origenRec = null
+  const lee = () => { try { return localStorage.getItem(VISTO) } catch { return '1' } }
+  const marca = () => { try { localStorage.setItem(VISTO, '1') } catch { /* private mode: it just asks again */ } }
+
+  function muestraPaso(i) {
+    pasoRec = Math.max(0, Math.min(pasosRec.length - 1, i))
+    pasosRec.forEach((li, k) => { li.hidden = k !== pasoRec })
+    $('#rec-n').textContent = `${pasoRec + 1} de ${pasosRec.length}`
+    $('#rec-ant').disabled = pasoRec === 0
+    $('#rec-sig').textContent = pasoRec === pasosRec.length - 1 ? 'Terminar' : 'Siguiente'
+    const nodos = new Set(pasosRec[pasoRec].dataset.nodos.split(' '))
+    PAPEL.classList.add('en-recorrido')
+    for (const c of Object.values(CAPAS)) for (const [id, g] of Object.entries(c.nodoG)) g.classList.toggle('rec-on', nodos.has(id))
+    const primero = capa.nodoBtn[[...nodos][0]]
+    if (primero && !ancha.matches) {
+      scrollBy({ top: primero.getBoundingClientRect().top - innerHeight * 0.12, behavior: reducido.matches ? 'auto' : 'smooth' })
+    }
+  }
+  function abreRecorrido(i = 0) {
+    if (!recorrido.hidden) return
+    origenRec = document.activeElement && document.activeElement !== document.body ? document.activeElement : null
+    recorrido.hidden = false
+    document.body.classList.add('rec-open')
+    botonRec.setAttribute('aria-expanded', 'true')
+    muestraPaso(i)
+    recorrido.focus({ preventScroll: true })
+  }
+  function cierraRecorrido(devuelveFoco) {
+    if (recorrido.hidden) return
+    recorrido.hidden = true
+    document.body.classList.remove('rec-open')
+    botonRec.setAttribute('aria-expanded', 'false')
+    PAPEL.classList.remove('en-recorrido')
+    for (const c of Object.values(CAPAS)) for (const g of Object.values(c.nodoG)) g.classList.remove('rec-on')
+    marca()
+    if (devuelveFoco) (origenRec?.isConnected ? origenRec : botonRec).focus({ preventScroll: true })
+  }
+  botonRec.addEventListener('click', () => abreRecorrido(0))
+  $('#rec-x').addEventListener('click', () => cierraRecorrido(true))
+  $('#rec-saltar').addEventListener('click', () => cierraRecorrido(true))
+  $('#rec-ant').addEventListener('click', () => { muestraPaso(pasoRec - 1); if ($('#rec-ant').disabled) $('#rec-sig').focus() })
+  $('#rec-sig').addEventListener('click', () => (pasoRec === pasosRec.length - 1 ? cierraRecorrido(true) : muestraPaso(pasoRec + 1)))
+  recorrido.addEventListener('keydown', (ev) => {
+    if (ev.key === 'ArrowRight') { ev.preventDefault(); if (pasoRec < pasosRec.length - 1) muestraPaso(pasoRec + 1) }
+    else if (ev.key === 'ArrowLeft') { ev.preventDefault(); muestraPaso(pasoRec - 1) }
+    else if (ev.key === 'Tab') {
+      const dentro = [recorrido, ...recorrido.querySelectorAll('button:not(:disabled)')]
+      const ultimo = dentro.at(-1)
+      if (ev.shiftKey && ev.target === dentro[0]) { ev.preventDefault(); ultimo.focus() }
+      else if (ev.shiftKey && ev.target === dentro[1]) { ev.preventDefault(); dentro[0].focus() }
+      else if (!ev.shiftKey && ev.target === ultimo) { ev.preventDefault(); dentro[1].focus() }
+    }
   })
 
   // A tooltip with the title of a request (mouse and keyboard).
@@ -496,11 +586,11 @@ const totales = [
     } else {
       pintaPanel()
       pintaSeleccion()
-      const linea = siguiendo(seguida, tareas.get(seguida))
+      const linea = lineaViva(seguida, tareas.get(seguida))
       if (lineaSigue.textContent !== linea) lineaSigue.textContent = linea
     }
     if (SEL !== null) {
-      const linea = siguiendo(SEL, tareas.get(SEL))
+      const linea = lineaViva(SEL, tareas.get(SEL))
       if (lineaSigue.textContent !== linea) lineaSigue.textContent = linea
     }
     return false
@@ -527,6 +617,12 @@ const totales = [
   ajusta()
   // A finished request leaves when its time is up, even if no new data arrives.
   setInterval(repinta, 1000)
+
+  // Phones arriving from the QR see the tour the first time (never the wide board, the demo or a followed request);
+  // ?recorrido=N opens it at step N.
+  const pedido = Number(new URLSearchParams(location.search).get('recorrido'))
+  if (pedido >= 1 && pedido <= pasosRec.length) abreRecorrido(pedido - 1)
+  else if (!demo && !ancha.matches && !seguida && lee() === null) abreRecorrido(0)
 
   if (demo) {
     sondearDemo(pintar)

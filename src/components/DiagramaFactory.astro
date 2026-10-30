@@ -2,7 +2,8 @@
 // One layout of the factory flow diagram (horizontal or vertical), drawn on the server: the stations, the connectors
 // and their labels are complete without JavaScript. The page script only moves the request tokens and lights the path
 // of the one you follow. Geometry and texts come from src/lib/geometria.js.
-import { geometria, trazo, etiquetaPos, anchoEtiqueta, NODOS, IDS_NODOS, cx, cy } from '../lib/geometria.js'
+import { geometria, trazo, etiquetaPos, anchoEtiqueta, envuelve, CARACTERES_POR_PX, NODOS, IDS_NODOS, cx, cy } from '../lib/geometria.js'
+import { ESTACIONES, QUIEN } from '../lib/explica.js'
 
 const { vertical = false } = Astro.props
 const capa = vertical ? 'v' : 'h'
@@ -17,7 +18,14 @@ const nodos = IDS_NODOS.map((id) => {
   const tx = dec ? cx(n) : n.x + 12
   const marcaX = dec ? cx(n) : n.x + n.w - 19
   const marcaY = dec ? n.y + 16 : n.y + 17
-  return { id, n, dec, tx, ...NODOS[id], marcaX, marcaY, rombo: dec ? `${cx(n)},${n.y} ${n.x + n.w},${cy(n)} ${cx(n)},${n.y + n.h} ${n.x},${cy(n)}` : null }
+  // Who does it (a pill with the word, never colour alone) and the one line of the box, wrapped to the room it has.
+  const { quien, linea } = ESTACIONES[id]
+  const pastilla = { texto: QUIEN[quien], ancho: QUIEN[quien].length * 7.6 + 12 }
+  const lineas = envuelve(linea, Math.floor((dec ? 150 : n.w - 24) * CARACTERES_POR_PX))
+  const px = dec ? cx(n) - pastilla.ancho / 2 : n.x + 12
+  const py = dec ? cy(n) - 20 : n.y + 33
+  const ly = dec ? cy(n) + 14 : n.y + 69
+  return { id, n, dec, tx, ...NODOS[id], quien, linea, pastilla, lineas, px, py, ly, marcaX, marcaY, rombo: dec ? `${cx(n)},${n.y} ${n.x + n.w},${cy(n)} ${cx(n)},${n.y + n.h} ${n.x},${cy(n)}` : null }
 })
 ---
 <div class={`stage stage--${capa}`} data-capa={capa} data-w={W} data-h={H} style={`width:${W}px;height:${H}px`}>
@@ -47,8 +55,12 @@ const nodos = IDS_NODOS.map((id) => {
         {o.dec
           ? <polygon class="n-forma dec" points={o.rombo}></polygon>
           : <rect class={`n-forma${o.n.focal ? ' focal' : ''}${o.n.term ? ' term' : ''}${o.n.err ? ' err' : ''}`} x={o.n.x} y={o.n.y} width={o.n.w} height={o.n.h} rx={o.n.term ? 20 : 6}></rect>}
-        <text class={`n-nombre${o.id === 'rechazadas' ? ' t-rech' : ''}`} x={o.tx} y={o.dec ? cy(o.n) - 14 : o.n.y + 25} text-anchor={o.dec ? 'middle' : 'start'}>{o.nombre}</text>
-        {o.sub && <text class="n-sub" x={o.tx} y={o.n.y + 44} text-anchor={o.dec ? 'middle' : 'start'}>{o.sub}</text>}
+        <text class={`n-nombre${o.id === 'rechazadas' ? ' t-rech' : ''}`} x={o.tx} y={o.dec ? cy(o.n) - 30 : o.n.y + 25} text-anchor={o.dec ? 'middle' : 'start'}>{o.nombre}</text>
+        <rect class={`q-pill q-${o.quien}`} x={o.px} y={o.py} width={o.pastilla.ancho} height="17" rx="3"></rect>
+        <text class={`n-quien q-${o.quien}`} x={o.px + o.pastilla.ancho / 2} y={o.py + 12.5} text-anchor="middle">{o.pastilla.texto}</text>
+        <text class="n-linea" x={o.tx} y={o.ly} text-anchor={o.dec ? 'middle' : 'start'}>
+          {o.lineas.map((l, i) => <tspan x={o.tx} dy={i === 0 ? 0 : 16}>{l}</tspan>)}
+        </text>
         <g class="n-marca m-pend">
           <circle cx={o.marcaX} cy={o.marcaY} r="11"></circle>
           <text x={o.marcaX} y={o.marcaY + 4.5}>–</text>
@@ -58,7 +70,7 @@ const nodos = IDS_NODOS.map((id) => {
   </svg>
   {nodos.map((o) => (
     <>
-      <button class="nodo-btn" type="button" data-nodo={o.id} aria-label={`Estación ${o.nombre}`} style={`left:${o.n.x}px;top:${o.n.y}px;width:${o.n.w}px;height:${o.n.h}px`}></button>
+      <button class="nodo-btn" type="button" data-nodo={o.id} aria-label={`Estación ${o.nombre}. ${QUIEN[o.quien]}: ${o.linea}`} style={`left:${o.n.x}px;top:${o.n.y}px;width:${o.n.w}px;height:${o.n.h}px`}></button>
       <button class="mas" type="button" hidden data-mas={o.id}></button>
     </>
   ))}
