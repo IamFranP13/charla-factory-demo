@@ -146,6 +146,7 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 | `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else (also read by `/api/estado`) |
 | `GITHUB_REPO` | `owner/repo` |
 | `INTAKE_OPEN` | `1` to accept requests, anything else closes the form (kill switch) |
+| `INTAKE_TEST_KEY` | Secret, at least 32 characters: your rehearsal pass while the form is closed (see below). Absent or shorter = no pass for anybody |
 | `INTAKE_MAX_TASKS` | Task cap, default `15`, **max `100`** (higher values are clamped; the check is not atomic, so a burst can overshoot slightly) |
 
 Issues are created with your token, so the factory only accepts issues authored by the repository owner.
@@ -165,13 +166,23 @@ The repository is public, but no key is in it: they live in GitHub Actions secre
 | Switch | Turns off | How | Takes effect |
 |--------|-----------|-----|--------------|
 | Factory workflow | Every model call, whatever created the issue | `gh workflow disable factory.yml` / `gh workflow enable factory.yml` | Immediately |
-| `INTAKE_OPEN` in Cloudflare | The form ("La factory está cerrada") | Set `0` or `1`, then redeploy | About a minute |
+| `INTAKE_OPEN` in Cloudflare | The form ("La factory está cerrada") for everyone without the rehearsal pass | Set `0` or `1`, then redeploy | About a minute |
+
+### Rehearsing from the web while the form is closed
+
+With `INTAKE_OPEN=0` the form answers "La factory está cerrada" to everyone except a browser holding the rehearsal pass:
+
+1. Generate a key (`openssl rand -hex 24`) and store it in Cloudflare as the secret `INTAKE_TEST_KEY` (Production), then redeploy.
+2. On each device you rehearse from, open `https://<site>/api/acceso?clave=<key>` once. It sets an `HttpOnly`, `Secure`, `SameSite=Strict` cookie on `/api` (an HMAC of the key, never the key itself; the browser keeps it 30 days, but the server accepts it for as long as the key is unchanged) and sends you to the home page.
+3. Use the form as the audience will: Turnstile and `INTAKE_MAX_TASKS` still apply. Enable the factory workflow while you rehearse.
+
+`/api/acceso?salir` removes the pass from that browser; changing or deleting `INTAKE_TEST_KEY` (and redeploying) revokes every pass. The key travels once in a URL, so it may stay in that browser's history and in Cloudflare's request logs: use a fresh one per rehearsal period, and always after the talk.
 
 Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
 
 Before the talk: `npm run reset-demo -- --apply` (removes the audience's content and features, restores the seed data and the planted bugs, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
 
-After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key.
+After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key, and delete `INTAKE_TEST_KEY`.
 
 Also recommended once a real model key exists: a prepaid model account with a small balance (it is the last spending limit), and a Cloudflare rate-limiting rule on `/api/peticion` (a few requests per minute per IP).
 
