@@ -57,7 +57,8 @@ const totales = [
         <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"></polygon></svg>Flujo</span>
         <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5c6245" stroke-width="1.2" stroke-dasharray="5 4"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5c6245"></polygon></svg>Vuelta a Build</span>
         <span class="it"><svg width="38" height="12" aria-hidden="true"><line x1="0" y1="6" x2="30" y2="6" stroke="#5b6b2e" stroke-width="2.2"></line><polygon points="29 2.5,37 6,29 9.5" fill="#5b6b2e"></polygon></svg>Camino de la petición que sigues</span>
-        <span class="it"><span class="lg-chip lg-curso">● #n</span>trabajando</span>
+        <span class="it"><span class="lg-chip lg-curso"><span class="tk-m tk-spin" aria-hidden="true"></span> #n</span>trabajando (gira mientras trabaja)</span>
+        <span class="it"><span class="lg-chip lg-hecho">✓ #n</span>hecho: espera a la siguiente estación</span>
         <span class="it"><span class="lg-chip lg-espera">– #n</span>espera a una persona</span>
         <span class="it"><span class="lg-chip lg-ok">✓ #n</span>en producción</span>
         <span class="it"><span class="lg-chip lg-rech">! #n</span>rechazada</span>
@@ -108,7 +109,7 @@ const totales = [
   <MisPeticiones />
 
 <script>
-  import { geometria, camino, slotsDe, NODOS, IDS_NODOS, TOKEN } from '../lib/geometria.js'
+  import { geometria, slotsDe, NODOS, IDS_NODOS } from '../lib/geometria.js'
   import {
     CLASE_MARCA, GLIFOS, aristasEncendidas, claseFicha, marcaFicha, marcaNodo, nombreAccesible, ordenFichas, panelEstacion,
     lineaViva, panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
@@ -175,7 +176,7 @@ const totales = [
   let seguida = numeroValido(new URLSearchParams(location.search).get('n'))
   let panelFirma = ''
   const vistas = new Map()
-  const TK = {} // number → { el, nodo, pos, vueltas, inst }
+  const TK = {} // number → { el, nodo, pos, inst }
   if (seguida) entrada.value = String(seguida)
 
   // --- the stage: scale it to the paper, centre it ---
@@ -195,30 +196,17 @@ const totales = [
     }
   }
 
-  // --- tokens: keyed elements, they only move ---
-  function mueve(rec, x, y, trayecto) {
-    const destino = `translate(${x}px, ${y}px)`
-    if (!reducido.matches && rec.pos && !rec.inst && (rec.pos.x !== x || rec.pos.y !== y)) {
-      let marcos
-      if (trayecto) {
-        const ps = [{ x: rec.pos.x + TOKEN.ancho / 2, y: rec.pos.y + TOKEN.alto / 2 }, ...trayecto.puntos, { x: x + TOKEN.ancho / 2, y: y + TOKEN.alto / 2 }]
-        let total = 0
-        const acum = [0]
-        for (let i = 1; i < ps.length; i++) {
-          total += Math.hypot(ps[i].x - ps[i - 1].x, ps[i].y - ps[i - 1].y)
-          acum.push(total)
-        }
-        marcos = ps.map((p, i) => ({ transform: `translate(${p.x - TOKEN.ancho / 2}px, ${p.y - TOKEN.alto / 2}px)`, offset: total ? acum[i] / total : i / (ps.length - 1) }))
-      } else {
-        marcos = [{ transform: `translate(${rec.pos.x}px, ${rec.pos.y}px)` }, { transform: destino }]
-      }
-      const duracion = Math.min(1200, 480 * (trayecto ? trayecto.aristas.length : 1))
-      rec.el.style.zIndex = rec.el.classList.contains('is-sel') ? '4' : '3'
-      rec.el.animate(marcos, { duration: duracion, easing: 'cubic-bezier(.2, .8, .2, 1)' })
-      setTimeout(() => { rec.el.style.zIndex = '' }, duracion + 60)
-    }
-    rec.el.style.transform = destino
+  // --- tokens: keyed elements; they never travel, they appear in the station where they are ---
+  function ponEn(rec, x, y) {
+    rec.el.style.transform = `translate(${x}px, ${y}px)`
     rec.pos = { x, y }
+  }
+  // Marks the token as arriving: a short fade/scale-in (see .tk.llega) that the stylesheet drops under reduced motion.
+  function llega(el) {
+    el.classList.remove('llega')
+    void el.offsetWidth
+    el.classList.add('llega')
+    setTimeout(() => el.classList.remove('llega'), 200)
   }
 
   function sincroniza() {
@@ -226,9 +214,9 @@ const totales = [
     const numeros = new Set(vis.map((t) => t.numero))
     for (const t of vis) {
       if (TK[t.numero]) continue
-      const el = h('button', { class: 'tk', type: 'button', 'data-n': t.numero }, '')
+      const el = h('button', { class: 'tk', type: 'button', 'data-n': t.numero }, h('span', { class: 'tk-m', 'aria-hidden': 'true' }), h('span', { class: 'tk-n' }))
       capa.stage.append(el)
-      TK[t.numero] = { el, nodo: null, pos: null, vueltas: t.vueltas ?? 0, inst: true }
+      TK[t.numero] = { el, nodo: null, pos: null, inst: true }
       if (!primera && !reducido.matches) {
         el.classList.add('is-new')
         setTimeout(() => el.classList.remove('is-new'), 60)
@@ -248,13 +236,10 @@ const totales = [
       const s = slotsDe(capa.geo.N[nodo], ordenFichas(lista, SEL))
       for (const o of s.out) {
         const rec = TK[o.numero]
-        const t = tareas.get(o.numero)
-        const antes = rec.nodo
-        const vuelve = (t.vueltas ?? 0) > rec.vueltas
-        const trayecto = antes && (antes !== nodo || vuelve) ? camino(capa.geo, antes, nodo, { conVuelta: vuelve }) : null
+        const cambia = rec.nodo && !rec.inst && rec.nodo !== nodo
         rec.nodo = nodo
-        rec.vueltas = t.vueltas ?? 0
-        mueve(rec, o.x, o.y, trayecto)
+        ponEn(rec, o.x, o.y)
+        if (cambia) llega(rec.el)
         rec.inst = false
         rec.el.classList.toggle('is-hid', !o.visible)
         rec.el.tabIndex = o.visible ? 0 : -1
@@ -272,9 +257,13 @@ const totales = [
     for (const nodo of IDS_NODOS) if (!grupos[nodo]) capa.mas[nodo].hidden = true
     for (const t of vis) {
       const { el } = TK[t.numero]
-      const marca = `${marcaFicha(t)}#${t.numero}`
-      if (el.firstChild.nodeValue !== marca) el.firstChild.nodeValue = marca
-      el.className = `tk tk--${claseFicha(t)}${SEL === t.numero ? ' is-sel' : ''}${el.classList.contains('is-hid') ? ' is-hid' : ''}${el.classList.contains('is-new') ? ' is-new' : ''}`
+      const [marca, numero] = el.children
+      const clase = claseFicha(t)
+      // Working: a spinner that keeps turning (a "…" under reduced motion); done: ✓. The state is also in the aria-label.
+      marca.className = `tk-m${clase === 'curso' ? ' tk-spin' : ''}`
+      if (marca.textContent !== marcaFicha(t)) marca.textContent = marcaFicha(t)
+      if (numero.textContent !== `#${t.numero}`) numero.textContent = `#${t.numero}`
+      el.className = `tk tk--${clase}${SEL === t.numero ? ' is-sel' : ''}${['is-hid', 'is-new', 'llega'].map((c) => (el.classList.contains(c) ? ` ${c}` : '')).join('')}`
       el.setAttribute('aria-label', nombreAccesible(t))
       el.setAttribute('aria-pressed', String(SEL === t.numero))
     }

@@ -561,9 +561,15 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
   font-family: var(--mono); font-size: 12px; font-weight: 600; line-height: 24px; letter-spacing: -.01em; color: var(--tinta); padding: 0; cursor: pointer; white-space: nowrap;
   transition: opacity var(--motion-step) var(--ease), background var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease); }
 .fd .tk:hover { border-color: var(--oliva-oscuro); }
+.fd .tk { display: inline-flex; align-items: center; justify-content: center; gap: 3px; }
+.fd .tk-m { display: inline-block; min-width: 12px; text-align: center; font-size: 14px; line-height: 1; }
+.fd .tk-spin { box-sizing: border-box; width: 12px; height: 12px; min-width: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; font-size: 0; animation: tk-gira 900ms linear infinite; }
+@keyframes tk-gira { to { transform: rotate(360deg); } }
+.fd .tk.llega { animation: tk-llega var(--motion-fast) var(--ease); }
+@keyframes tk-llega { from { opacity: 0; scale: .7; } }
 .fd .tk--curso { background: var(--limon); border-color: var(--tinta); }
 .fd .tk--espera { background: var(--limon-suave); border-color: var(--tinta-suave); }
-.fd .tk--ok { background: #e3ecc2; border-color: var(--oliva); color: #33401a; }
+.fd .tk--ok, .fd .tk--hecho { background: #e3ecc2; border-color: var(--oliva); color: #33401a; }
 .fd .tk--rech { background: #fbe6dc; border-color: #c4511f; color: #7a2b0e; }
 .fd .tk::after { content: ''; position: absolute; inset: -9px -2px; }
 .fd .tk.is-sel { background: var(--oliva); border-color: var(--oliva); color: #fff; z-index: 4; }
@@ -645,8 +651,9 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .fd-marcas { font-family: var(--mono); font-size: 13px; }
 .lg-chip { display: inline-block; min-width: 38px; text-align: center; border: 1px solid var(--tinta-suave); border-radius: 999px; font-family: var(--mono); font-size: 11px; font-weight: 600; line-height: 20px; background: #fff; color: var(--tinta); padding: 0 6px; }
 .lg-curso { background: var(--limon); border-color: var(--tinta); }
+.lg-curso .tk-m { vertical-align: -1px; }
 .lg-espera { background: var(--limon-suave); }
-.lg-ok { background: #e3ecc2; border-color: var(--oliva); color: #33401a; }
+.lg-ok, .lg-hecho { background: #e3ecc2; border-color: var(--oliva); color: #33401a; }
 .lg-rech { background: #fbe6dc; border-color: #c4511f; color: #7a2b0e; }
 
 /* side: detail panel and queue */
@@ -720,4 +727,10 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
   .fd-detalle .fd-panel__cab::before { content: ''; position: absolute; left: 50%; top: 6px; width: 36px; height: 3px; border-radius: 2px; background: var(--tinta-suave); transform: translateX(-50%); opacity: .5; }
 }
 @media (prefers-reduced-motion: reduce) { .fd *, .fd-detalle { transition-duration: .001ms !important; animation-duration: .001ms !important; } }
+/* Reduced motion: the spinner does not turn; a still "…" says the request is being worked on. */
+@media (prefers-reduced-motion: reduce) {
+  .fd .tk-spin { animation: none; border: 0; width: auto; height: auto; border-radius: 0; font-size: 13px; }
+  .fd .tk-spin::before { content: '…'; }
+  .fd .tk.llega { animation: none; }
+}
 

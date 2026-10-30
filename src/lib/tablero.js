@@ -18,29 +18,44 @@ export const retencion = (resultadoFinal) => RETENCION_MS[resultadoFinal] ?? 0
 
 const estadoDe = (t, estacion) => (PALABRAS[t.estaciones?.[estacion]] ? t.estaciones[estacion] : 'pendiente')
 
-// The node of the diagram where the token of a task sits.
-export function ubica(t) {
+// Where the token of a task sits and what it is doing: { nodo, estado }.
+// estado: trabajando (the station it is at is working: the token shows a spinner), hecho (that station finished and
+// the next has not started: the token stays and shows a ✓ until it does), espera (a pull request waits for a person),
+// desplegada (in production) or rechazada. The four reviewers share ONE token, in the first reviewer's box: working
+// until the four have approved, then ✓. It never travels: when the next station starts it simply appears there.
+export function ficha(t) {
   const final = t.resultadoFinal
-  if (RECHAZO[final]) return 'rechazadas'
-  if (final === 'desplegada' || final === 'sin_cambios') return 'produccion'
-  if (final === 'esperando_persona') return 'pr'
+  if (RECHAZO[final]) return { nodo: 'rechazadas', estado: 'rechazada' }
+  if (final === 'desplegada' || final === 'sin_cambios') return { nodo: 'produccion', estado: 'desplegada' }
+  if (final === 'esperando_persona') return { nodo: 'pr', estado: 'espera' }
   const estacion = STATIONS.includes(t.estacion) ? t.estacion : 'entrada'
-  if (estacion === 'merge') return 'main'
-  if (estacion === 'puerta') return t.ruta === 'human' && t.pr != null ? 'pr' : 'puerta'
-  // The last reviewer to finish hands the request over to the approver.
-  const revisando = REVISORES.includes(estacion)
-  if (revisando && REVISORES.every((r) => estadoDe(t, r) === 'ok') && estadoDe(t, 'approver') === 'pendiente') return 'approver'
-  return estacion
+  if (REVISORES.includes(estacion)) return { nodo: REVISORES[0], estado: REVISORES.every((r) => estadoDe(t, r) === 'ok') ? 'hecho' : 'trabajando' }
+  const nodo = estacion === 'merge' ? 'main' : estacion === 'puerta' && t.ruta === 'human' && t.pr != null ? 'pr' : estacion
+  return { nodo, estado: estadoDe(t, estacion) === 'ok' ? 'hecho' : 'trabajando' }
 }
+
+// The node of the diagram where the token of a task sits.
+export const ubica = (t) => ficha(t).nodo
+
+// How a node is called in a sentence: the four reviewers are one place for the token.
+const lugar = (nodo) => (REVISORES.includes(nodo) ? 'la revisión en paralelo' : NODOS[nodo].nombre)
 
 // --- the token ---
 
-export const claseFicha = (t) => (RECHAZO[t.resultadoFinal] ? 'rech' : t.resultadoFinal === 'desplegada' || t.resultadoFinal === 'sin_cambios' ? 'ok' : t.resultadoFinal === 'esperando_persona' ? 'espera' : 'curso')
-export const marcaFicha = (t) => ({ rech: '!', ok: '✓', espera: '–', curso: '●' })[claseFicha(t)]
+const CLASE_FICHA = { trabajando: 'curso', hecho: 'hecho', espera: 'espera', desplegada: 'ok', rechazada: 'rech' }
+export const claseFicha = (t) => CLASE_FICHA[ficha(t).estado]
+// The mark beside "#n". Working has no glyph: the style draws a spinner (and a "…" under reduced motion).
+export const marcaFicha = (t) => ({ curso: '', hecho: '✓', espera: '–', ok: '✓', rech: '!' })[claseFicha(t)]
 
 export function nombreAccesible(t) {
-  const nodo = ubica(t)
-  const donde = nodo === 'rechazadas' ? 'rechazada' : nodo === 'pr' ? `esperando a una persona (PR #${t.pr})` : `en ${NODOS[nodo].nombre}`
+  const { nodo, estado } = ficha(t)
+  const donde = {
+    rechazada: 'rechazada',
+    espera: `esperando a una persona (PR #${t.pr})`,
+    trabajando: `trabajando en ${lugar(nodo)}`,
+    hecho: `${REVISORES.includes(nodo) ? 'revisión en paralelo hecha' : `${NODOS[nodo].nombre} hecho`}, esperando a la siguiente estación`,
+    desplegada: `en ${NODOS[nodo].nombre}`,
+  }[estado]
   const motivo = nodo === 'rechazadas' && t.motivo ? `. Motivo: ${t.motivo}` : ''
   return `Petición #${t.numero}: ${t.titulo ?? ''}, ${donde}${motivo}`
 }
@@ -103,6 +118,7 @@ function estacionAqui(t) {
   const nodo = ubica(t)
   if (nodo === 'rechazadas') return STATIONS.find((s) => ['rechazada', 'error'].includes(t.estaciones?.[s])) ?? (STATIONS.includes(t.estacion) ? t.estacion : null)
   if (nodo === 'main' || nodo === 'pr') return 'merge'
+  if (REVISORES.includes(nodo)) return REVISORES.find((r) => estadoDe(t, r) === 'en_curso') ?? REVISORES.at(-1)
   return nodo
 }
 
@@ -133,7 +149,7 @@ export function panelPeticion(t, cola = []) {
   return {
     numero: t.numero,
     titulo: t.titulo ?? '',
-    etiquetas: [`perfil · ${t.perfil}`, ...(t.tipo ? [`tipo · ${t.tipo}`] : []), `estación · ${nodo === 'rechazadas' ? 'Rechazadas' : NODOS[nodo].nombre}`],
+    etiquetas: [`perfil · ${t.perfil}`, ...(t.tipo ? [`tipo · ${t.tipo}`] : []), `estación · ${REVISORES.includes(nodo) ? 'Revisión' : NODOS[nodo].nombre}`],
     mensaje: t.mensaje ?? '',
     motivo: rechazo(t),
     pr,
@@ -147,7 +163,7 @@ export function panelPeticion(t, cola = []) {
 // What the side panel shows for a tapped station: what it does and the requests in it (newest first).
 export function panelEstacion(nodo, tareas = []) {
   const { nombre, paso, hace } = NODOS[nodo]
-  return { titulo: nombre, paso: paso ? `Estación ${paso} de 11` : 'Estación final', hace, quien: etiquetaQuien(nodo), quienClave: quienDe(nodo), linea: ESTACIONES[nodo].linea, aqui: tareas.filter((t) => ubica(t) === nodo).sort((a, b) => b.numero - a.numero) }
+  return { titulo: nombre, paso: paso ? `Estación ${paso} de 11` : 'Estación final', hace, quien: etiquetaQuien(nodo), quienClave: quienDe(nodo), linea: ESTACIONES[nodo].linea, aqui: tareas.filter((t) => ubica(t) === (REVISORES.includes(nodo) ? REVISORES[0] : nodo)).sort((a, b) => b.numero - a.numero) }
 }
 
 // --- counters, retention, the follow line ---
@@ -191,6 +207,6 @@ export function siguiendo(numero, t) {
   if (!numero) return ''
   if (!t) return `Todavía no vemos la petición #${numero}.`
   const final = RECHAZO[t.resultadoFinal] || t.resultadoFinal === 'sin_cambios'
-  const donde = final ? t.mensaje : `ahora en ${NODOS[ubica(t)].nombre}`
+  const donde = final ? t.mensaje : `ahora en ${REVISORES.includes(ubica(t)) ? 'la revisión' : NODOS[ubica(t)].nombre}`
   return `Siguiendo #${numero}: «${t.titulo ?? ''}» · ${donde}`
 }

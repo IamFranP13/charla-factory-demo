@@ -9,52 +9,66 @@ const REV = ['seguridad', 'ux', 'ui', 'codigo']
 const trabajando = (...estaciones) => estaciones.map((station) => ({ station, status: 'en_curso' }))
 const hechas = (...estaciones) => estaciones.map((station) => ({ station, status: 'ok' }))
 
-// One array of events per step; a step moves the task one station on.
-const hastaApprover = [
+// One array of events per step. Between two stations there is a step where the first is done and the next has not
+// started: the token then shows its ✓ and stays where it is (the real factory has those gaps too, and they last).
+const hastaRevision = [
   trabajando('spec'),
-  [...hechas('spec'), ...trabajando('build')],
-  [...hechas('build'), ...trabajando(...REV)],
-  [...hechas(...REV), ...trabajando('approver')],
-  [...hechas('approver'), { finish: 'ok' }],
+  hechas('spec'),
+  trabajando('build'),
+  hechas('build'),
+  trabajando(...REV),
+  hechas(...REV),
+]
+const hastaApprover = [
+  ...hastaRevision,
+  trabajando('approver'),
+  hechas('approver'),
+  [{ finish: 'ok' }],
 ]
 
 const GUIONES = [
   {
     numero: 1, desde: 0, perfil: 'marketing', titulo: 'Un banner de limones de temporada',
-    pasos: [...hastaApprover, [{ set: { ruta: 'auto', pr: 21 } }, ...hechas('puerta'), ...trabajando('merge')], hechas('merge'), hechas('produccion')],
+    pasos: [...hastaApprover, [{ set: { ruta: 'auto', pr: 21 } }, ...hechas('puerta')], trabajando('merge'), hechas('merge'), trabajando('produccion'), hechas('produccion')],
   },
   {
     numero: 2, desde: 1, perfil: 'negocio', titulo: 'Baja el precio del limón a 1 euro',
-    pasos: [...hastaApprover, [{ set: { ruta: 'human', pr: 22 } }], [], [], [], [], [], [], hechas('puerta', 'merge'), hechas('produccion')],
+    pasos: [...hastaApprover, [{ set: { ruta: 'human', pr: 22 } }], [], [], [], [], [], [], hechas('puerta'), trabajando('merge'), hechas('merge'), trabajando('produccion'), hechas('produccion')],
   },
   {
     numero: 3, desde: 2, perfil: 'producto', titulo: 'Añade un producto con enlaces a otra web',
     pasos: [
       trabajando('spec'),
-      [...hechas('spec'), ...trabajando('build')],
-      [...hechas('build'), ...trabajando(...REV)],
+      hechas('spec'),
+      trabajando('build'),
+      hechas('build'),
+      trabajando(...REV),
       [...hechas('ux', 'ui', 'codigo'), { station: 'seguridad', status: 'rejected' }, { finish: 'rejected', motivo: 'Lleva un enlace a una web externa' }],
     ],
   },
   {
     numero: 4, desde: 4, perfil: 'producto', titulo: 'Nuevo destino: Alemania',
     pasos: [
-      trabajando('spec'),
-      [...hechas('spec'), ...trabajando('build')],
-      [...hechas('build'), ...trabajando(...REV)],
-      [...hechas(...REV), ...trabajando('approver')],
+      ...hastaRevision,
+      trabajando('approver'),
       [{ station: 'approver', status: 'retry' }],
-      trabajando('build'),
-      [...hechas('build'), ...trabajando(...REV)],
-      [...hechas(...REV), ...trabajando('approver')],
-      [...hechas('approver'), { finish: 'ok' }],
-      [{ set: { ruta: 'auto', pr: 23 } }, ...hechas('puerta', 'merge')],
+      hechas('build'),
+      trabajando(...REV),
+      hechas(...REV),
+      trabajando('approver'),
+      hechas('approver'),
+      [{ finish: 'ok' }],
+      [{ set: { ruta: 'auto', pr: 23 } }, ...hechas('puerta')],
+      trabajando('merge'),
+      hechas('merge'),
+      trabajando('produccion'),
       hechas('produccion'),
     ],
   },
 ]
 
-export const PASOS_DEMO = 24
+// The sequence loops after the last request is done plus a pause, so the final states stay on screen a while.
+export const PASOS_DEMO = Math.max(...GUIONES.map((g) => g.desde + g.pasos.length)) + 9
 const AHORA = '2026-01-01T00:00:00.000Z'
 
 function estadoEn(guion, paso) {

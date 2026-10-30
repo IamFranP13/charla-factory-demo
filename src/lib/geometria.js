@@ -100,7 +100,7 @@ export function etiquetaPos(e, w) {
 export const anchoEtiqueta = (texto) => texto.length * 6.9 + 12
 
 // { W, H, N: nodes by id, E: connectors, F: the frame of the parallel review }.
-// A connector with `oculta` is never drawn: it only gives the tokens a way to travel (reviewer to reviewer, build to a reviewer).
+// A connector with `oculta` is never drawn: it only exists to be lit (Builder to a reviewer, a reviewer to the approver).
 export function geometria(vertical) {
   const N = {}
   const E = []
@@ -151,9 +151,6 @@ export function geometria(vertical) {
       E.push({ id: `f-${id}`, a: 'build', b: id, pts: [R(N.build), { x: bus1, y: mid }, { x: bus1, y: cy(r) }, L(r)] })
       E.push({ id: `j-${id}`, a: id, b: 'approver', pts: [R(r), { x: bus2, y: cy(r) }, { x: bus2, y: mid }, L(N.approver)] })
     }
-    for (const a of REVISORES) for (const b of REVISORES) {
-      if (a !== b) E.push({ id: `t-${a}-${b}`, a, b, oculta: true, pts: [L(N[a]), { x: bus1, y: cy(N[a]) }, { x: bus1, y: cy(N[b]) }, L(N[b])] })
-    }
     E.push(
       { id: 'e-ap', a: 'approver', b: 'puerta', pts: [R(N.approver), L(N.puerta)] },
       { id: 'e-auto', a: 'puerta', b: 'main', pts: [R(N.puerta), L(N.main)], lab: 'AUTO', lpos: 'arriba' },
@@ -171,7 +168,7 @@ export function geometria(vertical) {
   const cxm = 210
   const sw = 240
   const sx = cxm - sw / 2
-  const NV = 108
+  const NV = 124
   mk('entrada', sx, 8, sw, NV, { term: true, dx: 12 })
   mk('spec', sx, 8 + NV + 36, sw, NV)
   mk('build', sx, 8 + 2 * (NV + 36), sw, NV)
@@ -210,9 +207,6 @@ export function geometria(vertical) {
     E.push({ id: `j-${id}`, a: id, b: 'approver', oculta: true, pts: [B(N[id]), { x: cx(N[id]), y: fin + 12 }, { x: cx(N.approver), y: fin + 18 }, T(N.approver)] })
   }
   E.push({ id: 'j-out', a: 'marco', b: 'approver', pts: [{ x: cxm, y: F.y + F.h }, { x: cxm, y: fin + 12 }, { x: cx(N.approver), y: fin + 12 }, T(N.approver)] })
-  for (const a of REVISORES) for (const b of REVISORES) {
-    if (a !== b) E.push({ id: `t-${a}-${b}`, a, b, oculta: true, pts: [{ x: cx(N[a]), y: cy(N[a]) }, { x: cx(N[b]), y: cy(N[b]) }] })
-  }
   E.push(
     { id: 'e-ap', a: 'approver', b: 'puerta', pts: [B(N.approver), { x: cx(N.approver), y: ay + NV + 12 }, { x: cxm, y: ay + NV + 12 }, T(N.puerta)] },
     { id: 'e-auto', a: 'puerta', b: 'main', pts: [L(N.puerta), { x: N.main.x + 14, y: cy(N.puerta) }, { x: N.main.x + 14, y: N.main.y }], lab: 'AUTO', lpos: 'izq' },
@@ -237,46 +231,4 @@ export function slotsDe(nodo, lista) {
     return { numero, x: baseX + (visible ? i : cap - 1) * TOKEN.paso, y, visible }
   })
   return { out, colapsa, masX: baseX + (cap - 1) * TOKEN.paso, masY: y, resto: colapsa ? lista.length - (cap - 1) : 0 }
-}
-
-// The way a token takes from one node to another: the connectors in order (breadth first) and the points they pass.
-// `conVuelta`: the request went back to Build in between, so it travels the dashed loop (to the approver if it was not
-// there, then back to Build, then on to where it is now). Returns { aristas, puntos }, or null when there is no way
-// (the token then slides straight to its place).
-export function camino(geo, a, b, { conVuelta = false } = {}) {
-  const trayecto = (desde, hasta) => {
-    if (desde === hasta) return []
-    const cola = [[desde, []]]
-    const vistos = new Set([desde])
-    while (cola.length) {
-      const [n, via] = cola.shift()
-      for (const e of geo.E) {
-        if (e.a !== n || vistos.has(e.b) || !geo.N[e.b]) continue
-        const siguiente = [...via, e]
-        if (e.b === hasta) return siguiente
-        vistos.add(e.b)
-        cola.push([e.b, siguiente])
-      }
-    }
-    return null
-  }
-  let aristas
-  if (conVuelta) {
-    const ida = a === 'approver' ? [] : trayecto(a, 'approver')
-    const resto = trayecto('build', b)
-    aristas = ida && resto ? [...ida, geo.E.find((e) => e.vuelta), ...resto] : null
-  } else if (b === 'rechazadas' && ['entrada', 'spec', 'build'].includes(a)) {
-    aristas = null
-  } else {
-    aristas = trayecto(a, b)
-  }
-  if (!aristas || aristas.length === 0) return null
-  const puntos = []
-  for (const e of aristas) {
-    for (const p of e.pts) {
-      const ultimo = puntos[puntos.length - 1]
-      if (!ultimo || ultimo.x !== p.x || ultimo.y !== p.y) puntos.push(p)
-    }
-  }
-  return { aristas, puntos }
 }

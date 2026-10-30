@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import { STATIONS } from '../lib/estado.js'
 import { instantanea, PASOS_DEMO } from '../src/components/demo-datos.js'
 import {
-  ubica, claseFicha, marcaFicha, nombreAccesible, marcaNodo, aristasEncendidas, filas, panelPeticion, panelEstacion,
+  ubica, ficha, claseFicha, marcaFicha, nombreAccesible, marcaNodo, aristasEncendidas, filas, panelPeticion, panelEstacion,
   totales, retencion, RETENCION_MS, registrarVistas, visibles, siguiendo, ordenFichas, rechazo, lineaViva,
 } from '../src/lib/tablero.js'
-import { geometria, camino, slotsDe, NODOS, IDS_NODOS, REVISORES, TOKEN, cx } from '../src/lib/geometria.js'
+import { geometria, slotsDe, envuelve, CARACTERES_POR_PX, NODOS, IDS_NODOS, REVISORES, TOKEN, cx, cy } from '../src/lib/geometria.js'
+import { ESTACIONES } from '../src/lib/explica.js'
 
 // A task as /api/estado returns it, every station pending unless told otherwise.
 function tarea({ ok = [], estaciones = {}, ...resto } = {}) {
@@ -18,7 +19,7 @@ const HASTA_APPROVER = [...HASTA_REVISION, ...REVISORES, 'approver']
 
 test('the token sits at the node of the station that is working, the gate and the end states', () => {
   assert.equal(ubica(tarea({ estacion: 'spec', estaciones: { spec: 'en_curso' } })), 'spec')
-  assert.equal(ubica(tarea({ ok: HASTA_REVISION, estacion: 'ux', estaciones: { ux: 'en_curso' } })), 'ux')
+  assert.equal(ubica(tarea({ ok: HASTA_REVISION, estacion: 'ux', estaciones: { ux: 'en_curso' } })), 'seguridad', 'one token for the whole review, it does not hop between reviewers')
   assert.equal(ubica(tarea({ ok: HASTA_APPROVER, estacion: 'puerta', estaciones: { puerta: 'en_curso' } })), 'puerta')
   assert.equal(ubica(tarea({ ok: HASTA_APPROVER, ruta: 'auto', estacion: 'merge', estaciones: { puerta: 'ok', merge: 'en_curso' } })), 'main')
   assert.equal(ubica(tarea({ ok: HASTA_APPROVER, ruta: 'human', pr: 4, resultadoFinal: 'esperando_persona', estacion: 'puerta' })), 'pr')
@@ -31,10 +32,35 @@ test('rejected, failed, closed and test-blocked requests all end in Rechazadas',
   for (const r of ['rechazada', 'fallida', 'cerrada', 'bloqueada_tests']) assert.equal(ubica(tarea({ resultadoFinal: r, estacion: 'seguridad' })), 'rechazadas', r)
 })
 
-test('when the last reviewer finishes the token already moves on to the approver', () => {
-  const t = tarea({ ok: [...HASTA_REVISION, ...REVISORES], fase: 'codigo', estacion: 'codigo' })
-  assert.equal(ubica(t), 'approver')
-  assert.equal(ubica({ ...t, estaciones: { ...t.estaciones, codigo: 'en_curso' } }), 'codigo', 'still reviewing')
+test('where the token sits and in which state: working, done-and-waiting for the next station, waiting for a person, the end states', () => {
+  const f = (t) => [ficha(t).nodo, ficha(t).estado]
+  assert.deepEqual(f(tarea({ ok: ['entrada'], estacion: 'spec', estaciones: { spec: 'en_curso' } })), ['spec', 'trabajando'])
+  assert.deepEqual(f(tarea({ ok: ['entrada', 'spec'], fase: 'spec', estacion: 'spec' })), ['spec', 'hecho'], 'Spec writer finished, Builder has not started: the ✓ stays in Spec writer')
+  assert.deepEqual(f(tarea({ ok: HASTA_REVISION, fase: 'build', estacion: 'build' })), ['build', 'hecho'])
+  assert.deepEqual(f(tarea({ ok: ['entrada', 'spec'], estacion: 'build', estaciones: { build: 'en_curso' } })), ['build', 'trabajando'])
+  // the four reviewers: one token, working until all four are done, then ✓ in the same place
+  const revisando = tarea({ ok: [...HASTA_REVISION, 'seguridad', 'ux'], estacion: 'ui', estaciones: { ui: 'en_curso', codigo: 'en_curso' } })
+  assert.deepEqual(f(revisando), ['seguridad', 'trabajando'])
+  assert.deepEqual(f({ ...revisando, estacion: 'codigo', estaciones: { ...revisando.estaciones, ui: 'ok' } }), ['seguridad', 'trabajando'], 'one reviewer still working')
+  const revisados = tarea({ ok: [...HASTA_REVISION, ...REVISORES], fase: 'codigo', estacion: 'codigo' })
+  assert.deepEqual(f(revisados), ['seguridad', 'hecho'], 'the four approved, the approver has not started')
+  assert.deepEqual(f({ ...revisados, estacion: 'approver', estaciones: { ...revisados.estaciones, approver: 'en_curso' } }), ['approver', 'trabajando'])
+  // approver → gate → merge → production
+  assert.deepEqual(f(tarea({ ok: HASTA_APPROVER, fase: 'approver', estacion: 'approver' })), ['approver', 'hecho'], 'approved, the gate has not started')
+  assert.deepEqual(f(tarea({ ok: HASTA_APPROVER, resultado: 'ok', fase: 'puerta', estacion: 'puerta' })), ['puerta', 'trabajando'], 'the gate is deciding')
+  assert.deepEqual(f(tarea({ ok: [...HASTA_APPROVER, 'puerta'], ruta: 'auto', pr: 21, fase: 'puerta', estacion: 'puerta' })), ['puerta', 'hecho'], 'gate said auto, merge has not started')
+  assert.deepEqual(f(tarea({ ok: [...HASTA_APPROVER, 'puerta'], ruta: 'auto', pr: 21, estacion: 'merge', estaciones: { merge: 'en_curso' } })), ['main', 'trabajando'])
+  assert.deepEqual(f(tarea({ ok: [...HASTA_APPROVER, 'puerta', 'merge'], ruta: 'auto', pr: 21, fase: 'merge', estacion: 'merge' })), ['main', 'hecho'], 'merged, waiting for the deploy')
+  assert.deepEqual(f(tarea({ ok: [...HASTA_APPROVER, 'puerta', 'merge'], ruta: 'auto', pr: 21, estacion: 'produccion', estaciones: { produccion: 'en_curso' } })), ['produccion', 'trabajando'])
+  // waiting for a person
+  assert.deepEqual(f(tarea({ ok: HASTA_APPROVER, ruta: 'human', pr: 4, resultadoFinal: 'esperando_persona', estacion: 'puerta' })), ['pr', 'espera'])
+  assert.deepEqual(f(tarea({ ok: [...HASTA_APPROVER, 'puerta'], ruta: 'human', pr: 4, fase: 'puerta', estacion: 'puerta' })), ['pr', 'hecho'], 'a person approved, merge has not started')
+  // end states
+  assert.deepEqual(f(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', estacion: 'produccion' })), ['produccion', 'desplegada'])
+  assert.deepEqual(f(tarea({ resultadoFinal: 'sin_cambios', estacion: 'build' })), ['produccion', 'desplegada'])
+  assert.deepEqual(f(tarea({ resultadoFinal: 'rechazada', estacion: 'seguridad' })), ['rechazadas', 'rechazada'])
+  // sent back to Build: working there again
+  assert.deepEqual(f(tarea({ ok: ['entrada', 'spec'], vueltas: 1, estacion: 'build', estaciones: { build: 'en_curso' } })), ['build', 'trabajando'])
 })
 
 test('a request sent back to Build is at Builder, with the approver and the reviewers pending', () => {
@@ -45,19 +71,24 @@ test('a request sent back to Build is at Builder, with the approver and the revi
   assert.ok(!aristasEncendidas(tarea({ ok: HASTA_REVISION }), false).has('e-vuelta'))
 })
 
-test('the token is a pill with a mark and a class by outcome, and an accessible name that says where it is', () => {
+test('the token is a pill with a mark and a class by state, and an accessible name that says where it is and what it is doing', () => {
   const curso = tarea({ estacion: 'spec', estaciones: { spec: 'en_curso' } })
-  assert.deepEqual([claseFicha(curso), marcaFicha(curso)], ['curso', '●'])
+  assert.deepEqual([claseFicha(curso), marcaFicha(curso)], ['curso', ''], 'working: the spinner is drawn by the style, the mark has no glyph')
+  const hecho = tarea({ ok: ['entrada', 'spec'], fase: 'spec', estacion: 'spec' })
+  assert.deepEqual([claseFicha(hecho), marcaFicha(hecho)], ['hecho', '✓'])
   const espera = tarea({ resultadoFinal: 'esperando_persona', estacion: 'puerta', pr: 12, ruta: 'human' })
   assert.deepEqual([claseFicha(espera), marcaFicha(espera)], ['espera', '–'])
   const ok = tarea({ resultadoFinal: 'desplegada', estacion: 'produccion' })
   assert.deepEqual([claseFicha(ok), marcaFicha(ok)], ['ok', '✓'])
   const rech = tarea({ resultadoFinal: 'rechazada', motivo: 'Lleva un enlace externo' })
   assert.deepEqual([claseFicha(rech), marcaFicha(rech)], ['rech', '!'])
-  assert.equal(nombreAccesible(curso), 'Petición #7: Un banner, en Spec writer')
+  assert.equal(nombreAccesible(curso), 'Petición #7: Un banner, trabajando en Spec writer')
+  assert.equal(nombreAccesible(hecho), 'Petición #7: Un banner, Spec writer hecho, esperando a la siguiente estación')
   assert.equal(nombreAccesible(espera), 'Petición #7: Un banner, esperando a una persona (PR #12)')
   assert.equal(nombreAccesible(ok), 'Petición #7: Un banner, en Producción')
   assert.equal(nombreAccesible(rech), 'Petición #7: Un banner, rechazada. Motivo: Lleva un enlace externo')
+  const revision = tarea({ ok: [...HASTA_REVISION, 'seguridad'], estacion: 'ux', estaciones: { ux: 'en_curso' } })
+  assert.equal(nombreAccesible(revision), 'Petición #7: Un banner, trabajando en la revisión en paralelo')
 })
 
 test('the marks of the nodes and the lit connectors follow the request: AUTO or PERSONA by the route', () => {
@@ -221,26 +252,6 @@ test('both layouts have the 13 nodes, every connector joins existing nodes and s
   assert.ok(geometria(false).W > geometria(true).W)
 })
 
-test('a token travels the connectors: along the flow, the AUTO or PERSONA edge, and the dashed loop when it went back', () => {
-  const g = geometria(false)
-  const ids = (a, b, o) => camino(g, a, b, o)?.aristas.map((e) => e.id)
-  assert.deepEqual(ids('entrada', 'spec'), ['e1'])
-  assert.deepEqual(ids('approver', 'puerta'), ['e-ap'])
-  assert.deepEqual(ids('puerta', 'main'), ['e-auto'])
-  assert.deepEqual(ids('puerta', 'pr'), ['e-per'])
-  assert.deepEqual(ids('pr', 'main'), ['e-prm'])
-  assert.deepEqual(ids('approver', 'rechazadas'), ['e-rech'])
-  assert.deepEqual(ids('seguridad', 'ui'), ['t-seguridad-ui'], 'between reviewers, along the bus')
-  assert.deepEqual(ids('approver', 'build'), ['e-vuelta'])
-  assert.deepEqual(ids('approver', 'build', { conVuelta: true }), ['e-vuelta'])
-  assert.deepEqual(ids('ui', 'build', { conVuelta: true }), ['j-ui', 'e-vuelta'])
-  assert.deepEqual(ids('build', 'build', { conVuelta: true }), ['f-seguridad', 'j-seguridad', 'e-vuelta'], 'a whole round missed between two polls still shows the loop')
-  assert.equal(camino(g, 'spec', 'spec'), null)
-  assert.equal(camino(g, 'spec', 'rechazadas'), null, 'refused early: it slides straight')
-  const puntos = camino(g, 'entrada', 'build').puntos
-  assert.ok(puntos.length >= 4)
-})
-
 test('the slots of a node: one row, newest first, and "+N" when they do not fit', () => {
   const g = geometria(false)
   const s = slotsDe(g.N.spec, [9, 5])
@@ -285,4 +296,31 @@ test('the live region says what is happening to the followed request, with the m
   assert.equal(lineaViva(9, undefined), 'Todavía no vemos la petición #9.', 'a request the board does not list yet keeps the old line')
   assert.equal(lineaViva(null, t), '')
   assert.equal(panelPeticion(t).narrativa.pasos.length, 11, 'the panel carries the narrative')
+})
+
+test('the demo shows the gap: a station done and the next one not started, with the ✓ and no travel', () => {
+  const huecos = new Set()
+  for (let paso = 0; paso < PASOS_DEMO; paso++) {
+    for (const t of instantanea(paso).tareas) if (ficha(t).estado === 'hecho') huecos.add(ficha(t).nodo)
+  }
+  for (const nodo of ['spec', 'build', 'seguridad', 'approver', 'puerta', 'main']) assert.ok(huecos.has(nodo), `a ✓ waits in ${nodo}`)
+  // Builder → Revisión, Approver → ¿Humano?, Main → Producción
+  const recorrido = Array.from({ length: PASOS_DEMO }, (_, p) => instantanea(p).tareas.find((t) => t.numero === 1)).filter(Boolean).map((t) => `${ficha(t).nodo}:${ficha(t).estado}`)
+  for (const par of [['build:hecho', 'seguridad:trabajando'], ['approver:hecho', 'puerta:trabajando'], ['main:hecho', 'produccion:trabajando']]) {
+    const i = recorrido.indexOf(par[0])
+    assert.ok(i >= 0 && recorrido[i + 1] === par[1], `#1: ${par.join(' → ')}`)
+  }
+})
+
+test('in both layouts the token slots of every node sit below its last description line', () => {
+  for (const vertical of [false, true]) {
+    const g = geometria(vertical)
+    for (const id of IDS_NODOS) {
+      const n = g.N[id]
+      // The same metrics as DiagramaFactory.astro: first baseline at +69 (gate: centre + 14), 16 px between lines, ~4 px of descent.
+      const lineas = envuelve(ESTACIONES[id].linea, Math.floor((n.dec ? 150 : n.w - 24) * CARACTERES_POR_PX)).length
+      const ultima = (n.dec ? cy(n) + 14 : n.y + 69) + 16 * (lineas - 1) + 4
+      assert.ok(n.y + n.dy >= ultima, `${vertical ? 'vertical' : 'horizontal'} ${id}: tokens at ${n.y + n.dy}, text ends at ${ultima}`)
+    }
+  }
 })

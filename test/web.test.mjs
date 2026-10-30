@@ -271,7 +271,7 @@ needsSandbox('/factory/ has the counters, the follow form, the legend, the detai
   assert.doesNotMatch(html, /Pausa|Reiniciar|prototipo/i, 'the prototype controls are not on the page')
 })
 
-needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode, animates with WAAPI and paints every text with textContent', () => {
+needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode, never travels a token along the edges and paints every text with textContent', () => {
   const bundle = clientCode(pages.factory)
   const entry = [...pages.factory.matchAll(/<script type="module" src="(\/_astro\/[^"]+)"/g)].map((m) => readFileSync(join(out, m[1]), 'utf8')).join('\n')
   assert.ok(entry.includes('/api/estado') || bundle.includes('/api/estado'))
@@ -280,8 +280,13 @@ needsSandbox('/factory/ polls /api/estado every 5 s, keeps the demo mode, animat
   assert.match(bundle, /get\(["'`]demo["'`]\)/)
   assert.match(bundle, /textContent/)
   assert.doesNotMatch(bundle, /innerHTML|insertAdjacentHTML|outerHTML/)
-  assert.match(bundle, /\.animate\(/, 'tokens travel with the Web Animations API')
+  assert.doesNotMatch(bundle, /\.animate\(/, 'tokens do not travel: no Web Animations on the diagram')
+  assert.match(bundle, /tk-spin/, 'a working token shows the spinner')
+  assert.match(bundle, /tk-m/)
   assert.match(bundle, /prefers-reduced-motion/)
+  const css = readdirSync(join(out, '_astro')).filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(out, '_astro', f), 'utf8')).join('\n')
+  assert.match(css, /\.fd \.tk-spin\{[^}]*infinite tk-gira/, 'the spinner keeps turning')
+  assert.match(css, /\.fd \.tk-spin\{[^}]*animation:none\}\s*\.fd \.tk-spin:before\{content:"…"/, 'and stands still, as "…", under reduced motion')
   assert.match(bundle, /3e4|30000/, 'a rejection stays 30 s')
   assert.match(bundle, /bloqueadas_tests/)
   assert.match(bundle, /Escape/)
