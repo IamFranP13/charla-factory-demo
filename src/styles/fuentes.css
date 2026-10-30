@@ -1,0 +1,3 @@
+/* Self-hosted fonts (OFL). The faces live in public/fonts; nothing loads from another server. */
+@font-face { font-family: League Spartan; src: url(/fonts/league-spartan-latin.woff2) format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: Figtree; src: url(/fonts/figtree-latin.woff2) format('woff2'); font-weight: 300 900; font-style: normal; font-display: swap; }

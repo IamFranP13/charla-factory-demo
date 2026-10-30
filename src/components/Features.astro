@@ -8,7 +8,7 @@ const { donde } = Astro.props
 const features = paraPagina(registro, donde)
 ---
 {features.map((f) => (
-  <section class="contenedor seccion feature" data-feature={f.id} aria-labelledby={`feature-${f.id}`}>
+  <section class="sec pag feature" data-feature={f.id} aria-labelledby={`feature-${f.id}`}>
     <h2 id={`feature-${f.id}`}>{f.titulo}</h2>
     {f.resultado.tipo === 'lista' && (
       <ul class="feature__lista">

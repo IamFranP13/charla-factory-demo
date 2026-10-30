@@ -2,13 +2,45 @@
 import Base from '../layouts/Base.astro'
 import Calculadora from '../components/Calculadora.astro'
 import Features from '../components/Features.astro'
+import { estado } from '../lib/contenido.js'
+import { kg } from '../lib/formato.js'
+
+const tramos = [...estado.descuentos.tramos].sort((a, b) => a.desdeKg - b.desdeKg)
+const primero = tramos[0]
+const ultimo = tramos.at(-1)
 ---
 <Base title="Presupuesto" description="Calcula el importe de tu pedido LIMONIA con descuento por volumen y transporte.">
-  <section class="contenedor seccion">
-    <p class="sobretitulo">Calculadora</p>
-    <h1>Presupuesto de tu pedido</h1>
-    <p class="lead">Elige productos, kilos y destino. El importe se recalcula al instante.</p>
+  <section class="pag p-top" aria-labelledby="titulo">
+    <div class="rej">
+      <div class="p-intro">
+        <h1 id="titulo" data-sube>Presupuesto de tu pedido</h1>
+        <p class="p-lead" data-sube style="--i:1">Elige productos, kilos y destino. El importe se recalcula al instante.</p>
+      </div>
+      <div class="p-disco" aria-hidden="true" data-sube style="--i:1"><img src="/fotos/limon-cortado.webp" width="800" height="800" alt="" /></div>
+    </div>
+  </section>
+
+  <section class="pag calc-sec" aria-label="Calculadora de presupuesto">
     <Calculadora />
   </section>
+
+  {tramos.length > 0 && (
+    <section class="sec pag" aria-labelledby="h-tramos">
+      <div class="rej tramos">
+        <div class="tramos__texto">
+          <h2 id="h-tramos" data-sube>Más kilos, mejor precio</h2>
+          <p data-sube style="--i:1">Descuentos automáticos desde {kg(primero.desdeKg)}. A partir de {kg(ultimo.desdeKg)}, el mejor tramo.</p>
+        </div>
+        <div class="tramos__tabla" data-sube style="--i:1" data-ui>
+          <table>
+            <caption class="sr">Descuento por volumen</caption>
+            <thead><tr><th scope="col">Pedido de más de</th><th scope="col">Descuento</th></tr></thead>
+            <tbody>{tramos.map((t) => <tr><td>{kg(t.desdeKg)}</td><td>{t.porcentaje} %</td></tr>)}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )}
+
   <Features donde="presupuesto" />
 </Base>

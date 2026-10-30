@@ -1,16 +1,46 @@
 ---
 import Base from '../layouts/Base.astro'
 import Diagrama from '../components/Diagrama.astro'
+import { MENSAJES } from '../../lib/estado.js'
+
+const finales = [
+  ['desplegada', '✓', MENSAJES.desplegada, ''],
+  ['esperando_persona', '●', MENSAJES.esperando_persona, ''],
+  ['rechazada', '✕', MENSAJES.rechazada, 'Se detuvo en: UX. Motivo: el cambio añade un color que no está en el sistema de diseño.'],
+  ['bloqueada_tests', '✕', MENSAJES.bloqueada_tests, 'Los tests automáticos (CI) han fallado'],
+]
 ---
 <Base title="Tu petición" description="Sigue tu petición a LIMONIA por el esquema de la factory hasta que llega a la web.">
-  <section class="contenedor seccion seguimiento">
-    <p class="sobretitulo">Seguimiento</p>
-    <h1 id="tarea-titulo">Tu petición</h1>
-    <p id="tarea-detalle"></p>
-    <div id="tarea-final" class="final" role="status" aria-live="polite">Buscando tu petición…</div>
-    <Diagrama />
-    <p id="tarea-motivo" class="motivo"></p>
-    <p id="tarea-enlace" class="enlace-web"></p>
+  <section class="pag t-intro" aria-labelledby="tarea-titulo">
+    <div class="rej">
+      <div class="t-intro__texto">
+        <h1 id="tarea-titulo" data-sube>Tu petición</h1>
+        <p class="t-detalle" id="tarea-detalle" data-sube style="--i:1"></p>
+        <div id="tarea-final" class="final" role="status" aria-live="polite" data-sube style="--i:2"><span class="final__marca" id="tarea-marca" aria-hidden="true"></span><p id="final-texto">Buscando tu petición…</p></div>
+        <p id="tarea-motivo" class="t-motivo"></p>
+        <p class="t-acciones"><span id="tarea-enlace"></span><a class="btn btn--paso" href="/factory/">Ver la factory en directo</a></p>
+      </div>
+      <Diagrama parte="dial" />
+    </div>
+  </section>
+
+  <section class="sec pag" aria-labelledby="h-ruta">
+    <div class="rej ruta">
+      <h2 id="h-ruta" data-sube>Por dónde va</h2>
+      <Diagrama parte="ruta" />
+    </div>
+  </section>
+
+  <section class="sec campo-crema pag" aria-labelledby="h-finales">
+    <div class="cab-sec"><h2 id="h-finales" data-sube>Así puede terminar</h2></div>
+    <ul class="finales">
+      {finales.map(([clase, marca, texto, detalle]) => (
+        <li class={`final final--${clase}`} data-sube>
+          <span class="final__marca" aria-hidden="true">{marca}</span>
+          <div><p class="final__t">{texto}</p>{clase === 'desplegada' && <p class="final__x"><a href="/">Ver el cambio en la web</a></p>}{detalle && <p class="final__x">{detalle}</p>}</div>
+        </li>
+      ))}
+    </ul>
   </section>
 <script>
   import { MENSAJES, STATION_LABELS, enlaceFor } from '../../lib/estado.js'
@@ -21,11 +51,14 @@ import Diagrama from '../components/Diagrama.astro'
   const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
   const FINALES = ['desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada', 'bloqueada_tests']
   const PARADAS = ['rechazada', 'fallida', 'cerrada', 'bloqueada_tests']
+  const MARCAS = { desplegada: '✓', esperando_persona: '●', en_curso: '●', sin_cambios: '✓', rechazada: '✕', fallida: '✕', cerrada: '✕', bloqueada_tests: '✕' }
 
   const numero = new URLSearchParams(location.search).get('n') ?? ''
   const demo = esDemo()
-  const raiz = document.querySelector('[data-diagrama]')
+  const raiz = { ruta: document.querySelector('[data-ruta]'), dial: document.querySelector('[data-dial]') }
   const titulo = document.getElementById('tarea-titulo')
+  const marca = document.getElementById('tarea-marca')
+  const textoFinal = document.getElementById('final-texto')
   const detalle = document.getElementById('tarea-detalle')
   const final = document.getElementById('tarea-final')
   const motivo = document.getElementById('tarea-motivo')
@@ -36,7 +69,8 @@ import Diagrama from '../components/Diagrama.astro'
     detalle.textContent = `${tarea.titulo} · Perfil sorteado: ${PERFILES[tarea.perfil] ?? tarea.perfil}${tarea.tipo ? ` (${tarea.tipo})` : ''}${demo ? ' · MODO DEMO' : ''}`
     const resultado = MENSAJES[tarea.resultadoFinal] ? tarea.resultadoFinal : 'en_curso'
     final.className = `final final--${resultado}`
-    final.textContent = MENSAJES[resultado]
+    marca.textContent = MARCAS[resultado]
+    textoFinal.textContent = MENSAJES[resultado]
     aplicar(raiz, tarea)
     const parada = PARADAS.includes(resultado) ? `Se detuvo en: ${STATION_LABELS[tarea.estacion] ?? tarea.estacion}. ` : ''
     motivo.textContent = tarea.motivo ? `${parada}Motivo: ${tarea.motivo}` : parada
@@ -44,6 +78,7 @@ import Diagrama from '../components/Diagrama.astro'
     if (resultado === 'desplegada') {
       const link = document.createElement('a')
       link.href = enlaceFor(tarea.perfil, tarea.tipo)
+      link.className = 'btn'
       link.textContent = 'Ver el cambio en la web'
       enlace.append(link)
     }
@@ -51,18 +86,18 @@ import Diagrama from '../components/Diagrama.astro'
   }
 
   if (!/^\d{1,9}$/.test(numero)) {
-    final.textContent = 'Falta el número de tu petición.'
+    textoFinal.textContent = 'Falta el número de tu petición.'
   } else if (demo) {
     // Fake sequence for rehearsals (?demo=1): it loops, so it never stops at a final state.
     sondearDemo((body) => {
       const tarea = body.tareas.find((t) => t.numero === Number(numero))
       if (tarea) pintar(tarea)
-      else final.textContent = 'Todavía no vemos tu petición. Seguimos buscando…'
+      else textoFinal.textContent = 'Todavía no vemos tu petición. Seguimos buscando…'
     })
   } else {
     // A task created a moment ago may not be in the 10 s cache yet: a 404 keeps polling.
     sondear(`/api/estado?tarea=${numero}`, (body) => (body.tareas?.[0] ? pintar(body.tareas[0]) : false), (estado) => {
-      final.textContent = estado === 404 ? 'Todavía no vemos tu petición. Seguimos buscando…' : 'Sin conexión con la factory. Reintentando…'
+      textoFinal.textContent = estado === 404 ? 'Todavía no vemos tu petición. Seguimos buscando…' : 'Sin conexión con la factory. Reintentando…'
     })
   }
 </script>

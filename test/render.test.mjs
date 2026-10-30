@@ -26,8 +26,8 @@ after(() => scratches.forEach((dir) => rmSync(dir, { recursive: true, force: tru
 // --- The factory: when it renders, what the reviewers get ---
 
 const ok = { aprobado: true, motivo: 'bien' }
-const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'width: 100%; height: 100%; z-index: 0;', reemplazar: 'width: 100%; height: clamp(8rem, 17vw, 12rem); z-index: 0;' }] }] }
-const UNSAFE = { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'width: 100%; height: 100%; z-index: 0;', reemplazar: 'width: 100%; background: url(https://example.com/x.png);' }] }] }
+const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:140%;' }] }] }
+const UNSAFE = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;background:url(https://example.com/x.png);' }] }] }
 const png = 'data:image/png;base64,iVBORw0KGgo='
 const SHOTS_2 = [{ id: 'a', label: 'Inicio ANTES', dataUrl: png }, { id: 'b', label: 'Inicio DESPUÉS', dataUrl: png }]
 
@@ -67,7 +67,7 @@ test('estilo renders the candidate only after the static check: an unsafe change
   assert.equal(accepted.result.status, 'ok')
   assert.equal(safe.calls.length, 1)
   assert.deepEqual(safe.calls[0][1].map((f) => f.path), [CSS])
-  assert.match(safe.calls[0][1][0].content, /clamp\(8rem, 17vw, 12rem\)/)
+  assert.match(safe.calls[0][1][0].content, /left:12%;width:140%;/)
 })
 
 test('ux and ui receive the prompt and each labelled screenshot; every other station keeps a plain string', async () => {
@@ -313,7 +313,7 @@ async function usableBrowser() {
 }
 const { skip } = await usableBrowser()
 test('renderSite (real): builds the site with a candidate and takes the screenshots as PNGs', { skip, timeout: 600000 }, async () => {
-  const css = read(CSS).replace('width: 100%; height: 100%; z-index: 0;', 'width: 100%; height: clamp(8rem, 17vw, 12rem); z-index: 0;')
+  const css = read(CSS).replace('.hero__disco{position:absolute;top:50%;left:12%;width:150%;', '.hero__disco{position:absolute;top:50%;left:12%;width:140%;')
   const shots = await renderSite(repo, [{ path: CSS, content: css }])
   assert.equal(shots.length, SHOTS.length)
   for (const shot of shots) {

@@ -1,7 +1,7 @@
 import { hasSandbox, needsSandbox } from './sandbox-node.mjs'
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { MAX_LENGTH } from '../lib/intake.js'
@@ -9,6 +9,7 @@ import { STATIONS, STATION_LABELS, MENSAJES } from '../lib/estado.js'
 import { NAV } from '../src/lib/nav.js'
 import { PASOS, REVISORES } from '../src/lib/diagrama.js'
 import { cargarEstado } from '../lib/estado-node.js'
+import { checkEstilo } from '../lib/estilo.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const state = cargarEstado(repo)
@@ -51,15 +52,24 @@ needsSandbox('home lists every campaign with its colour class and call to action
 })
 
 needsSandbox('the request form allows exactly the characters the intake accepts and lets nobody choose a profile', () => {
-  assert.match(pages.home, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
+  assert.match(pages.factory, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
+  assert.doesNotMatch(pages.factory, /name="perfil"/)
+  assert.match(pages.factory, /<h2[^>]*>Pide un cambio<\/h2>/)
+  assert.match(pages.factory, /id="pide"/)
+  assert.match(pages.factory, /al azar/)
+})
+
+needsSandbox('the home has no request form: it points to the one on /factory/ (S11)', () => {
+  assert.doesNotMatch(pages.home, /<textarea|<form|id="peticion"|cf-turnstile|challenges\.cloudflare\.com|Tus peticiones|mis-peticiones/)
+  assert.match(pages.home, /href="\/factory\/#pide"/)
+  assert.match(pages.home, /href="\/factory\/"/)
   assert.doesNotMatch(pages.home, /name="perfil"/)
-  assert.match(pages.home, /Pídele un cambio a LIMONIA/)
-  assert.match(pages.home, /al azar/)
 })
 
 needsSandbox('the site copy names the three profiles, and the follow-up page shows the kind the spec writer gave the request', () => {
-  assert.match(pages.home, /Marketing, Producto o Negocio/)
-  assert.doesNotMatch(pages.home, /Desarrollo/)
+  assert.match(pages.factory, /Marketing, Producto o Negocio/)
+  assert.doesNotMatch(pages.factory, /Desarrollo/)
+  assert.doesNotMatch(pages.home, /Marketing, Producto o Negocio/)
   assert.match(clientCode(pages.tarea), /\.tipo\b/, 'the kind of the request (campana, precios, bug, feature...)')
 })
 
@@ -71,12 +81,14 @@ needsSandbox('features written by the factory are painted by one generic compone
   assert.doesNotMatch(pages.presupuesto, /data-feature="ordenar-catalogo"/)
 })
 
-needsSandbox('the Turnstile site key is read at build time', () => {
-  assert.match(pages.home, /data-sitekey="sitekey-de-prueba"/)
+needsSandbox('the Turnstile site key is read at build time, and its script is only on /factory/', () => {
+  assert.match(pages.factory, /data-sitekey="sitekey-de-prueba"/)
+  assert.match(pages.factory, /<script[^>]*src="https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js"/)
+  for (const nombre of ['home', 'catalogo', 'presupuesto', 'tarea']) assert.doesNotMatch(pages[nombre], /turnstile/i, nombre)
 })
 
 needsSandbox('the form posts to the intake endpoint and links to the task page', () => {
-  const bundle = clientCode(pages.home)
+  const bundle = clientCode(pages.factory)
   assert.ok(bundle.includes('/api/peticion'))
   assert.ok(bundle.includes('/tarea/?n='))
   assert.ok(bundle.includes('Te ha tocado pedirlo como'))
@@ -85,7 +97,7 @@ needsSandbox('the form posts to the intake endpoint and links to the task page',
 needsSandbox('the catalogue shows a price for priced products and "Precio a consultar" for the rest', () => {
   const unpriced = Object.keys(state.productos).filter((id) => !(id in state.precios))
   assert.ok(unpriced.length > 0, 'the sample data should include a product without price')
-  const card = (id) => pages.catalogo.match(new RegExp(`id="producto-${id}"[\\s\\S]*?</article>`))[0]
+  const card = (id) => pages.catalogo.match(new RegExp(`id="producto-${id}"[\\s\\S]*?</li>`))[0]
   for (const id of unpriced) assert.match(card(id), /Precio a consultar/)
   const priced = Object.keys(state.precios)[0]
   assert.doesNotMatch(card(priced), /Precio a consultar/)
@@ -94,9 +106,10 @@ needsSandbox('the catalogue shows a price for priced products and "Precio a cons
 })
 
 needsSandbox('the catalogue lists every destination with its transit days', () => {
-  for (const d of Object.values(state.destinos)) {
-    assert.ok(pages.catalogo.includes(d.ciudad), d.ciudad)
-    assert.ok(pages.catalogo.includes(`${d.diasTransito} días`) || pages.catalogo.includes(`${d.diasTransito} día `))
+  for (const [id, d] of Object.entries(state.destinos)) {
+    const item = pages.catalogo.match(new RegExp(`id="destino-${id}"[\\s\\S]*?</li>`))?.[0] ?? ''
+    assert.ok(item.includes(d.ciudad), d.ciudad)
+    assert.match(item, new RegExp(`<strong>${d.diasTransito}</strong><small>${d.diasTransito === 1 ? 'día' : 'días'}</small>`), `${d.ciudad}: days`)
   }
 })
 
@@ -127,45 +140,46 @@ needsSandbox('every page has the navigation, with the factory board enabled', ()
 })
 
 needsSandbox('the form remembers the submitted task numbers (max 20) and links to the follow-up page', () => {
-  const bundle = clientCode(pages.home)
+  const bundle = clientCode(pages.factory)
   assert.ok(bundle.includes('limonia:tareas'))
   assert.ok(bundle.includes('Sigue tu petición'))
   assert.ok(bundle.includes('Recibida: tarea #'), 'the existing success sentence stays')
   assert.match(bundle, /slice\(-?20|MAX_GUARDADAS|20/)
 })
 
-needsSandbox('the home lists "Tus peticiones" from localStorage, with a link to each task', () => {
-  assert.match(pages.home, /Tus peticiones/)
-  assert.match(pages.home, /id="mis-peticiones"/)
-  const bundle = clientCode(pages.home)
+needsSandbox('/factory/ lists "Tus peticiones" from localStorage, with a link to each task', () => {
+  assert.match(pages.factory, /Tus peticiones/)
+  assert.match(pages.factory, /id="mis-peticiones"/)
+  const bundle = clientCode(pages.factory)
   assert.ok(bundle.includes('limonia:tareas'))
   assert.ok(bundle.includes('/tarea/?n='))
 })
 
-// Both factory pages draw the same scheme as a stepper, in the styles of the rest of the site (Base layout).
-function assertScheme(html, name) {
-  for (const paso of PASOS) {
-    assert.ok(html.includes(`data-paso="${paso.id}"`), `${name}: step ${paso.id}`)
-    assert.ok(html.includes(`>${paso.label}<`), `${name}: label ${paso.label}`)
-  }
-  for (const label of ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción']) assert.ok(html.includes(`>${label}<`), `${name}: ${label}`)
-  for (const id of REVISORES) assert.ok(html.includes(`data-revisor="${id}"`), `${name}: reviewer ${id}`)
-  assert.match(html, /Brain/, `${name}: the note that points to the Brain`)
-  assert.match(html, /class="cabecera"/, `${name}: the site header`)
-  assert.match(html, /<a class="marca"/, `${name}: the LIMONIA brand`)
-  assert.doesNotMatch(html, /tema-charla|Chivo/, `${name}: not the talk's theme`)
-  assert.match(html, /href="\/factory\/"/)
-}
+// /tarea/ draws the stations of the factory as the public sees them: a dial and a list, in the styles of the rest of the site.
+const ESTACIONES_TAREA = [['entrada', 'Entrada'], ['spec', 'Spec writer'], ['build', 'Builder'], ['revision', 'Revisión'], ['approver', 'Approver'], ['puerta', 'Puerta'], ['produccion', 'Producción']]
 
-needsSandbox('/tarea/ draws the factory scheme as a stepper and polls the status API for one task', () => {
+needsSandbox('/tarea/ draws the stations as a dial and a list and polls the status API for one task', () => {
   const bundle = clientCode(pages.tarea)
-  assertScheme(pages.tarea, '/tarea/')
+  const html = pages.tarea
+  for (const [id, label] of ESTACIONES_TAREA) {
+    assert.ok(PASOS.some((p) => p.id === id), `${id} is a step of the factory`)
+    assert.match(html, new RegExp(`data-paso="${id}"`), `list: ${id}`)
+    assert.match(html, new RegExp(`data-seg="${id}"`), `dial: ${id}`)
+    assert.ok(html.includes(`<h3>${label}</h3>`), `label ${label}`)
+  }
+  assert.match(html, /<svg[^>]*data-dial/)
+  for (const id of REVISORES) assert.ok(html.includes(`data-revisor="${id}"`), `reviewer ${id}`)
+  assert.match(html, /Brain/, 'the note that points to the Brain')
+  assert.match(html, /class="cabecera"/, 'the site header')
+  assert.match(html, /<a class="marca"/, 'the LIMONIA brand')
+  assert.doesNotMatch(html, /tema-charla|Chivo/, 'not the talk theme')
+  assert.match(html, /href="\/factory\/"/)
   assert.ok(bundle.includes('/api/estado?tarea='))
   assert.match(bundle, /5e3|5000/)
-  for (const message of Object.values(MENSAJES)) assert.ok(bundle.includes(message), message)
+  for (const message of Object.values(MENSAJES)) assert.ok(bundle.includes(message) || html.includes(message), message)
   for (const status of ['pendiente', 'en_curso', 'ok', 'rechazada', 'error']) assert.ok(bundle.includes(status), status)
-  for (const label of ['NO HACE FALTA', 'ESPERANDO A UNA PERSONA']) assert.ok(bundle.includes(label) || pages.tarea.includes(label), label)
-  assert.match(pages.tarea, /viewport/)
+  for (const label of ['NO HACE FALTA', 'ESPERANDO A UNA PERSONA']) assert.ok(bundle.includes(label) || html.includes(label), label)
+  assert.match(html, /viewport/)
   assert.match(bundle, /textContent|replaceChildren/)
   assert.doesNotMatch(bundle, /innerHTML/)
 })
@@ -251,4 +265,74 @@ needsSandbox('the stations of the pages are the ones of the factory', () => {
 needsSandbox('"bloqueada_tests" is a final state on /tarea/ and counts with the rejected ones on /factory/', () => {
   assert.match(clientCode(pages.tarea), /\[[^\]]*['"`]bloqueada_tests['"`][^\]]*\]/, 'listed among the final states')
   assert.match(clientCode(pages.factory), /bloqueadas_tests/)
+})
+
+// --- S11: no credits, no emoji, local fonts and photographs, one place for the form ---
+
+const everyFile = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? everyFile(join(dir, e.name)) : [join(dir, e.name)]))
+const textFiles = () => everyFile(out).filter((f) => /\.(html|css|js|svg|txt|json)$/.test(f)).map((f) => [f, readFileSync(f, 'utf8')])
+
+needsSandbox('no licence, credit or photograph source is shown or served anywhere (S11)', () => {
+  for (const [file, text] of textFiles()) {
+    assert.doesNotMatch(text, /CC BY|licencia|license|Wikimedia|Commons|créditos|credits?\b/i, file)
+  }
+  const served = everyFile(out).map((f) => f.slice(out.length + 1))
+  assert.deepEqual(served.filter((f) => /credit|licen[sc]e|^OFL|copying|notice/i.test(f)), [], 'no credits or licence file is served')
+  assert.deepEqual(everyFile(join(repo, 'public')).map((f) => f.split('/').pop()).filter((f) => /credit|licen[sc]e|^OFL/i.test(f)), [])
+})
+
+needsSandbox('fonts and photographs are local; the only other server is Turnstile, on /factory/', () => {
+  const css = textFiles().filter(([f]) => f.endsWith('.css')).map(([, t]) => t).join('\n')
+  assert.match(css, /font-family:\s*League Spartan/)
+  assert.match(css, /font-family:\s*Figtree/)
+  for (const font of ['/fonts/league-spartan-latin.woff2', '/fonts/figtree-latin.woff2']) {
+    assert.ok(css.includes(font), font)
+    assert.ok(existsSync(join(out, font)), `${font} is served`)
+  }
+  assert.doesNotMatch(css, /@import|url\(\s*["']?(?:https?:)?\/\//)
+  const foreign = []
+  for (const [name, html] of Object.entries(pages)) {
+    for (const m of html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)) if (!(name === 'factory' && m[1] === 'https://challenges.cloudflare.com/turnstile/v0/api.js')) foreign.push(`${name}: ${m[1]}`)
+    for (const m of html.matchAll(/\bsrc="(\/fotos\/[^"]+)"/g)) assert.ok(existsSync(join(out, m[1])), `${name}: ${m[1]} is served`)
+  }
+  assert.deepEqual(foreign, [])
+  const fotos = readdirSync(join(repo, 'public/fotos'))
+  assert.ok(fotos.length >= 6)
+  for (const f of fotos) assert.ok(statSync(join(repo, 'public/fotos', f)).size <= 300 * 1024, `${f} is at most 300 KB`)
+  for (const id of ['limon-cortado', 'vega-del-segura', 'limonero', 'huerta-de-murcia', 'naranjos', 'puerto-de-cartagena']) assert.ok(Object.values(pages).some((h) => h.includes(`/fotos/${id}.webp`)), id)
+})
+
+needsSandbox('the emoji of the data are not painted (S11), and the campaign cards keep exactly their four colours', () => {
+  const emojis = [...Object.values(state.productos).map((p) => p.emoji), ...campaigns().map((c) => c.emoji)].filter(Boolean)
+  assert.ok(emojis.length > 0)
+  for (const [name, painted] of Object.entries(pages)) {
+    const html = painted.replace(/data-estado="[^"]*"/g, '') // the calculator carries the whole state as data; it paints none of it
+    for (const emoji of emojis) assert.ok(!html.includes(emoji), `${name}: ${emoji}`)
+    assert.doesNotMatch(html, /\p{Extended_Pictographic}/u, name)
+  }
+  const css = readFileSync(join(repo, 'src/styles/global.css'), 'utf8') // the built stylesheet is minified and merges rules
+  const fondos = { oliva: 'var(--oliva)', limon: 'var(--limon)', tierra: 'var(--tierra)', blanco: '#fff' }
+  for (const [color, fondo] of Object.entries(fondos)) assert.ok(css.includes(`.campana--${color}{background:${fondo};`), color)
+  assert.deepEqual([...new Set([...css.matchAll(/\.campana--(\w+)\{/g)].map((m) => m[1]))].sort(), Object.keys(fondos).sort())
+})
+
+needsSandbox('every page has the "Pedir un cambio" button, in the header and the footer, pointing at the form on /factory/', () => {
+  for (const [name, html] of Object.entries(pages)) {
+    assert.ok((html.match(/<a class="btn[^"]*" href="\/factory\/#pide">Pedir un cambio<\/a>/g) ?? []).length >= 2, name)
+  }
+})
+
+test('the estilo surface of the seed passes the static check against the live site, and the seed carries the planted hero bug', () => {
+  const surface = ['src/styles/global.css', 'src/components/Paisaje.astro', 'src/components/CampanaCard.astro', 'src/components/ProductoCard.astro', 'src/components/Header.astro', 'src/components/Footer.astro']
+  const live = Object.fromEntries(surface.map((f) => [f, readFileSync(join(repo, f), 'utf8')]))
+  for (const f of surface.filter((x) => existsSync(join(repo, 'factory/seed', x)))) {
+    const seed = readFileSync(join(repo, 'factory/seed', f), 'utf8')
+    assert.equal(seed, live[f], `${f}: the live site and the seed carry the same (broken) hero`)
+    assert.deepEqual(checkEstilo([{ path: f, content: seed }], live), { ok: true, errors: [] }, f)
+  }
+  const css = live['src/styles/global.css']
+  assert.match(css, /\.hero\{position:relative;/)
+  assert.doesNotMatch(css, /\.hero\{display:grid/)
+  assert.match(css, /\.hero__campo\{position:absolute;inset:0;[^}]*overflow:visible/)
+  assert.doesNotMatch(css, /url\(/, 'the stylesheet loads nothing: the fonts are in fuentes.css')
 })

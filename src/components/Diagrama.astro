@@ -1,21 +1,66 @@
 ---
-import { PASOS } from '../lib/diagrama.js'
+import { REVISORES, NOMBRES_REVISORES } from '../lib/diagrama.js'
 
-// The factory scheme as a stepper of cards, drawn at build time from the steps in src/lib/diagrama.js. Cards start
-// neutral; diagrama-cliente.js paints a task on them.
+// What /tarea/ shows of a request, drawn at build time and neutral: the dial (`parte="dial"`: one segment per station of the
+// factory, as the public sees them) and the list of stations (`parte="ruta"`). diagrama-cliente.js paints a task on them
+// through data-estado.
+const { parte } = Astro.props
+const ESTACIONES = [
+  { id: 'entrada', label: 'Entrada', texto: 'Tu petición llega por el formulario y recibe su número.' },
+  { id: 'spec', label: 'Spec writer', texto: 'La lee, la compara con la marca y decide qué clase de cambio es.', nota: 'Consulta el Brain' },
+  { id: 'build', label: 'Builder', texto: 'Escribe el cambio dentro de lo que esa clase permite.' },
+  { id: 'revision', label: 'Revisión', texto: 'Seguridad, UX, UI y código lo miran a la vez.' },
+  { id: 'approver', label: 'Approver', texto: 'Necesita los cuatro síes, o devuelve el cambio al Builder.' },
+  { id: 'puerta', label: 'Puerta', texto: 'Decide si sale solo o si espera a una persona.' },
+  { id: 'produccion', label: 'Producción', texto: 'El cambio ya está en la web.' },
+]
+const N = ESTACIONES.length
+const [cx, cy, R, r, hueco] = [220, 220, 212, 64, 3.2]
+const punto = (grados, radio) => {
+  const t = ((grados - 90) * Math.PI) / 180
+  return [cx + radio * Math.cos(t), cy + radio * Math.sin(t)].map((v) => v.toFixed(2))
+}
+const segmentos = ESTACIONES.map((e, i) => {
+  const a0 = (i * 360) / N + hueco / 2
+  const a1 = ((i + 1) * 360) / N - hueco / 2
+  const [p0, p1, p2, p3] = [punto(a0, R), punto(a1, R), punto(a1, r), punto(a0, r)]
+  const [mx, my] = punto((a0 + a1) / 2, (R + r) / 2)
+  return { ...e, d: `M${p0}A${R} ${R} 0 0 1 ${p1}L${p2}A${r} ${r} 0 0 0 ${p3}Z`, mx, my: Number(my) + 10, n: i + 1 }
+})
 ---
-<ol class="ruta" data-diagrama aria-label="Recorrido de una petición por la factory">
-  {PASOS.map((paso) => (
-    <li class="paso" data-paso={paso.id} data-estado="neutro">
-      <span class="paso__marca" aria-hidden="true"></span>
-      <h3 class="paso__nombre" data-nombre>{paso.label}</h3>
-      {paso.nota && <p class="paso__nota">{paso.nota}</p>}
-      {paso.subpasos && (
-        <ul class="revisores" aria-label="Revisores en paralelo">
-          {paso.subpasos.map((sub) => <li class="revisor" data-revisor={sub.id} data-estado="neutro">{sub.label}</li>)}
-        </ul>
-      )}
-      <p class="paso__etiqueta" data-etiqueta hidden></p>
-    </li>
-  ))}
-</ol>
+{parte === 'dial' && <figure class="dial" data-sube>
+  <svg id="dial" viewBox="0 0 440 440" role="img" aria-labelledby="dial-t" data-dial>
+    <title id="dial-t">Progreso de la petición</title>
+    <circle class="rind" cx={cx} cy={cy} r={R + 8} />
+    {segmentos.map((s) => (
+      <g class="seg" data-seg={s.id} data-estado="neutro">
+        <path d={s.d}><title>{s.label}</title></path>
+        <text x={s.mx} y={s.my}>{s.n}</text>
+      </g>
+    ))}
+    <circle class="hub" cx={cx} cy={cy} r={r - 6} />
+    <text class="centro" data-centro x={cx} y={cy + 14}></text>
+    <text class="centro-de" x={cx} y={cy + 36}>de {N}</text>
+  </svg>
+</figure>}
+{parte === 'ruta' && (
+  <ol class="ruta__lista" data-ruta>
+    {ESTACIONES.map((e, i) => (
+      <li class="estacion" data-paso={e.id} data-estado="neutro" data-sube>
+        <span class="estacion__marca" aria-hidden="true">{i + 1}</span>
+        <div>
+          <h3>{e.label}</h3>
+          <p>{e.texto}</p>
+          {e.nota && <p class="estacion__nota">{e.nota}</p>}
+          <p class="estacion__etiqueta" data-etiqueta hidden></p>
+          {e.id === 'revision' && (
+            <ul class="revisores" aria-label="Revisores en paralelo">
+              {REVISORES.map((id) => <li data-revisor={id} data-estado="neutro"><span class="rev__m" aria-hidden="true"></span><span class="rev__t">{NOMBRES_REVISORES[id]}</span></li>)}
+            </ul>
+          )}
+        </div>
+        <span class="estacion__estado" data-texto-estado>Pendiente</span>
+      </li>
+    ))}
+  </ol>
+)}

@@ -5,42 +5,44 @@ import { estado, productos, destinos } from '../lib/contenido.js'
 const pedibles = productos().filter((p) => p.disponible && p.precioKg !== null)
 const hacia = destinos().filter((d) => d.tarifa)
 ---
-<div class="calculadora" id="calculadora" data-estado={JSON.stringify(estado)}>
-  <form class="calculadora__form" id="pedido" novalidate aria-label="Datos del pedido">
-    <fieldset>
-      <legend>Productos</legend>
-      <ul id="lineas" class="lineas"></ul>
-      <button class="boton boton--borde" type="button" id="anadir">+ Añadir producto</button>
-    </fieldset>
+<div class="calc" id="calculadora" data-ui data-sube data-estado={JSON.stringify(estado)}>
+  <div class="calc__hoja">
+    <form class="calc__form" id="pedido" novalidate aria-label="Datos del pedido">
+      <fieldset>
+        <legend>Productos</legend>
+        <ul id="lineas" class="lineas"></ul>
+        <button class="btn btn--paso" type="button" id="anadir">Añadir producto</button>
+      </fieldset>
 
-    <div class="campo">
-      <label for="destino">Destino</label>
-      <select id="destino" name="destino">
-        {hacia.map((d) => <option value={d.id}>{d.ciudad}, {d.pais} · {d.diasTransito} días</option>)}
-      </select>
-    </div>
+      <div class="campo">
+        <label for="destino">Destino</label>
+        <select id="destino" name="destino">
+          {hacia.map((d) => <option value={d.id}>{d.ciudad}, {d.pais} · {d.diasTransito} días</option>)}
+        </select>
+        <p class="peq" id="r-tarifa"></p>
+      </div>
 
-    <ul id="errores" class="errores" role="alert" aria-live="assertive"></ul>
-  </form>
+      <ul id="errores" class="errores" role="alert" aria-live="assertive"></ul>
+    </form>
 
-  <section class="resumen" aria-labelledby="resumen-titulo" aria-live="polite">
-    <h2 id="resumen-titulo">Resumen</h2>
-    <ul id="resumen-lineas" class="resumen__lineas"></ul>
-    <dl class="resumen__totales">
-      <div><dt>Subtotal</dt><dd id="r-subtotal">—</dd></div>
-      <div><dt id="r-descuento-etiqueta">Descuento por volumen</dt><dd id="r-descuento">—</dd></div>
-      <div class="resumen__transporte"><dt>Transporte <span id="r-transporte-destino"></span></dt><dd id="r-transporte">—</dd></div>
-      <div class="resumen__total"><dt>Total</dt><dd id="r-total">—</dd></div>
-    </dl>
-    <p id="r-tarifa" class="resumen__nota"></p>
-  </section>
+    <section class="resumen" aria-labelledby="resumen-titulo" aria-live="polite">
+      <h2 id="resumen-titulo">Resumen</h2>
+      <ul id="resumen-lineas" class="resumen__lineas"></ul>
+      <dl class="resumen__totales">
+        <div><dt>Subtotal</dt><dd id="r-subtotal">—</dd></div>
+        <div><dt id="r-descuento-etiqueta">Descuento por volumen</dt><dd id="r-descuento">—</dd></div>
+        <div><dt>Transporte <span id="r-transporte-destino"></span></dt><dd id="r-transporte">—</dd></div>
+        <div class="resumen__total"><dt>Total</dt><dd id="r-total">—</dd></div>
+      </dl>
+    </section>
+  </div>
 
   <template id="plantilla-linea">
     <li class="linea">
       <div class="campo">
         <label>Producto
           <select class="linea__producto">
-            {pedibles.map((p) => <option value={p.id}>{p.emoji} {p.nombre}</option>)}
+            {pedibles.map((p) => <option value={p.id}>{p.nombre}</option>)}
           </select>
         </label>
       </div>
@@ -97,7 +99,7 @@ const hacia = destinos().filter((d) => d.tarifa)
     const pedido = leer()
     const r = presupuestar(pedido, estado)
     $('errores').replaceChildren(...r.errores.map((e) => Object.assign(document.createElement('li'), { textContent: e })))
-    raiz.classList.toggle('calculadora--error', !r.ok)
+    raiz.classList.toggle('calc--error', !r.ok)
 
     $('resumen-lineas').replaceChildren(
       ...r.lineas.map((l) => {

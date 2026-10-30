@@ -42,10 +42,10 @@ test('the kind estilo exists, with the stylesheet and the five visual components
 })
 
 test('legit changes pass: a CSS rule and a literal attribute of the landscape', () => {
-  const css = current[CSS].replace('.paisaje { position: absolute; inset: auto 0 0 0; width: 100%; height: 100%;', '.paisaje { position: absolute; inset: auto 0 0 0; width: 100%; height: clamp(8rem, 17vw, 12rem);')
+  const css = current[CSS].replace('.hero__disco{position:absolute;top:50%;left:12%;width:150%;', '.hero__disco{position:absolute;top:50%;left:12%;width:140%;')
   assert.notEqual(css, current[CSS])
   assert.deepEqual(check(CSS, css), { ok: true, errors: [] })
-  const svg = current[PAISAJE].replace('cy="90" r="54"', 'cy="150" r="40"')
+  const svg = current[PAISAJE].replace('width="800" height="800"', 'width="640" height="640"')
   assert.notEqual(svg, current[PAISAJE])
   assert.deepEqual(check(PAISAJE, svg), { ok: true, errors: [] })
   const markup = current[CARD].replace('<h3>', '<h3 class="titulo">')
@@ -98,7 +98,7 @@ test('astro: the frontmatter and the template expressions are code and may not c
   assert.equal(check(CARD, current[CARD].replace('<h3>', '<h3 title={campana.texto}>')).ok, false, 'an attribute that runs code')
   assert.equal(check(CARD, current[CARD].replace('<h3>', '<h3>{')).ok, false, 'an unclosed brace')
   // moving an expression around is a layout change, not a code change
-  const moved = current[CARD].replace('  <h3>{campana.titulo}</h3>\n  <p>{campana.texto}</p>', '  <p>{campana.texto}</p>\n  <h3>{campana.titulo}</h3>')
+  const moved = current[CARD].replace('  <p>{campana.texto}</p>\n', '').replace('  <div class="campana__texto">', '  <p>{campana.texto}</p>\n  <div class="campana__texto">')
   assert.deepEqual(check(CARD, moved), { ok: true, errors: [] })
 })
 
@@ -121,12 +121,12 @@ test('estilo changes how the site looks, never what it says: no new text in the 
   const css = check(CSS, `${current[CSS]}\n.hero::after { content: "Envío gratis y 50 % de descuento"; }\n`)
   assert.equal(css.ok, false)
   assert.match(css.errors.join(), /text/)
-  assert.deepEqual(check(CSS, `${current[CSS]}\n.otro::before { content: '✓'; }\n`), { ok: true, errors: [] }, 'a text the stylesheet already has')
+  assert.deepEqual(check(CSS, `${current[CSS]}\n.otro::before { content: '!'; }\n`), { ok: true, errors: [] }, 'a text the stylesheet already has')
   const footer = check(FFOOTER, current[FFOOTER].replace('</footer>', '<p>Envío gratis a toda Europa</p></footer>'))
   assert.equal(footer.ok, false)
   assert.match(footer.errors.join(), /text/)
   assert.equal(check(FFOOTER, current[FFOOTER].replace('Los precios y las tarifas son simulados.', 'Los precios son reales.')).ok, false, 'a text changed')
-  assert.equal(check(CARD, current[CARD].replace('aria-hidden="true"', 'aria-hidden="true" aria-label="Oferta"')).ok, false, 'a text in an attribute')
+  assert.equal(check(CARD, current[CARD].replace('<p>', '<p aria-label="Oferta">')).ok, false, 'a text in an attribute')
   // moving the same words into another element is layout
   const wrapped = current[FFOOTER].replace('<p class="pie__nota">', '<p class="pie__nota"><span>').replace('simulados.</p>', 'simulados.</span></p>')
   assert.deepEqual(check(FFOOTER, wrapped), { ok: true, errors: [] })
@@ -161,7 +161,7 @@ function scripted(answers) {
 }
 const ok = { aprobado: true, motivo: 'bien' }
 const answers = (build) => ({ spec: { tipo: 'estilo', resumen: 'x', criterios: [] }, build, seguridad: ok, ux: ok, ui: ok })
-const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'width: 100%; height: 100%; z-index: 0;', reemplazar: 'width: 100%; height: clamp(8rem, 17vw, 12rem); z-index: 0;' }] }] }
+const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:140%;' }] }] }
 
 // The screenshots of the candidate are the subject of test/render.test.mjs: here the renderer is a stub with none.
 const noShots = async () => []
@@ -176,19 +176,19 @@ test('a full run of estilo ends ok with the edited files; the four stations appr
   const { result, events } = await run(FIX)
   assert.equal(result.status, 'ok', JSON.stringify(events))
   assert.deepEqual(result.files.map((f) => f.path), [CSS])
-  assert.match(result.files[0].content, /clamp\(8rem, 17vw, 12rem\)/)
+  assert.match(result.files[0].content, /left:12%;width:140%;/)
   assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
   assert.match(events.find((e) => e.station === 'codigo' && e.status === 'ok').detail, /estilo/i)
   assert.equal(events.find((e) => e.station === 'approver').status, 'ok')
 })
 
 test('estilo accepts the whole text of a file as well', async () => {
-  const { result } = await run({ ficheros: [{ ruta: PAISAJE, contenido: current[PAISAJE].replace('cy="90" r="54"', 'cy="150" r="40"') }] })
+  const { result } = await run({ ficheros: [{ ruta: PAISAJE, contenido: current[PAISAJE].replace('width="800" height="800"', 'width="640" height="640"') }] })
   assert.equal(result.status, 'ok')
 })
 
 test('an unsafe change never reaches the reviewers: the build refuses it (and a second try ends the task)', async () => {
-  const evil = { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'width: 100%; height: 100%; z-index: 0;', reemplazar: 'width: 100%; background: url(https://x.test/a.png); z-index: 0;' }] }] }
+  const evil = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;background:url(https://x.test/a.png);' }] }] }
   const { result, events } = await run(evil)
   assert.equal(result.status, 'failed')
   assert.deepEqual(result.files, [])
@@ -270,8 +270,11 @@ test('replay: "el botón del hero no se ve bien" becomes an ok estilo task that 
     assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
     assert.deepEqual(result.files.map((f) => f.path), [CSS])
     const css = result.files.find((f) => f.path === CSS).content
-    assert.match(css, /\.paisaje \{[^}]*height: auto; aspect-ratio: 10 \/ 3;/, 'the landscape keeps its own shape: nothing is cut')
-    assert.match(css, /\.hero \{[^}]*padding-block: clamp\(3rem, 8vw, 6rem\) max\(9rem, 17vw\);/, 'the hero keeps room for it below the buttons')
+    assert.match(css, /\.hero\{display:grid;grid-template-columns:1fr 1fr;/, 'the hero is a two-column grid again')
+    assert.match(css, /\.hero__tarjeta\{[^}]*background:var\(--crema\)/, 'the card has its own ground')
+    assert.match(css, /\.hero__campo\{position:relative;background:var\(--limon\);overflow:hidden;/, 'the picture field is back in its cell, clipped')
+    assert.match(css, /\.hero__disco\{position:absolute;top:50%;right:-24%;/, 'the disc is back at its size and place')
+    assert.doesNotMatch(css, /\.hero__campo\{position:absolute;inset:0/)
     assert.equal(checkEstilo(result.files, current).ok, true)
   }
 })

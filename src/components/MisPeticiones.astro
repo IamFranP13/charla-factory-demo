@@ -1,6 +1,6 @@
-<section class="contenedor seccion" id="mis-peticiones" aria-labelledby="mis-titulo" hidden>
+<section class="sec pag mis" id="mis-peticiones" aria-labelledby="mis-titulo" hidden>
   <h2 id="mis-titulo">Tus peticiones</h2>
-  <ul class="mis-peticiones" id="mis-lista"></ul>
+  <ul class="mis__lista" id="mis-lista"></ul>
 </section>
 
 <script>
@@ -14,8 +14,11 @@
     lista.replaceChildren(...numeros.map((n) => {
       const item = document.createElement('li')
       const link = document.createElement('a')
+      const numero = document.createElement('span')
+      numero.className = 'n'
+      numero.textContent = `#${n}`
       link.href = `/tarea/?n=${n}`
-      link.textContent = `Petición #${n}: sigue cómo va`
+      link.append(numero, ' Sigue cómo va')
       item.append(link)
       return item
     }))

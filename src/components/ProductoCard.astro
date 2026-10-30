@@ -1,19 +1,16 @@
 ---
 import { eur } from '../lib/formato.js'
 
-const { producto, detalle = false } = Astro.props
+const { producto } = Astro.props
 ---
-<article class="tarjeta producto" id={`producto-${producto.id}`}>
-  <div class="producto__cabecera">
-    <span class="producto__emoji" aria-hidden="true">{producto.emoji}</span>
-    <span class:list={['insignia', producto.disponible ? 'insignia--ok' : 'insignia--no']}>
-      {producto.disponible ? 'Disponible' : 'No disponible'}
-    </span>
+<li class="producto" id={`producto-${producto.id}`} data-sube>
+  <span class:list={['bola', producto.categoria === 'fruta' ? '' : 'bola--verde']} aria-hidden="true"></span>
+  <div>
+    <div class="carta__nombre">
+      <h3>{producto.nombre}</h3>
+      {producto.precioKg === null ? <p class="carta__precio carta__consultar">Precio a consultar</p> : <p class="carta__precio">{eur(producto.precioKg)} <small>/ kg</small></p>}
+    </div>
+    <p class="d">{producto.descripcion}</p>
+    <p class="meta"><span class:list={['ins', producto.disponible ? 'ins--ok' : 'ins--no']}>{producto.disponible ? 'Disponible' : 'No disponible'}</span> {producto.origen}</p>
   </div>
-  <h3>{producto.nombre}</h3>
-  {detalle && <p class="producto__meta">{producto.categoria === 'fruta' ? 'Fruta' : 'Hortaliza'} · {producto.origen}</p>}
-  {detalle && <p>{producto.descripcion}</p>}
-  <p class="producto__precio">
-    {producto.precioKg === null ? <span class="producto__consultar">Precio a consultar</span> : <><strong>{eur(producto.precioKg)}</strong> / kg</>}
-  </p>
-</article>
+</li>

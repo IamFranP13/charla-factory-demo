@@ -3,8 +3,6 @@ import Base from '../layouts/Base.astro'
 import Paisaje from '../components/Paisaje.astro'
 import CampanaCard from '../components/CampanaCard.astro'
 import ProductoCard from '../components/ProductoCard.astro'
-import PeticionForm from '../components/PeticionForm.astro'
-import MisPeticiones from '../components/MisPeticiones.astro'
 import Features from '../components/Features.astro'
 import { campanas, productos, destinos } from '../lib/contenido.js'
 
@@ -16,55 +14,97 @@ const cifras = [
   [destinos().length, 'destinos en Europa'],
   [`${dias} días`, 'desde el campo al primer destino'],
 ]
+const tira = Array.from({ length: 70 })
+const fases = [
+  ['Spec writer', 'Lee tu petición, la compara con la marca y decide qué clase de cambio es.'],
+  ['Builder', 'Escribe el cambio solo dentro de lo que esa clase permite: un archivo de datos, estilos o código pequeño.'],
+  ['Revisión', 'Seguridad, UX, UI y código lo miran a la vez. El Approver necesita los cuatro síes.'],
+  ['Puerta', 'Un riesgo medido en código decide: lo seguro sale solo, lo arriesgado espera a una persona.'],
+  ['Producción', 'El cambio llega a la web y lo ves en el tablero de la factory.'],
+]
 ---
 <Base title="LIMONIA" description="Fruta y hortaliza de Murcia, directa a tu almacén en Europa.">
-  <script slot="head" is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
-  <section class="hero">
-    <Paisaje />
-    <div class="contenedor hero__contenido">
-      <p class="sobretitulo">Murcia · Exportación agroalimentaria</p>
-      <h1>De la huerta de Murcia a las mesas de Europa</h1>
-      <p class="hero__texto">Limones, naranjas, mandarinas y hortalizas de temporada para mayoristas. Cataloga, calcula tu presupuesto y recíbelo en pocos días.</p>
-      <div class="hero__acciones">
-        <a class="boton" href="/presupuesto/">Calcular presupuesto</a>
-        <a class="boton boton--borde" href="/catalogo/">Ver catálogo</a>
+  <section class="hero" aria-labelledby="titulo">
+    <div class="hero__tarjeta">
+      <div class="tira" aria-hidden="true">{tira.map((_, i) => <i></i>)}</div>
+      <div class="hero__cuerpo">
+        <h1 id="titulo" data-sube>Fruta de Murcia en tu almacén</h1>
+        <p class="hero__texto" data-sube style="--i:1">Limones, naranjas, mandarinas y hortalizas de temporada para mayoristas. Cataloga, calcula tu presupuesto y recíbelo en pocos días.</p>
+        <div class="hero__acciones" data-sube style="--i:2">
+          <a class="btn" href="/presupuesto/">Calcular presupuesto</a>
+          <a class="btn btn--paso" href="/catalogo/">Ver catálogo</a>
+        </div>
+        <div class="hero__origen" data-sube style="--i:3">
+          <p>Cosechamos en</p>
+          <ul><li><span class="punto"></span>la Vega del Segura</li><li><span class="punto"></span>el Campo de Cartagena</li><li><span class="punto"></span>Águilas</li></ul>
+        </div>
       </div>
     </div>
+    <Paisaje />
   </section>
 
-  <section class="contenedor cifras" aria-label="LIMONIA en cifras">
-    {cifras.map(([valor, etiqueta]) => (
-      <div class="cifra"><strong>{valor}</strong><span>{etiqueta}</span></div>
-    ))}
+  <section class="sec pag" aria-labelledby="cifras">
+    <div class="rej cifras">
+      <div class="cifras__titulo" data-sube><h2 id="cifras">LIMONIA en cifras</h2></div>
+      {cifras.map(([valor, etiqueta], i) => (
+        <p class={`cifra cifra--${i + 1}`} data-sube><strong>{valor}</strong><span>{etiqueta}</span></p>
+      ))}
+    </div>
   </section>
 
-  <section class="contenedor seccion" aria-labelledby="campanas">
-    <h2 id="campanas">Campañas</h2>
-    <div class="rejilla rejilla--3">
+  <section class="sec campo-crema pag" aria-labelledby="campanas">
+    <div class="cab-sec"><h2 id="campanas" data-sube>Campañas</h2></div>
+    <ul class="campanas">
       {campanas().map((campana) => <CampanaCard campana={campana} />)}
-    </div>
+    </ul>
   </section>
 
-  <section class="contenedor seccion" aria-labelledby="destacados">
-    <div class="seccion__cabecera">
-      <h2 id="destacados">Productos destacados</h2>
-      <a href="/catalogo/">Ver todo el catálogo →</a>
-    </div>
-    <div class="rejilla rejilla--4">
-      {destacados.map((producto) => <ProductoCard producto={producto} />)}
+  <section class="sec pag" aria-labelledby="destacados">
+    <div class="rej partido">
+      <figure class="fig fig--chip partido__fig" data-sube>
+        <img src="/fotos/limonero.webp" width="1200" height="800" alt="Un limón colgando de la rama, entre hojas" loading="lazy" />
+        <figcaption>Un limón en la rama</figcaption>
+      </figure>
+      <div class="partido__texto">
+        <div class="cab-sec" style="margin:0"><h2 id="destacados" data-sube>Productos destacados</h2></div>
+        <ul class="carta">
+          {destacados.map((producto) => <ProductoCard producto={producto} />)}
+        </ul>
+        <p><a class="btn btn--paso" href="/catalogo/">Ver todo el catálogo</a></p>
+      </div>
     </div>
   </section>
 
   <Features donde="inicio" />
 
-  <section class="contenedor seccion pide" id="pide" aria-labelledby="pide-titulo">
-    <div>
-      <h2 id="pide-titulo">Pídele un cambio a LIMONIA</h2>
-      <p>Tu petición entra en una pequeña fábrica de agentes de IA. El perfil con el que la pides (Marketing, Producto o Negocio) se sortea al azar, así que no puedes elegirlo.</p>
+  <section class="sec campo-oliva pag" aria-labelledby="proceso">
+    <div class="rej proceso__intro">
+      <h2 id="proceso" data-sube>De tu petición a la web</h2>
+      <p data-sube style="--i:1">Tu petición entra en una pequeña fábrica de agentes de IA. Cada estación hace una cosa y deja su rastro; tú lo sigues en directo.</p>
     </div>
-    <PeticionForm />
+    <div class="fases" role="group" aria-label="Estaciones de la factory" data-sube>
+      {fases.map(([nombre, texto], i) => (
+        <button class={`fase fase--${i + 1}`} type="button" aria-expanded={i === 0 ? 'true' : 'false'} aria-controls={`fase-${i + 1}`}><span class="fase__nombre">{nombre}</span><span class="fase__texto" id={`fase-${i + 1}`}>{texto}</span></button>
+      ))}
+    </div>
+    <p class="proceso__enlace" data-sube><a class="btn btn--limon" href="/factory/">Ver la factory en directo</a></p>
   </section>
 
-  <MisPeticiones />
+  <section class="pide" aria-labelledby="pide-titulo">
+    <div class="pide__disco" aria-hidden="true"><img src="/fotos/limon-cortado.webp" width="800" height="800" alt="" /></div>
+    <div class="pide__form" data-sube>
+      <h2 id="pide-titulo">Pídele un cambio a LIMONIA</h2>
+      <p>Tu petición entra en la factory y, si es segura, llega sola a la web. Cuéntala en una frase y síguela en directo.</p>
+      <a class="btn" href="/factory/#pide">Pedir un cambio</a>
+    </div>
+  </section>
+
+  <script>
+    const fases = [...document.querySelectorAll('.fase')]
+    for (const boton of fases) {
+      boton.addEventListener('click', () => {
+        for (const otra of fases) otra.setAttribute('aria-expanded', String(otra === boton))
+      })
+    }
+  </script>
 </Base>

@@ -3,13 +3,17 @@ import { MAX_LENGTH } from '../../lib/intake.js'
 
 const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
 ---
-<form id="peticion" class="formulario" novalidate>
-  <label for="texto">¿Qué quieres cambiar en LIMONIA?</label>
-  <textarea id="texto" name="peticion" maxlength={MAX_LENGTH} rows="3" required placeholder="Ej.: una campaña verde sobre el limón de temporada"></textarea>
-  <p class="formulario__contador" aria-hidden="true"><span id="contador">0</span> / {MAX_LENGTH}</p>
+<form id="peticion" class="pide__form" novalidate data-sube>
+  <h2 id="pide-titulo">Pide un cambio</h2>
+  <p>Tu petición entra en una pequeña fábrica de agentes de IA. El perfil con el que la pides (Marketing, Producto o Negocio) se sortea al azar, así que no puedes elegirlo.</p>
+  <div class="campo">
+    <label for="texto">¿Qué quieres cambiar en LIMONIA?</label>
+    <textarea id="texto" name="peticion" maxlength={MAX_LENGTH} rows="3" required placeholder="Ej.: una campaña verde sobre el limón de temporada" aria-describedby="contador-texto"></textarea>
+    <p class="contador" id="contador-texto" aria-hidden="true"><span>Máximo {MAX_LENGTH} caracteres</span><span><strong id="contador">0</strong> / {MAX_LENGTH}</span></p>
+  </div>
   <div class="cf-turnstile" data-sitekey={siteKey}></div>
-  <button class="boton" type="submit">Enviar a la factory</button>
-  <p id="estado" role="status" aria-live="polite"></p>
+  <button class="btn" type="submit">Enviar a la factory</button>
+  <p class="pide__estado" id="estado" role="status" aria-live="polite"></p>
 </form>
 
 <script>
@@ -22,7 +26,9 @@ const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
   const contador = document.getElementById('contador')
 
   texto.addEventListener('input', () => {
-    contador.textContent = String([...texto.value].length)
+    const letras = [...texto.value].length
+    contador.textContent = String(letras)
+    contador.parentElement.parentElement.classList.toggle('contador--lleno', letras >= texto.maxLength)
   })
 
   form.addEventListener('submit', async (event) => {

@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro'
 import DiagramaFactory from '../components/DiagramaFactory.astro'
+import PeticionForm from '../components/PeticionForm.astro'
+import MisPeticiones from '../components/MisPeticiones.astro'
 
 const totales = [
   ['peticiones', 'Peticiones', ''],
@@ -10,12 +12,14 @@ const totales = [
 ]
 ---
 <Base title="Factory" description="La factory de LIMONIA en directo: cada petición viaja por el diagrama, estación a estación.">
+  <script slot="head" is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
   <div class="fd" id="fd">
     <header class="fd-cab">
       <div>
         <p class="fd-eyebrow">LIMONIA · Factory · en vivo</p>
         <h1>La línea de la factory</h1>
-        <p class="fd-sub">Cada petición viaja por el diagrama. Toca una petición o una estación.</p>
+        <p class="fd-sub">Cada petición viaja por el diagrama. Toca una petición o una estación. <a class="fd-pedir" href="#pide">Pide un cambio ↓</a></p>
       </div>
       <div class="fd-acc">
         <form class="fd-sigue" id="sigue" autocomplete="off">
@@ -73,6 +77,13 @@ const totales = [
     </aside>
   </div>
   <div id="tip" role="tooltip" hidden></div>
+
+  <section class="pide" id="pide" aria-labelledby="pide-titulo">
+    <div class="pide__disco" aria-hidden="true"><img src="/fotos/limon-cortado.webp" width="800" height="800" alt="" /></div>
+    <PeticionForm />
+  </section>
+
+  <MisPeticiones />
 
 <script>
   import { geometria, camino, slotsDe, NODOS, IDS_NODOS, TOKEN } from '../lib/geometria.js'

@@ -6,11 +6,11 @@ const normal = (p) => (p.endsWith('/') ? p : `${p}/`)
 const esActual = (href) => normal(actual) === normal(href)
 ---
 <header class="cabecera">
-  <div class="contenedor cabecera__fila">
+  <div class="cabecera__fila">
     <a class="marca" href="/" aria-label="LIMONIA, inicio">
-      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-        <ellipse cx="16" cy="18" rx="12" ry="9" fill="var(--limon)" transform="rotate(-20 16 18)" />
-        <path d="M22 6c-5 0-8 3-9 7 5 0 8-2 9-7z" fill="var(--oliva)" />
+      <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+        <circle cx="16" cy="17" r="12" fill="var(--limon)" />
+        <path d="M23 4c-6 0-10 3-11 8 6 0 10-3 11-8z" fill="var(--oliva)" />
       </svg>
       <span>LIMONIA</span>
     </a>
@@ -26,8 +26,10 @@ const esActual = (href) => normal(actual) === normal(href)
             )}
           </li>
         ))}
+        <li class="menu__accion"><a class="btn" href="/factory/#pide">Pedir un cambio</a></li>
       </ul>
     </nav>
+    <a class="btn" href="/factory/#pide">Pedir un cambio</a>
   </div>
 </header>
 
@@ -38,5 +40,8 @@ const esActual = (href) => normal(actual) === normal(href)
     const abierto = boton.getAttribute('aria-expanded') === 'true'
     boton.setAttribute('aria-expanded', String(!abierto))
     menu?.classList.toggle('menu--abierto', !abierto)
+  })
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && menu?.classList.contains('menu--abierto')) boton.click()
   })
 </script>

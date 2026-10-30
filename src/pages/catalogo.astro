@@ -6,31 +6,75 @@ import { productos, destinos } from '../lib/contenido.js'
 import { eur } from '../lib/formato.js'
 
 const lista = productos()
+const fruta = lista.filter((p) => p.categoria === 'fruta')
+const hortaliza = lista.filter((p) => p.categoria !== 'fruta')
 const hacia = destinos()
+const cuenta = (n) => `${n} ${n === 1 ? 'producto' : 'productos'}`
 ---
 <Base title="Catálogo" description="Catálogo LIMONIA: productos, precios por kilogramo y destinos de exportación.">
-  <section class="contenedor seccion">
-    <p class="sobretitulo">Catálogo</p>
-    <h1>Productos de la huerta de Murcia</h1>
-    <p class="lead">Precios por kilogramo para pedidos mayoristas. Los productos sin tarifa publicada se cotizan a medida.</p>
-    <div class="rejilla rejilla--3">
-      {lista.map((producto) => <ProductoCard producto={producto} detalle />)}
+  <section class="pag intro" aria-labelledby="titulo">
+    <div class="rej intro__fila">
+      <div class="intro__texto">
+        <h1 id="titulo" data-sube>Productos de la huerta de Murcia</h1>
+        <p class="intro__lead" data-sube style="--i:1">Precios por kilogramo para pedidos mayoristas. Los productos sin tarifa publicada se cotizan a medida.</p>
+        <nav class="salto" aria-label="En esta página" data-sube style="--i:2">
+          <a class="btn btn--paso" href="#fruta">Fruta</a><a class="btn btn--paso" href="#hortaliza">Hortaliza</a><a class="btn btn--paso" href="#destinos">Destinos</a>
+        </nav>
+      </div>
+      <figure class="fig intro__foto cuarto" data-sube style="--i:1">
+        <img src="/fotos/huerta-de-murcia.webp" width="1400" height="1050" alt="La huerta de Murcia vista desde lo alto: parcelas verdes entre el pueblo y la sierra" />
+      </figure>
+    </div>
+  </section>
+
+  <section class="sec pag" id="fruta" aria-labelledby="h-fruta">
+    <div class="cat"><h2 id="h-fruta" data-sube>Fruta</h2><p class="cat__n">{cuenta(fruta.length)}</p></div>
+    <ul class="carta carta--2">
+      {fruta.map((producto) => <ProductoCard producto={producto} />)}
+    </ul>
+  </section>
+
+  <figure class="fig fig--chip banda pag" data-sube>
+    <img src="/fotos/naranjos.webp" width="1200" height="797" alt="Un naranjo cargado de fruta junto a una torre de ladrillo" loading="lazy" />
+    <figcaption>Naranjos junto a una torre de ladrillo</figcaption>
+  </figure>
+
+  <section class="sec pag" id="hortaliza" aria-labelledby="h-horta">
+    <div class="rej horta">
+      <div class="horta__lista">
+        <div class="cat"><h2 id="h-horta" data-sube>Hortaliza</h2><p class="cat__n">{cuenta(hortaliza.length)}</p></div>
+        <ul class="carta">
+          {hortaliza.map((producto) => <ProductoCard producto={producto} />)}
+        </ul>
+      </div>
+      <figure class="fig fig--chip horta__foto" data-sube>
+        <img src="/fotos/vega-del-segura.webp" width="1600" height="790" alt="Parcelas de regadío de la Vega del Segura entre la sierra y el río" loading="lazy" />
+        <figcaption>La Vega del Segura</figcaption>
+      </figure>
     </div>
   </section>
 
   <Features donde="catalogo" />
 
-  <section class="contenedor seccion" aria-labelledby="destinos">
-    <h2 id="destinos">Destinos de exportación</h2>
-    <ul class="destinos">
-      {hacia.map((destino) => (
-        <li class="tarjeta destino" id={`destino-${destino.id}`}>
-          <strong>{destino.ciudad}</strong>
-          <span>{destino.pais}</span>
-          <span class="destino__dias">{destino.diasTransito} {destino.diasTransito === 1 ? 'día' : 'días'} de tránsito</span>
-          {destino.tarifa && <span class="destino__tarifa">{eur(destino.tarifa.eurPorKg)}/kg · mínimo {eur(destino.tarifa.minimo)}</span>}
-        </li>
-      ))}
-    </ul>
+  <section class="sec campo-crema pag" id="destinos" aria-labelledby="h-destinos">
+    <div class="rej partido partido--arriba">
+      <figure class="fig fig--chip destinos__foto" data-sube>
+        <img src="/fotos/puerto-de-cartagena.webp" width="1200" height="800" alt="El puerto de Cartagena visto desde el aire, con sus muelles y depósitos" loading="lazy" />
+        <figcaption>El puerto de Cartagena</figcaption>
+      </figure>
+      <div class="destinos__col">
+        <h2 id="h-destinos" data-sube>Destinos de exportación</h2>
+        <ul class="destinos">
+          {hacia.map((destino) => (
+            <li id={`destino-${destino.id}`} data-sube>
+              <span class="destino__dias"><strong>{destino.diasTransito}</strong><small>{destino.diasTransito === 1 ? 'día' : 'días'}</small></span>
+              <div><h3>{destino.ciudad}</h3><p class="destino__pais">{destino.pais}</p></div>
+              {destino.tarifa && <p class="destino__tarifa">{eur(destino.tarifa.eurPorKg)}/kg<br /><span>mínimo {eur(destino.tarifa.minimo)}</span></p>}
+            </li>
+          ))}
+        </ul>
+        <p><a class="btn" href="/presupuesto/">Calcular presupuesto</a></p>
+      </div>
+    </div>
   </section>
 </Base>
