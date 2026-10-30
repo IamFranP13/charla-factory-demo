@@ -2,8 +2,8 @@
 // Runs one task through the factory and writes the resulting files into the working tree.
 //
 //   node scripts/factory.mjs --profile <marketing|producto|negocio> --request "<text>" [--id <n>]
-//   node scripts/factory.mjs --issue <number>     CI: read the task from a GitHub issue, comment every station
-//                                                 and keep the task state marker in the issue body up to date
+//   node scripts/factory.mjs --issue <number>     CI: read the task from a GitHub issue, keep the task state marker and the
+//                                                 station trace in the issue body up to date; one comment, the result
 //   node scripts/factory.mjs --issue <n> --pr <m> CI: record pull request m in the state of issue n (no model involved)
 //
 // Model: FACTORY_PROVIDER=replay (default, free) or openai (see README).
@@ -13,12 +13,14 @@ import { writeFileSync, mkdirSync, appendFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runFactory, loadProfiles, initialState, applyEvent, finishState, replaceState } from '../lib/factory.js'
+import { replaceTrace } from '../lib/estado.js'
 import { updateIssueState } from '../lib/issue-state.js'
 import { providersFromEnv } from '../lib/providers.js'
 import { gh, ghJson, repoSlug } from '../lib/github.js'
 import { MAX_LENGTH } from '../lib/intake.js'
 
 const root = new URL('..', import.meta.url).pathname
+const MAX_DETAIL = 600
 const STATUS_ICON = { ok: '✅', rejected: '⛔', error: '⚠️', failed: '❌', ignored: '⏭️', unchanged: '🟰', retry: '🔁' }
 
 // The intake writes the request as one line of JSON inside a ```json block.
@@ -96,20 +98,21 @@ async function runIssue(number, providers) {
   const label = profiles[task.profile]?.label ?? task.profile
   const started = Date.now()
 
-  // The state marker lives in the issue body; it is rewritten on every station change.
+  // The state marker and the station trace live in the issue body; both are rewritten in one PATCH on every station change.
+  const header = `🏭 **Tarea #${number} · ${label}** (modelo: \`${providers.provider.name}\`)`
+  const lines = []
   let body = data.body
   let state = initialState(task.profile)
   let motivo = null
   const publish = () => {
     try {
-      body = replaceState(body, state)
+      body = replaceTrace(replaceState(body, state), header, lines)
       gh(['api', '-X', 'PATCH', `repos/${repoSlug()}/issues/${number}`, '--input', '-'], { input: JSON.stringify({ body }) })
     } catch (error) {
       console.error(`warning: could not update the state of issue #${number}: ${error.message}`)
     }
   }
   publish()
-  comment(number, `🏭 **Tarea #${number} · ${label}** entra en la factory (modelo: \`${providers.provider.name}\`).`)
 
   const result = await runFactory({
     task, root, ...providers,
@@ -117,11 +120,12 @@ async function runIssue(number, providers) {
       state = applyEvent(state, e)
       // The reason shown to the audience is the last thing a station refused, failed or found unchanged.
       if (['rejected', 'error', 'unchanged'].includes(e.status)) motivo = e.station === 'approver' ? e.detail.replace(/^rechazada por segunda vez: /, '') : `${e.station}: ${e.detail}`
-      publish()
-      if (e.status === 'en_curso') return
+      if (e.status === 'en_curso') return publish()
+      const detail = String(e.detail)
       console.log(`${e.station.padEnd(11)} ${e.status.padEnd(8)} ${e.detail}`)
       const tokens = e.usage ? ` · ${e.usage.input + e.usage.output} tokens` : ''
-      comment(number, `${STATUS_ICON[e.status] ?? '•'} **${e.station}** · ${e.status}${e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}${tokens}\n\n${fence(e.detail)}`)
+      lines.push(`${STATUS_ICON[e.status] ?? '•'} **${e.station}** · ${e.status}${e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}${tokens}\n\n${fence(detail.length > MAX_DETAIL ? `${detail.slice(0, MAX_DETAIL)}…` : detail)}`)
+      publish()
     },
   })
   writeFiles(result.files)

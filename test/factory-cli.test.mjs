@@ -86,14 +86,17 @@ const issue = (over = {}) => ({
 const patches = (gh) => (existsSync(join(gh.dir, 'patches')) ? readFileSync(join(gh.dir, 'patches'), 'utf8').trim().split('\n').map((l) => JSON.parse(l).body) : [])
 const finalBody = (gh) => JSON.parse(readFileSync(join(gh.dir, 'issue.json'), 'utf8')).body
 
-needsSandbox('issue mode: comments each station on the issue, writes the file and sets outputs', () => {
+needsSandbox('issue mode: keeps the trace in the issue body and one comment, writes the file and sets outputs', () => {
   const root = scratch()
   const gh = fakeGh(issue())
   const r = run(root, ['--issue', '5'], gh.env)
   assert.equal(r.status, 0, r.stderr)
   const calls = readFileSync(join(gh.dir, 'calls'), 'utf8')
-  // start + spec + build + seguridad + ux + ui + codigo + approver + result
-  assert.equal((calls.match(/issue comment 5/g) ?? []).length, 9)
+  // one comment per request: the result; the trace lives in the issue body
+  assert.equal((calls.match(/issue comment 5/g) ?? []).length, 1)
+  const trace = finalBody(gh).split('<!-- factory:trace -->')[1]
+  for (const s of ['spec', 'build', 'seguridad', 'ux', 'ui', 'codigo', 'approver']) assert.match(trace, new RegExp(`\\*\\*${s}\\*\\* · ok`), s)
+  assert.match(trace, /Tarea #5 · .*modelo/)
   const out = readFileSync(gh.env.GITHUB_OUTPUT, 'utf8')
   assert.match(out, /status=ok/)
   assert.match(out, /profile=marketing/)
@@ -188,17 +191,32 @@ test('issue mode: an issue without a request block is ignored', () => {
   assert.deepEqual(patches(gh), [])
 })
 
-test('issue mode: model-derived text goes inside a ```text fence, so Markdown and mentions do not render', () => {
+test('issue mode: model-derived text goes inside a ```text fence in the body trace, so Markdown and mentions do not render', () => {
   const root = scratch()
   const request = 'Una campaña rosa que diga «hola» @someone [x](http://e) ``` ![i](http://e/i.png)'
   const gh = fakeGh(issue({ body: `\`\`\`json\n${JSON.stringify({ perfil: 'marketing', peticion: request })}\n\`\`\`` }))
   const r = run(root, ['--issue', '5'], gh.env)
   assert.equal(r.status, 0, r.stderr)
-  const bodies = readFileSync(join(gh.dir, 'bodies'), 'utf8')
-  const spec = bodies.split('\n=====\n').find((b) => b.includes('**spec**'))
-  assert.match(spec, /\n\n```text\n[^]*@someone[^]*\n```$/)
+  const trace = finalBody(gh).split('<!-- factory:trace -->')[1]
+  const spec = trace.split('\n').join('\n').split('**spec**')[1]
+  assert.match(spec, /\n\n```text\n[^]*@someone[^]*\n```/)
   const inside = spec.split('```text\n')[1]
   assert.equal(inside.split('```').length, 2, 'only the closing fence may appear inside')
+})
+
+needsSandbox('issue mode: the body trace is rewritten in place by every PATCH, never duplicated, and the request block stays intact', () => {
+  const gh = fakeGh(issue())
+  assert.equal(run(scratch(), ['--issue', '5'], gh.env).status, 0)
+  assert.equal(run(scratch(), ['--issue', '5'], gh.env).status, 0)
+  for (const body of patches(gh)) {
+    assert.equal(body.match(/<!-- factory:trace -->/g).length, 1)
+    assert.equal(body.match(/<!-- \/factory:trace -->/g).length, 1)
+    assert.equal(body.match(/<!-- factory:state /g).length, 1)
+    assert.deepEqual(parseIssueBody(body), { profile: 'marketing', request: 'Una campaña limón que diga «Viva el directo»' })
+  }
+  assert.equal(parseState(finalBody(gh)).resultado, 'ok')
+  const calls = readFileSync(join(gh.dir, 'calls'), 'utf8')
+  assert.equal((calls.match(/issue comment 5/g) ?? []).length, 2, 'one result comment per run')
 })
 
 needsSandbox('issue mode: a marker written in the request never reaches the state; the request block stays intact', () => {

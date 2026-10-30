@@ -12,8 +12,8 @@ The whole platform is a couple of thousand lines of plain JavaScript and three w
 QR → form (src/pages/) → Pages Function (functions/api/peticion.js) → GitHub issue labelled "entrada"
                                                                         ↓
               factory.yml: spec (+ brain/) → build → seguridad · ux · ui · codigo in parallel → approver
-              (one loop back to build) → pull request. Every station comments on the issue (the audit
-              trail) and updates the task state kept in the issue body
+              (one loop back to build) → pull request. Every station updates the task state and the
+              trace (the audit trail) kept in the issue body; one comment per request: the result
                                                                         ↓
               gate.yml: scripts/gate.mjs reads policy/risk.yaml and the PR's changed files
                     ↓                                               ↓

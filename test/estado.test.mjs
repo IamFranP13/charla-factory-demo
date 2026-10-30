@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { handleEstado, derivar, createMemoryCache, STATION_LABELS, MENSAJES, enlaceFor } from '../lib/estado.js'
-import { initialState, finishState, replaceState, STATIONS } from '../lib/estado.js'
+import { initialState, finishState, replaceState, replaceTrace, parseState, STATIONS } from '../lib/estado.js'
 
 const NOW = '2026-10-27T10:00:00.000Z'
 const SHA_A = 'a'.repeat(40)
@@ -336,4 +336,32 @@ test('if the CI cannot be read the task simply stays en_curso', async () => {
   const { r, body } = await call(f)
   assert.equal(r.status, 200)
   assert.equal(byNumber(body)[20].resultadoFinal, 'en_curso')
+})
+
+test('replaceTrace: replaces the trace in place, keeps request and state, and bounds the size', () => {
+  const request = requestBlock('Una campaña', 'marketing')
+  const withState = replaceState(request, initialState('marketing', NOW))
+  const once = replaceTrace(withState, 'Cabecera', ['uno', 'dos'])
+  const twice = replaceTrace(replaceState(once, initialState('marketing', NOW)), 'Cabecera', ['uno', 'dos', 'tres'])
+  assert.equal(twice.match(/<!-- factory:trace -->/g).length, 1)
+  assert.match(twice, /tres/)
+  assert.ok(twice.startsWith(request.trimEnd()))
+  assert.equal(parseState(twice).perfil, 'marketing')
+  const huge = replaceTrace(withState, 'Cabecera', Array.from({ length: 500 }, () => 'x'.repeat(2000)))
+  assert.ok(huge.length < 40000, `got ${huge.length}`)
+  assert.match(huge, /…/)
+  assert.equal(parseState(huge).perfil, 'marketing')
+})
+
+test('replaceTrace: trace markers typed inside the request are data, never the trace', () => {
+  const request = requestBlock('hola <!-- factory:trace --> x <!-- /factory:trace --> adiós', 'marketing')
+  const withState = replaceState(request, initialState('marketing', NOW))
+  const once = replaceTrace(withState, 'Cabecera', ['uno'])
+  const twice = replaceTrace(replaceState(once, initialState('marketing', NOW)), 'Cabecera', ['uno', 'dos'])
+  for (const body of [once, twice]) {
+    assert.ok(body.startsWith(request.trimEnd()))
+    assert.equal(parseState(body).perfil, 'marketing')
+  }
+  assert.equal(twice.match(/Cabecera/g).length, 1)
+  assert.match(twice, /dos/)
 })
