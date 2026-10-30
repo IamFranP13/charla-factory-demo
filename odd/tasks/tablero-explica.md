@@ -19,7 +19,7 @@ first-time guided tour for people arriving from the QR. Delivery: straight to ma
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
 | T1 | S1-S6 | ✅ done · worker: texts module, station lines, follow narrative, guided tour, tests, screenshots | d518a98 |
-| T2 | S7 | ✅ done · worker: loading / ✓ / tokens appear instead of travelling, demo shows the gap | |
+| T2 | S7 | ✅ done · worker: loading / ✓ / tokens appear instead of travelling, demo shows the gap | 1d6fea6 |
 
 ## Log
 
