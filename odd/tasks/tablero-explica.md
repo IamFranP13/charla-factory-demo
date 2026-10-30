@@ -16,7 +16,7 @@ first-time guided tour for people arriving from the QR. Delivery: straight to ma
 
 | ID | Specs | Route | Commit |
 |----|-------|-------|--------|
-| T1 | S1-S6 | ✅ done · worker: texts module, station lines, follow narrative, guided tour, tests, screenshots | |
+| T1 | S1-S6 | ✅ done · worker: texts module, station lines, follow narrative, guided tour, tests, screenshots | d518a98 |
 
 ## Log
 
