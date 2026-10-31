@@ -153,6 +153,32 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 
 Issues are created with your token, so the factory only accepts issues authored by the repository owner.
 
+## Local runner (optional)
+
+The same pipeline as `factory.yml`, run on your own Linux PC: it starts in seconds and handles several requests at once. Actions stays as the fallback. **One mode at a time**: the runner refuses to start while the workflow is enabled, and a lock allows a single runner.
+
+```bash
+gh workflow disable factory.yml     # once, before starting the runner
+npm run runner -- --paralelo 6      # default 6 requests at once; --intervalo S (default 5), --repo, --config DIR
+# fallback: Ctrl+C (the running requests finish), then
+gh workflow enable factory.yml
+```
+
+- **What it does.** Every few seconds it lists (one API call) the open issues labelled `entrada` filed by the repository owner that the factory has not started (no `factory:state` marker, no `tarea/N` branch). Issues filed while it was stopped are picked up when it starts. Each request runs in its own `git worktree add --detach` of a freshly fetched `origin/main` in a temp directory (removed afterwards, also on failure) and does what the workflow does: `node scripts/factory.mjs --issue N`; on `ok`, a commit with **only the reported files**, push of `tarea/N`, `gh pr create` ("Closes #N", label `perfil:<perfil>`) and `--issue N --pr M`; on anything but `ok`/`ignored`, the issue is closed as "not planned" with the workflow's comment. `node_modules` of the main checkout is linked into each worktree (run `npm ci` there once).
+- **Secrets stay on the PC**, outside the repositories, every file mode 600 (the runner refuses looser ones), in `~/.config/charla-factory-demo/` (or `--config` / `CHARLA_FACTORY_CONFIG`): `app-id`, `app-key.pem` (the App's private key) and an optional `modelo.env` with `KEY=VALUE` lines for `FACTORY_PROVIDER`, `FACTORY_API_URL`, `FACTORY_MODEL`, `FACTORY_CODE_MODEL`, `FACTORY_REVIEW_MODEL`, `FACTORY_REVIEW_API_URL`, `FACTORY_API_KEY`, `FACTORY_REVIEW_API_KEY` and `FACTORY_BROWSER` (the Chrome/Chromium for the screenshots of a visual change; otherwise the first of `google-chrome`, `chromium`... on the `PATH`; the replay model needs none). It also needs `gh` logged in as the owner, to read the requests.
+- **Tokens.** The runner signs a JWT (RS256, `node:crypto`) and mints installation tokens limited to this repository. At start it checks that the installation grants contents, pull requests and issues write, and **fails closed** otherwise. The `factory.mjs` child gets a *narrow* token (issues write, contents read), not the user's `gh` login: its comments are then written by the App bot, and the closing numbers trust only `github-actions[bot]` and the `factory:` login of `policy/risk.yaml`, so a request run locally counts in them and in the board. The full token (push, PR) is minted only when there is something to push, goes to `git` through `GIT_CONFIG_*` environment variables (never the command line, never a `.git/config`) and is forgotten afterwards. Git hooks are disabled in the worktrees.
+- **The child's environment is an allowlist**: `PATH`, a throwaway `HOME`/`TMPDIR`, `GH_TOKEN`, `GITHUB_REPOSITORY`, the output file and the model settings above. The model's code still only runs in the existing sandbox (`lib/sandbox.js`).
+
+## Load test
+
+```bash
+npm run carga -- --n 30 --dry-run    # what it would file, creates nothing
+npm run carga -- --n 30 [--json] [--timeout-min M]
+npm run reset-demo -- --apply        # afterwards
+```
+
+Files N issues exactly as the form would (replay battery requests, profiles in equal parts) with your `gh` login, follows them, and reports per request and in aggregate (median, p90, max): issue → factory started, → PR, → merged, → deployed. The factory must be running (the runner or the workflow): run it once per mode to compare them. Use the replay model: it costs nothing.
+
 ## On the day
 
 ```bash
@@ -163,7 +189,7 @@ prints the closing numbers: requests, in production, waiting for a person, rejec
 
 ## Spending and switches
 
-The repository is public, but no key is in it: they live in GitHub Actions secrets and Cloudflare environment variables. Only one place can spend money on the model: the factory workflow. So there are two switches:
+The repository is public, but no key is in it: they live in GitHub Actions secrets and Cloudflare environment variables. Only one place can spend money on the model: the factory, run by the workflow or by the local runner (which needs the model key in its own config, and stops with Ctrl+C). So there are two switches:
 
 | Switch | Turns off | How | Takes effect |
 |--------|-----------|-----|--------------|

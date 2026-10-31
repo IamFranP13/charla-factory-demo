@@ -15,9 +15,11 @@
     "simulate": "node scripts/simulate.mjs",
     "preflight": "node scripts/preflight.mjs",
     "numbers": "node scripts/numbers.mjs",
+    "runner": "node scripts/runner.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "test:src": "node --test \"src/domain/*.test.mjs\" \"src/features/*/index.test.mjs\"",
-    "reset-demo": "node scripts/reset-demo.mjs"
+    "reset-demo": "node scripts/reset-demo.mjs",
+    "carga": "node scripts/carga.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.1"

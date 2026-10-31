@@ -247,3 +247,18 @@ test('CI never runs the tests a model wrote outside the sandbox: npm test covers
   const baseline = readFileSync(new URL('./sandbox.test.mjs', import.meta.url), 'utf8')
   assert.match(baseline, /sandboxTest\('baseline: the repository suite/)
 })
+
+test('the local runner mirrors factory.yml: same commit message, PR title, body, label and close comment', async () => {
+  const { closeComment } = await import('../lib/runner.js')
+  const source = readFileSync(new URL('../lib/runner.js', import.meta.url), 'utf8')
+  const run = steps(load('factory'), 'factory').find((s) => s.id === 'pr').run
+  const close = steps(load('factory'), 'factory').at(-1).run
+  assert.match(run, /git commit -m "Tarea #\$ISSUE \(\$PROFILE\)"/)
+  assert.ok(source.includes('`Tarea #${number} (${profile})`'))
+  assert.match(run, /--title "Tarea #\$ISSUE · \$PROFILE"/)
+  assert.ok(source.includes('`Tarea #${number} · ${profile}`'))
+  assert.match(run, /--body "Closes #\$ISSUE"/)
+  assert.ok(source.includes('`Closes #${number}`'))
+  assert.ok(close.includes(closeComment('$STATUS')), 'the comment on a closed task is the workflow one')
+  assert.match(close, /--reason "not planned"/)
+})
