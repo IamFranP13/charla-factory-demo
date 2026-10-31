@@ -58,7 +58,7 @@ test('factory.yml: installs the dev dependencies and gives the factory a browser
 test('gate.yml: triggers, stable job name and permissions', () => {
   const wf = load('gate')
   assert.deepEqual(Object.keys(wf.on).sort(), ['pull_request_review', 'pull_request_target'])
-  assert.deepEqual(wf.on.pull_request_target.types, ['opened', 'synchronize', 'reopened', 'closed'])
+  assert.deepEqual(wf.on.pull_request_target.types, ['opened', 'synchronize', 'reopened', 'ready_for_review', 'closed'])
   assert.deepEqual(wf.on.pull_request_review.types, ['submitted', 'dismissed'])
   assert.deepEqual(Object.keys(wf.jobs), ['risk-gate', 'rerun-gate', 'mark-closed'])
   assert.deepEqual(wf.permissions, { contents: 'write', 'pull-requests': 'write' })
@@ -94,7 +94,7 @@ test('gate.yml: judges the PR, merges on merge=true, labels the human route, and
   const merge = list.find((s) => s.run?.includes('gh pr merge'))
   assert.match(merge.run, /--auto --squash --match-head-commit "\$HEAD"/)
   assert.equal(merge.env.HEAD, '${{ steps.gate.outputs.head }}')
-  assert.equal(merge.if, "steps.gate.outputs.merge == 'true'")
+  assert.equal(merge.if, "steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true")
   const human = list.find((s) => s.run?.includes('necesita-humano'))
   assert.equal(human.if, "steps.gate.outputs.route == 'human' && steps.gate.outputs.pass != 'true'", 'only a pull request still waiting for a person is labelled and asks for one')
   const last = list.at(-1)
@@ -110,7 +110,7 @@ test('gate.yml: auto-merge is enabled as the factory App, so the merge closes th
   assert.ok(appIndex > gateIndex && appIndex < mergeIndex, 'App token is minted after the verdict, before the merge')
   const app = list[appIndex]
   assert.equal(app.id, 'app')
-  assert.equal(app.if, "steps.gate.outputs.merge == 'true'", 'the App key is only used when the gate decided to merge')
+  assert.equal(app.if, "steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true", 'the App key is only used when the gate decided to merge')
   assert.equal(app.with['app-id'], '${{ secrets.FACTORY_APP_ID }}')
   assert.equal(app.with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
   assert.equal(list[mergeIndex].env.GH_TOKEN, '${{ steps.app.outputs.token }}')
@@ -261,4 +261,13 @@ test('the local runner mirrors factory.yml: same commit message, PR title, body,
   assert.ok(source.includes('`Closes #${number}`'))
   assert.ok(close.includes(closeComment('$STATUS')), 'the comment on a closed task is the workflow one')
   assert.match(close, /--reason "not planned"/)
+})
+
+test('gate.yml: a draft pull request is judged but never merged; marking it ready judges it again', () => {
+  const wf = load('gate')
+  assert.ok(wf.on.pull_request_target.types.includes('ready_for_review'))
+  const list = steps(wf, 'risk-gate')
+  const notDraft = "steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true"
+  assert.equal(list.find((s) => s.id === 'app').if, notDraft, 'no App token for a draft')
+  assert.equal(list.find((s) => s.run?.includes('gh pr merge')).if, notDraft, 'no auto-merge for a draft')
 })

@@ -7,7 +7,7 @@ name: Risk gate
 # checkout below names the base branch explicitly for every event.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened, ready_for_review, closed]
   pull_request_review:
     types: [submitted, dismissed]
 
@@ -65,15 +65,17 @@ jobs:
 
       # The App key is only touched when the gate has already decided to merge.
       # Safe here: this job runs the BASE branch code only, never the PR's.
+      # A draft (the agent lane opens one when the agent is not confident) is judged but never merged:
+      # marking it ready for review judges it again.
       - id: app
-        if: steps.gate.outputs.merge == 'true'
+        if: steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.FACTORY_APP_ID }}
           private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
 
       # Pin the commit the gate judged: a push after the verdict cancels the merge.
-      - if: steps.gate.outputs.merge == 'true'
+      - if: steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true
         env:
           HEAD: ${{ steps.gate.outputs.head }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
