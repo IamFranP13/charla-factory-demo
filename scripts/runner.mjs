@@ -19,9 +19,9 @@ import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { mintInstallationToken, REQUIRED_PERMISSIONS } from '../lib/app-token.js'
+import { checkInstallation } from '../lib/app-token.js'
 import { ghJson } from '../lib/github.js'
-import { acquireLock, checkWorkflowDisabled, eligibleIssues, loadConfig, parseArgs, repoFromRemote, runCommand, runLoop, runTask } from '../lib/runner.js'
+import { abortAll, acquireLock, checkWorkflowDisabled, eligibleIssues, loadConfig, makeTokenMinter, parseArgs, repoFromRemote, runCommand, runLoop, runTask } from '../lib/runner.js'
 
 const root = new URL('..', import.meta.url).pathname
 const HELP = `Uso: npm run runner -- [--paralelo N] [--intervalo S] [--repo owner/repo] [--config DIR]
@@ -51,35 +51,30 @@ async function main() {
   const release = acquireLock(join(configDir, 'runner.lock'))
   try {
     // Fails closed here, before any request: the installation must grant what the pipeline needs.
-    const mint = (permissions, needs) => mintInstallationToken({ appId: config.appId, privateKey: config.privateKey, repo, permissions, needs })
-    await mint(undefined, REQUIRED_PERMISSIONS)
-    const mintToken = async (scope) => (scope === 'full' ? await mint(undefined, REQUIRED_PERMISSIONS) : await mint({ issues: 'write', contents: 'read' })).token
+    await checkInstallation({ appId: config.appId, privateKey: config.privateKey, repo })
+    const mintToken = makeTokenMinter({ appId: config.appId, privateKey: config.privateKey, repo })
 
     let stopping = false
     process.on('SIGINT', () => {
-      if (stopping) process.exit(130)
+      if (stopping) {
+        // Second Ctrl+C: no request is left running (and spending), no worktree behind, the lock freed.
+        abortAll()
+        release()
+        process.exit(130)
+      }
       stopping = true
       log('parando: termino las peticiones en curso y no empiezo ninguna más (Ctrl+C otra vez para salir ya)')
     })
     process.on('SIGTERM', () => { stopping = true })
 
     log(`runner de ${repo}: hasta ${args.paralelo} peticiones a la vez, consulta cada ${args.intervalo} s`)
-    let lastCheck = Date.now()
     await runLoop({
       paralelo: args.paralelo,
       poll: async () => {
-        // Someone enabling the workflow meanwhile would double every request: stop taking new ones.
-        if (Date.now() - lastCheck > 60000) {
-          lastCheck = Date.now()
-          try {
-            await checkWorkflowDisabled({ run: runCommand, repo })
-          } catch (error) {
-            stopping = true
-            throw error
-          }
-        }
         return ghJson(`repos/${repo}/issues?labels=entrada&state=open&creator=${owner}&per_page=100`, { paginate: true })
       },
+      // Someone enabling the workflow meanwhile would double every request: checked before each claim.
+      guard: () => checkWorkflowDisabled({ run: runCommand, repo }),
       eligible: (issues, taken) => eligibleIssues(issues, { owner, taken }),
       start: async (number) => {
         const result = await runTask(number, { root, repo, run: runCommand, mintToken, model: config.model, log })

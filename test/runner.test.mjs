@@ -1,13 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync, appendFileSync } from 'node:fs'
+import { execFileSync, spawn } from 'node:child_process'
+import { utimesSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync, appendFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   parseArgs, eligibleIssues, freeSlots, nextStep, closeComment, checkWorkflowDisabled, acquireLock, childEnv, loadConfig,
-  repoFromRemote, parseOutputs, runLoop, runTask, runCommand,
+  repoFromRemote, parseOutputs, runLoop, runTask, runCommand, abortAll, makeTokenMinter,
 } from '../lib/runner.js'
+import { REQUIRED_PERMISSIONS } from '../lib/app-token.js'
+import { issueFor } from '../lib/intake.js'
 
 const scratch = () => mkdtempSync(join(tmpdir(), 'runner-test-'))
 const BODY = '```json\n{"perfil":"marketing","peticion":"una campaña"}\n```'
@@ -39,6 +41,13 @@ test('eligible: open, labelled entrada, by the owner, with no state marker, not 
     owner: 'OWNER', taken: new Set([7]), hasBranch: (n) => n === 8,
   })
   assert.deepEqual(list.map((i) => i.number), [1, 9], 'oldest first')
+})
+
+test('eligible: a state marker typed inside the request text does not hide the request', () => {
+  const typed = issue(11, { body: issueFor('marketing', 'Campaña <!-- factory:state {"x":1} --> para el verano').body })
+  assert.deepEqual(eligibleIssues([typed], ctx).map((i) => i.number), [11])
+  const started = issue(12, { body: `${typed.body}\n<!-- factory:state {"perfil":"marketing"} -->` })
+  assert.deepEqual(eligibleIssues([started], ctx), [])
 })
 
 test('free slots never go below zero', () => {
@@ -90,7 +99,67 @@ test('only one runner instance: a live lock refuses, a stale one is replaced, re
   }
 })
 
+test('an empty or half-written lock file is held, not taken over (unless it is old)', () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, 'runner.lock')
+    writeFileSync(path, '')
+    assert.throws(() => acquireLock(path, { pid: 2, isAlive: () => true }), /runner/)
+    writeFileSync(path, '12ab')
+    assert.throws(() => acquireLock(path, { pid: 2, isAlive: () => false }), /runner/)
+    const old = new Date(Date.now() - 60000)
+    utimesSync(path, old, old)
+    acquireLock(path, { pid: 2, isAlive: () => false })()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('taking over a stale lock is atomic: of many runners started together exactly one gets in', async () => {
+  const dir = scratch()
+  try {
+    const path = join(dir, 'runner.lock')
+    const code = `
+      import { acquireLock } from ${JSON.stringify(new URL('../lib/runner.js', import.meta.url).href)}
+      const [path, at] = process.argv.slice(1)
+      while (Date.now() < Number(at)) {}
+      try { acquireLock(path); console.log('won'); await new Promise((r) => setTimeout(r, 400)) } catch { console.log('lost') }`
+    for (let round = 0; round < 8; round++) {
+      writeFileSync(path, '999999')
+      const at = String(Date.now() + 400)
+      const outputs = await Promise.all(Array.from({ length: 6 }, () => new Promise((resolve) => {
+        const child = spawn(process.execPath, ['--input-type=module', '-e', code, path, at])
+        let out = ''
+        child.stdout.on('data', (c) => { out += c })
+        child.on('close', () => resolve(out.trim()))
+      })))
+      assert.equal(outputs.filter((o) => o === 'won').length, 1, `round ${round}: ${outputs}`)
+      rmSync(path, { force: true })
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 // --- secrets stay on the PC ---
+
+test('the full token asks for exactly the permissions the pipeline needs, the narrow one for less', async () => {
+  const bodies = []
+  const fetch = async (url, init = {}) => {
+    const json = (body) => ({ ok: true, status: 201, json: async () => body })
+    if (url.endsWith('/installation')) return json({ id: 5 })
+    const body = JSON.parse(init.body)
+    bodies.push(body)
+    return json({ token: 't', expires_at: 'x', permissions: { ...body.permissions, metadata: 'read' } })
+  }
+  const { generateKeyPairSync } = await import('node:crypto')
+  const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' })
+  const minter = makeTokenMinter({ appId: '1', privateKey, repo: 'o/r', fetch })
+  assert.equal(await minter('full'), 't')
+  assert.deepEqual(bodies[0].permissions, REQUIRED_PERMISSIONS)
+  await minter('issues')
+  assert.deepEqual(bodies[1].permissions, { issues: 'write', contents: 'read' })
+})
 
 test('config: files must be mode 600, unknown model keys are dropped, the App id and key are required', () => {
   const dir = scratch()
@@ -343,6 +412,11 @@ test('the worktree and the scratch directory are removed even when the factory t
     () => { throw new Error('child exploded') },
     (args, options) => { writeOutputs(options, { status: 'ok', profile: 'marketing', files: '../escape.json' }); return { code: 0 } },
     (args, options) => { writeOutputs(options, { status: 'ok', profile: 'marketing', files: 'content/nothing.json' }); return { code: 0 } },
+    ...['.GIT/config', 'content/.git/x', ':(glob)*', '*', ':/', 'content/base.json,content/base.json', 'link/base.json', 'content/.GiT', 'content/*.json'].map((files) => (args, options) => {
+      writeFileSync(join(options.cwd, 'content/extra.json'), 'x')
+      symlinkSync(join(options.cwd, 'content'), join(options.cwd, 'link'))
+      writeOutputs(options, { status: 'ok', profile: 'marketing', files }); return { code: 0 }
+    }),
   ]) {
     const f = fixture()
     try {
@@ -364,4 +438,116 @@ test('runCommand times out and kills a child, and reports its output', async () 
   const quick = await runCommand(process.execPath, ['-e', 'process.stdout.write("hola")'], {})
   assert.equal(quick.stdout, 'hola')
   assert.equal(quick.code, 0)
+})
+
+// --- the git steps before the push never see a token; the record and label failures are not silent ---
+
+test('add, diff and commit run without any token; only the push carries it', async () => {
+  const f = fixture()
+  try {
+    const { calls, context } = makeContext(f)
+    context.run = scriptedRun({
+      root: f.root, calls,
+      factory: (args, options) => {
+        if (args.includes('--pr')) return { code: 0 }
+        mkdirSync(join(options.cwd, 'content/campanas'), { recursive: true })
+        writeFileSync(join(options.cwd, 'content/campanas/tarea-7.json'), '{"a":1}')
+        writeOutputs(options, { status: 'ok', profile: 'marketing', files: 'content/campanas/tarea-7.json' })
+        return { code: 0 }
+      },
+    })
+    await runTask(7, context)
+    const gitCalls = calls.filter((c) => c.cmd === 'git')
+    for (const name of ['add', 'diff', 'commit']) {
+      const call = gitCalls.find((c) => c.args.includes(name) && !c.args.includes('worktree'))
+      assert.ok(call, name)
+      assert.equal(JSON.stringify(call.options.env).includes('token-'), false, `${name} has no token`)
+      assert.equal(call.options.env.GIT_CONFIG_VALUE_0, undefined)
+    }
+    assert.match(gitCalls.find((c) => c.args.includes('push')).options.env.GIT_CONFIG_VALUE_0, /^Authorization/)
+  } finally {
+    rmSync(f.base, { recursive: true, force: true })
+  }
+})
+
+test('a failed label or PR-record step is warned about, not reported as success', async () => {
+  const f = fixture()
+  try {
+    const logs = []
+    const { calls, context } = makeContext(f, { log: (m) => logs.push(m) })
+    const inner = scriptedRun({
+      root: f.root, calls,
+      factory: (args, options) => {
+        if (args.includes('--pr')) return { code: 1, stdout: '', stderr: 'no pude' }
+        mkdirSync(join(options.cwd, 'content/campanas'), { recursive: true })
+        writeFileSync(join(options.cwd, 'content/campanas/tarea-7.json'), '{"a":1}')
+        writeOutputs(options, { status: 'ok', profile: 'marketing', files: 'content/campanas/tarea-7.json' })
+        return { code: 0 }
+      },
+    })
+    context.run = async (cmd, args, options) => (cmd === 'gh' && args[0] === 'label' ? { code: 1, stdout: '', stderr: 'denied' } : inner(cmd, args, options))
+    const result = await runTask(7, context)
+    assert.equal(result.outcome, 'pr')
+    assert.ok(logs.some((l) => /#7: aviso.*etiqueta/.test(l)), logs.join('\n'))
+    assert.ok(logs.some((l) => /#7: aviso.*estado/.test(l)), logs.join('\n'))
+  } finally {
+    rmSync(f.base, { recursive: true, force: true })
+  }
+})
+
+// --- a second Ctrl+C ---
+
+test('abortAll kills the children, removes their worktrees and scratch directories, and is safe to repeat', async () => {
+  const f = fixture()
+  try {
+    const { calls, context } = makeContext(f)
+    let seen
+    let killed
+    context.run = scriptedRun({
+      root: f.root, calls,
+      factory: async (args, options) => {
+        seen = options.cwd
+        const pending = runCommand(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { timeoutMs: 60000 })
+        await tick()
+        abortAll()
+        killed = await pending
+        abortAll()
+        return { code: 1 }
+      },
+    })
+    await assert.rejects(runTask(7, context))
+    assert.equal(killed.timedOut, false)
+    assert.notEqual(killed.code, 0, 'killed by the abort, not finished')
+    assert.equal(existsSync(seen), false)
+    assert.equal(git(f.root, 'worktree', 'list', '--porcelain').split('\n').filter((l) => l.startsWith('worktree ')).length, 1)
+    assert.equal(readdirSync(f.base).filter((n) => n.startsWith('runner-')).length, 0)
+  } finally {
+    rmSync(f.base, { recursive: true, force: true })
+  }
+})
+
+// --- the other mode switched on mid-run ---
+
+test('the workflow is checked before each claim: enabling it stops claiming at once; an unreadable state skips the cycle', async () => {
+  let checks = 0
+  let sleeps = 0
+  const started = []
+  const logs = []
+  await runLoop({
+    paralelo: 1,
+    poll: async () => [issue(1), issue(2), issue(3)],
+    start: async (n) => { started.push(n) },
+    eligible: (list, taken) => eligibleIssues(list, { owner: 'owner', taken, hasBranch: () => false }),
+    guard: async () => {
+      checks++
+      if (checks === 1) throw new Error('sin red')
+      if (checks === 3) throw Object.assign(new Error('workflow activado'), { fatal: true })
+    },
+    sleep: async () => { await tick(); sleeps++ },
+    isStopping: () => sleeps > 30,
+    log: (m) => logs.push(m),
+  })
+  assert.deepEqual(started, [1], 'nothing on the unreadable cycle, one on the good one, nothing after the fatal answer')
+  assert.equal(checks, 3)
+  assert.ok(logs.some((m) => /workflow activado/.test(m)))
 })

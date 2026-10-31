@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, createVerify } from 'node:crypto'
-import { signJwt, mintInstallationToken, missingPermissions, REQUIRED_PERMISSIONS } from '../lib/app-token.js'
+import { signJwt, mintInstallationToken, checkInstallation, missingPermissions, REQUIRED_PERMISSIONS } from '../lib/app-token.js'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' })
@@ -67,4 +67,14 @@ test('fails closed when the App is not installed or GitHub refuses', async () =>
 test('missingPermissions compares levels: read < write < admin, absent is missing', () => {
   assert.deepEqual(missingPermissions({ issues: 'admin', contents: 'write' }, { issues: 'write', contents: 'write' }), [])
   assert.deepEqual(missingPermissions({ issues: 'read' }, { issues: 'write', contents: 'read' }), ['issues: write', 'contents: read'])
+})
+
+test('the startup check reads what the installation grants without minting any token', async () => {
+  const calls = []
+  const answer = (permissions) => async (url, init) => { calls.push(url); return { ok: true, status: 200, json: async () => ({ id: 77, permissions }) } }
+  await checkInstallation({ appId: '1', privateKey: pem, repo: 'o/r', needs: REQUIRED_PERMISSIONS, fetch: answer({ contents: 'write', pull_requests: 'write', issues: 'write' }) })
+  assert.equal(calls.length, 1)
+  assert.match(calls[0], /\/repos\/o\/r\/installation$/)
+  await assert.rejects(checkInstallation({ appId: '1', privateKey: pem, repo: 'o/r', needs: REQUIRED_PERMISSIONS, fetch: answer({ contents: 'write', pull_requests: 'read', issues: 'write' }) }), /pull_requests: write/)
+  assert.ok(calls.every((url) => !url.includes('access_tokens')))
 })
