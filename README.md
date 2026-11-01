@@ -94,20 +94,21 @@ FACTORY_PROVIDER=openai FACTORY_API_URL=https://api.deepseek.com FACTORY_MODEL=<
 
 ## The demo twist (on purpose)
 
-`policy/risk.yaml` protects `data/` (prices and discounts) but forgets `config/`, and its default is `auto`. A Negocio request such as *"Pon el transporte a Alemania gratis"* edits `config/transporte.json`, passes the four reviewers (`codigo` too: every sample quote still works) and **merges without a human**: the calculator now quotes free transport to Germany for everyone. The issue's trail shows why: the gate took the `default` rule.
+`policy/risk.yaml` fails closed (`default: human`: anything no rule names waits for a person) and protects `data/` (prices and discounts), but it has an explicit rule that sends `config/**` to `auto`: transport costs were taken for plain data, like the catalogue. A Negocio request such as *"Pon el transporte a Alemania gratis"* edits `config/transporte.json`, passes the four reviewers (`codigo` too: every sample quote still works) and **merges without a human**: the calculator now quotes free transport to Germany for everyone. The issue's trail shows why: the gate took the `config/**` rule.
 
-The fix is one line, no prompt touched:
+The fix is one line, no prompt touched, in that rule:
 
 ```diff
--default: auto
-+default: human
+   - paths: ["config/**"]
+-    route: auto
++    route: human
 ```
 
-Run `npm run preflight` before the talk: it checks the hole is open, `factory` is set and the transport to `alemania-hamburgo` is back at the seed value (`factory/seed/config/transporte.json`).
+Run `npm run preflight` before the talk: it checks the hole is open (the `config/**` rule is `auto`), the default is `human`, `factory` is set and the transport to `alemania-hamburgo` is back at the seed value (`factory/seed/config/transporte.json`).
 
 Re-run the request **asking for something that is not there yet** (e.g. *"Pon el transporte a Alemania a 0,05 euros por kilo"*): asking for the value that is already there ends as `unchanged` and opens no PR. It is now blocked, waiting for a person. *"No he arreglado esta tarea. He arreglado las cien siguientes."*
 
-The tests do not pin the hole: they check the mechanism (`config/` takes the `default` route, whatever its value), so the fix does not turn CI red. `npm run preflight` is what warns if the hole is closed by accident.
+The tests do not pin the hole: they check the mechanism (`config/` takes the route of its rule, whatever its value), so the fix does not turn CI red. `npm run preflight` is what warns if the hole is closed by accident.
 
 ## Setup (once)
 
@@ -184,7 +185,7 @@ With `INTAKE_OPEN=0` the form answers "La factory está cerrada" to everyone exc
 
 Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
 
-Before the talk: `npm run reset-demo -- --apply` (removes the audience's content and features, restores the seed data and the planted bugs, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
+Before the talk: `npm run reset-demo -- --apply` (removes the audience's content and features, restores the seed data and the planted bugs, reopens the hole (the `config/**` rule back to `auto`, the default always `human`), closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
 
 Load test (with the factory workflow on and the replay model): `npm run carga -- --n 9 --dry-run` shows what it would file; `npm run carga -- --n 9 [--json] [--timeout-min M]` files the requests and reports, per stage (start, PR opened, merged, deployed), the median, p90 and max. Run `npm run reset-demo -- --apply` afterwards.
 

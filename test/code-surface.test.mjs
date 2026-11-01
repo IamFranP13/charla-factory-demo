@@ -22,8 +22,8 @@ const scratch = (entries = ['content', 'catalogo', 'data', 'config', 'brain', 's
   const root = mkdtempSync(join(tmpdir(), 'desarrollo-'))
   scratches.push(root)
   rehearsalCopy(repo, root, entries)
-  // The live policy default changes after a talk (the fix is `default: human`); a copy starts from the open hole.
-  if (existsSync(join(root, 'policy/risk.yaml'))) writeFileSync(join(root, 'policy/risk.yaml'), readFileSync(join(root, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, 'default: auto'))
+  // The config/** rule changes after a talk (the fix is `route: human`); a copy starts from the open hole.
+  if (existsSync(join(root, 'policy/risk.yaml'))) writeFileSync(join(root, 'policy/risk.yaml'), readFileSync(join(root, 'policy/risk.yaml'), 'utf8').replace(/(- paths: \["config\/\*\*"\]\n\s+route: )\w+/, '$1auto'))
   return root
 }
 after(() => scratches.forEach((dir) => rmSync(dir, { recursive: true, force: true })))

@@ -14,7 +14,7 @@ The Spec writer classifies every request into a **kind** (`factory/kinds.yaml`);
 |------|------|------|------|
 | `campana` | `content/campanas/` | Campaign messages and banners, one new JSON file per request | auto |
 | `producto`, `destino` | `catalogo/productos/`, `catalogo/destinos/` | A new product or export destination, one new JSON file per request | auto |
-| `precios`, `descuentos`, `transporte` | `data/precios.json`, `data/descuentos.json`, `config/transporte.json` | Prices per kg, volume discounts, transport tariffs (modify one file) | `data/` human; `config/` falls to the default |
+| `precios`, `descuentos`, `transporte` | `data/precios.json`, `data/descuentos.json`, `config/transporte.json` | Prices per kg, volume discounts, transport tariffs (modify one file) | `data/` human; `config/` is an explicit rule (the demo hole, `auto`) |
 | `estilo` | `src/styles/global.css`, `src/components/{Paisaje,CampanaCard,ProductoCard,Header,Footer}.astro` | The look of the site (layout, spacing, sizes, contrast), modify only, using only the design system | auto, if the static check passes (and the `ux`/`ui` reviewers approve what they see in the screenshots) |
 | `feature`, `bug` | `src/features/<id>/index.js` and `index.test.mjs` | A new section of a page (folder `tarea-<n>`, named by the factory) or a fix in an existing feature | auto, if the tests pass |
 | `cambio`, `bug` | `src/domain/*.js` and `*.test.mjs` | A business rule of the quote calculator (a new file is named `tarea-<n>...`) | human |
@@ -34,7 +34,7 @@ Code is never trusted. Platform code (`lib/`, `scripts/`, `functions/`, the gate
 2. **Stay inside the surface of your kind.** The factory rejects any file outside it.
 3. **One request, one new file** for `campana`, `producto` and `destino` (`tarea-<n>.json`, named by the factory). The data kinds `precios`, `descuentos` and `transporte` edit only their own file. Code (`feature`, `bug`, `cambio`) touches at most 3 files, each with its test; `estilo` modifies at most 2 existing files of its surface. Do not edit other people's files.
 4. **Respect the schemas** in `lib/schemas.js`, the catalogue rules in `src/domain/` and the feature contract in `src/features/contrato.js` (`export default { id, titulo, donde, calcular(estado) }`, pure, returns data and never markup). Plain text only: no HTML, no scripts, no links. A visual change uses only the tokens of `design/system.md`: no new colour, font or component. A new product has no price and a new destination has no tariff until a price or a tariff request sets them; never invent either. In code, do not write the forbidden words above, not even in comments.
-5. **The risk gate is not yours.** Never try to change `policy/risk.yaml` or the gate. The gate decides by what the diff touches, not by who asks.
+5. **The risk gate is not yours.** Never try to change `policy/risk.yaml` or the gate. The gate decides by what the diff touches, not by who asks. Its default is `human` (fails closed): you may change any file, but only the gate decides what merges by itself.
 6. **Tests first** when you change the platform: `npm test` must pass before a PR.
 
 ## Commands

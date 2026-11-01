@@ -8,7 +8,7 @@
 //
 // Files: removes the audience's files (content/*/tarea-N.json, catalogo/*/tarea-N.json, the feature folders
 // src/features/tarea-N/ and the domain files src/domain/tarea-N*), copies the seed back (factory/seed/: the
-// data, the code with its two planted bugs and the broken home hero, so a merged fix is undone) and reopens the policy hole (default: auto).
+// data, the code with its two planted bugs and the broken home hero, so a merged fix is undone) and reopens the policy hole (the config/ rule back to auto; the default always human).
 // GitHub: closes open factory PRs (branches tarea/N) and open requests, and removes the "entrada"
 // label from every request so the board starts empty and the intake cap is free again.
 
@@ -21,6 +21,7 @@ import { gh, ghJson, repoSlug } from '../lib/github.js'
 
 const SEED = 'factory/seed'
 const POLICY = 'policy/risk.yaml'
+const HOLE = /(- paths: \["config\/\*\*"\]\n\s+route: )\w+/
 
 export function resetFiles(root, { dryRun = false } = {}) {
   const changes = []
@@ -46,7 +47,8 @@ export function resetFiles(root, { dryRun = false } = {}) {
   }
 
   const policy = readFileSync(join(root, POLICY), 'utf8')
-  const open = policy.replace(/^default: .*$/m, 'default: auto')
+  // The hole is the config/ rule; the default always fails closed, whatever happened during the talk.
+  const open = policy.replace(HOLE, '$1auto').replace(/^default: .*$/m, 'default: human')
   if (open !== policy) {
     changes.push(POLICY)
     if (!dryRun) writeFileSync(join(root, POLICY), open)

@@ -17,7 +17,7 @@ function scratchRepo({ policy, tariff } = {}) {
     cpSync(join(repo, 'factory/seed', file), join(root, 'factory/seed', file))
     cpSync(join(repo, 'factory/seed', file), join(root, file))
   }
-  const risk = readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, 'default: auto')
+  const risk = readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/(- paths: \["config\/\*\*"\]\n\s+route: )\w+/, '$1auto')
   writeFileSync(join(root, 'policy/risk.yaml'), policy ? policy(risk) : risk)
   cpSync(join(repo, 'factory/seed/config/transporte.json'), join(root, 'factory/seed/config/transporte.json'))
   const seed = JSON.parse(readFileSync(join(root, 'factory/seed/config/transporte.json'), 'utf8'))
@@ -29,14 +29,20 @@ const run = (root) => spawnSync(process.execPath, [script, '--root', root], { en
 test('everything ready: open hole, factory set, seed tariff: exit 0', () => {
   const r = run(scratchRepo())
   assert.equal(r.status, 0, r.stdout + r.stderr)
-  assert.equal(r.stdout.match(/✓/g).length, 5)
+  assert.equal(r.stdout.match(/✓/g).length, 6)
   assert.doesNotMatch(r.stdout, /✗/)
 })
 
-test('default: human (hole already closed): exit 1 and the ✗ line names the hole', () => {
-  const r = run(scratchRepo({ policy: (s) => s.replace(/^default:.*$/m, 'default: human') }))
+test('the hole already closed (config/ rule set to human): exit 1 and the ✗ line names the hole', () => {
+  const r = run(scratchRepo({ policy: (s) => s.replace(/(- paths: \["config\/\*\*"\]\n\s+route: )\w+/, '$1human') }))
   assert.equal(r.status, 1)
   assert.match(r.stdout, /✗.*agujero/)
+})
+
+test('default: auto (the gate no longer fails closed, agents could merge anything): exit 1 and it says so', () => {
+  const r = run(scratchRepo({ policy: (s) => s.replace(/^default:.*$/m, 'default: auto') }))
+  assert.equal(r.status, 1)
+  assert.match(r.stdout, /✗.*default.*human/)
 })
 
 test('transport to Germany is not the seed tariff (the twist already happened): exit 1 and it says how to reset', () => {

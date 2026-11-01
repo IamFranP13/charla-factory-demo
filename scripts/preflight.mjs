@@ -18,9 +18,15 @@ const checks = [
   () => {
     const policy = parsePolicy(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'))
     const [file] = routeFor(policy, ['config/transporte.json']).files
-    return file.route === 'auto' && file.rule === 'default'
-      ? { ok: true, text: 'El agujero está abierto: config/ se auto-fusiona por la regla default' }
-      : { ok: false, text: `El agujero NO está abierto: config/ va por «${file.route}» (regla ${file.rule}). Restaura «default: auto» en policy/risk.yaml` }
+    return file.route === 'auto' && file.rule === 'config/**'
+      ? { ok: true, text: 'El agujero está abierto: config/ se auto-fusiona por su regla (config/**: auto)' }
+      : { ok: false, text: `El agujero NO está abierto: config/ va por «${file.route}» (regla ${file.rule}). Pon «route: auto» en la regla config/** de policy/risk.yaml (o npm run reset-demo)` }
+  },
+  () => {
+    const policy = parsePolicy(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'))
+    return policy.default === 'human'
+      ? { ok: true, text: 'La puerta falla cerrada: lo que ninguna regla nombra espera a una persona (default: human)' }
+      : { ok: false, text: `default: ${policy.default} en policy/risk.yaml: un agente podría fusionar solo cualquier fichero sin regla. Pon «default: human»` }
   },
   () => {
     const policy = parsePolicy(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'))

@@ -17,16 +17,18 @@ test('local mode: prints the route of each file and the overall route', () => {
   const r = run(['content/campanas/a.json', 'data/precios.json'])
   assert.equal(r.status, 0)
   assert.equal(r.stderr, '')
-  assert.match(r.stdout, /content\/campanas\/a\.json\s+auto\s+content\/campanas\/\*\*/)
+  assert.match(r.stdout, /content\/campanas\/a\.json\s+auto\s+content\/campanas\/\*\.json/)
   assert.match(r.stdout, /data\/precios\.json\s+human\s+data\/\*\*/)
   assert.match(r.stdout, /Route: human/)
 })
 
 test('local mode --json prints machine-readable output', () => {
-  const route = parsePolicy(readFileSync(join(repo, 'policy/risk.yaml'), 'utf8')).default
+  const route = parsePolicy(readFileSync(join(repo, 'policy/risk.yaml'), 'utf8')).rules.find((r) => r.paths.includes('config/**')).route
   const r = run(['--json', 'config/transporte.json'])
   assert.equal(r.status, 0)
-  assert.deepEqual(JSON.parse(r.stdout), { route, files: [{ file: 'config/transporte.json', route, rule: 'default' }] })
+  assert.deepEqual(JSON.parse(r.stdout), { route, files: [{ file: 'config/transporte.json', route, rule: 'config/**' }] })
+  const other = run(['--json', 'tests/unknown.mjs'])
+  assert.deepEqual(JSON.parse(other.stdout).files[0], { file: 'tests/unknown.mjs', route: 'human', rule: 'default' })
 })
 
 test('--policy points at another policy file', () => {
@@ -142,22 +144,23 @@ test('CI mode: the judged head sha is exported so the merge can pin it', () => {
   assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /^head=abc123$/m)
 })
 
-// The live default is not pinned: these tests use explicit policies derived from the real file.
-function policyWithDefault(route) {
+// The live hole is not pinned: these tests use explicit policies derived from the real file (the default stays human).
+const HOLE = /(- paths: \["config\/\*\*"\]\n\s+route: )\w+/
+function policyWithHole(route) {
   const file = join(mkdtempSync(join(tmpdir(), 'gate-')), 'risk.yaml')
-  writeFileSync(file, readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(/^default:.*$/m, `default: ${route}`))
+  writeFileSync(file, readFileSync(join(repo, 'policy/risk.yaml'), 'utf8').replace(HOLE, `$1${route}`))
   return file
 }
 
-test('CI mode: with default: auto the hole is open (config/ auto-merges for the factory)', () => {
+test('CI mode: with the config/** rule on auto the hole is open (config/ auto-merges for the factory)', () => {
   const env = fakeGh({ files: [{ filename: 'config/transporte.json' }], reviews: [] })
-  assert.equal(run(['--pr', '7', '--policy', policyWithDefault('auto')], env).status, 0)
+  assert.equal(run(['--pr', '7', '--policy', policyWithHole('auto')], env).status, 0)
   assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /merge=true/)
 })
 
-test('CI mode: with default: human the fix blocks config/ until an approver approves', () => {
+test('CI mode: with the config/** rule on human the fix blocks config/ until an approver approves', () => {
   const env = fakeGh({ files: [{ filename: 'config/transporte.json' }], reviews: [] })
-  const r = run(['--pr', '7', '--policy', policyWithDefault('human')], env)
+  const r = run(['--pr', '7', '--policy', policyWithHole('human')], env)
   assert.equal(r.status, 1)
   assert.match(readFileSync(env.GITHUB_OUTPUT, 'utf8'), /merge=false/)
 })

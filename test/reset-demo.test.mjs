@@ -24,7 +24,8 @@ function afterTalk() {
   const t = JSON.parse(readFileSync(join(root, 'config/transporte.json'), 'utf8'))
   t['alemania-hamburgo'] = { eurPorKg: 0, minimo: 0 }
   write('config/transporte.json', t)
-  write('policy/risk.yaml', readFileSync(join(root, 'policy/risk.yaml'), 'utf8').replace(/^default: .*/m, 'default: human'))
+  // The hole was fixed during the talk, and someone also opened the default: reset puts the hole back, never the default.
+  write('policy/risk.yaml', readFileSync(join(root, 'policy/risk.yaml'), 'utf8').replace(/(- paths: \["config\/\*\*"\]\n\s+route: )\w+/, '$1human').replace(/^default: .*/m, 'default: auto'))
   return root
 }
 
@@ -39,7 +40,9 @@ test('resetFiles removes audience files, restores the seed data and reopens the 
   for (const path of ['data/precios.json', 'data/descuentos.json', 'config/transporte.json']) {
     assert.deepEqual(json(root, path), json(root, `factory/seed/${path}`), path)
   }
-  assert.match(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'), /^default: auto$/m)
+  const risk = readFileSync(join(root, 'policy/risk.yaml'), 'utf8')
+  assert.match(risk, /- paths: \["config\/\*\*"\]\n\s+route: auto/)
+  assert.match(risk, /^default: human$/m)
   assert.ok(existsSync(join(root, 'content/campanas')), 'the seed campaigns stay')
   assert.deepEqual(changes.sort(), [
     'catalogo/destinos/tarea-10.json',
@@ -110,4 +113,10 @@ test('with --apply --no-push it resets files and cleans GitHub: closes factory P
   for (const n of [9, 15]) assert.match(calls, new RegExp(`issue edit ${n} .*--remove-label entrada`))
   assert.doesNotMatch(calls, /issue edit 21/)
   assert.equal(existsSync(join(root, 'content/campanas/tarea-9.json')), false)
+})
+
+test('reset after the fix and an opened default gives back the policy byte for byte', () => {
+  const root = afterTalk()
+  resetFiles(root)
+  assert.equal(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'), readFileSync(join(repo, 'policy/risk.yaml'), 'utf8'))
 })

@@ -5,8 +5,10 @@
 #   human = blocked until one of the approvers approves the pull request.
 # Each file takes the route of the first rule that matches it, or the default.
 # The strictest route among all touched files wins.
+# Fails closed: an agent may change any file, so anything no rule names (the tests, .node-version, a new file anywhere)
+# waits for a person. Only what a rule below sends to auto merges by itself.
 
-default: auto
+default: human
 
 # GitHub login of the factory App (<app-slug>[bot]). Only pull requests opened by it,
 # from a branch of this repository, can auto-merge. Must match the real App slug.
@@ -60,16 +62,19 @@ rules:
       - "package-lock.json"
     route: human
 
-  # Marketing: campaigns.
-  - paths: ["content/campanas/**"]
+  # Marketing: campaigns (data only: a script in the folder waits for a person).
+  - paths: ["content/campanas/*.json"]
     route: auto
 
-  # Producto: new products and export destinations.
-  - paths: ["catalogo/**"]
+  # Producto: new products and export destinations (data only).
+  - paths: ["catalogo/productos/*.json", "catalogo/destinos/*.json"]
     route: auto
 
   # Negocio: prices and volume discounts.
   - paths: ["data/**"]
     route: human
 
-  # config/ (transport costs) has no rule: it falls to the default. That is the hole of the demo.
+  # config/ (transport costs) was taken for plain data, like the catalogue, and sent to auto. That is the hole of the demo:
+  # a transport tariff of 0 €/kg merges by itself. The one-line fix: route: human (reset-demo puts the hole back).
+  - paths: ["config/**"]
+    route: auto
