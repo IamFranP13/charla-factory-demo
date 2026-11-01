@@ -8,15 +8,32 @@ import { parse } from 'yaml'
 import { ciScope, dataFolders } from '../lib/ci-scope.js'
 
 const kinds = parse(readFileSync(new URL('../factory/kinds.yaml', import.meta.url), 'utf8'))
-const ch = (status, path) => ({ status, path })
+const ch = (status, path, mode = status === 'D' ? '000000' : '100644') => ({ status, path, mode })
 
 test('dataFolders: the new-file folders of factory/kinds.yaml', () => {
   assert.deepEqual(dataFolders(kinds), ['content/campanas/', 'catalogo/productos/', 'catalogo/destinos/'])
 })
 
-test('ciScope: only added or modified JSON directly in a new-file folder is "datos"', () => {
+test('ciScope: only new regular JSON files directly in a new-file folder are "datos"', () => {
   assert.equal(ciScope([ch('A', 'content/campanas/tarea-38.json')], kinds), 'datos')
-  assert.equal(ciScope([ch('A', 'catalogo/productos/tarea-39.json'), ch('M', 'catalogo/destinos/italia.json')], kinds), 'datos')
+  assert.equal(ciScope([ch('A', 'catalogo/productos/tarea-39.json'), ch('A', 'catalogo/destinos/tarea-40.json')], kinds), 'datos')
+})
+
+test('ciScope: a change to an existing data file runs the full CI (the sample orders are only checked there)', () => {
+  assert.equal(ciScope([ch('M', 'catalogo/productos/limon-verna.json')], kinds), 'completo')
+})
+
+test('ciScope: quoted, odd, type-changed, symlinked or submodule paths run the full CI', () => {
+  const full = (changes) => assert.equal(ciScope(changes, kinds), 'completo', JSON.stringify(changes))
+  full([ch('A', '"content/campanas/tarea\\303\\261.json"')])
+  full([ch('A', 'content/campanas/a b.json')])
+  full([ch('A', 'content/campanas/T.JSON')])
+  full([ch('A', 'content/campanas/..json')])
+  full([ch('T', 'content/campanas/tarea-1.json')])
+  full([ch('A', 'content/campanasx/tarea-1.json')])
+  full([ch('A', 'content/campanas/tarea-1.json', '120000')])
+  full([ch('A', 'content/campanas/tarea-1.json', '160000')])
+  full([ch('A', 'content/campanas/tarea-1.json', '100755')])
 })
 
 test('ciScope: anything else runs the full CI', () => {
@@ -74,7 +91,13 @@ test('scripts/ci-scope.mjs: a pull request that only adds a campaign gets scope=
   }
 })
 
-test('scripts/ci-scope.mjs: platform changes, pushes and unreadable history get scope=completo', () => {
+test('scripts/ci-scope.mjs: platform changes, edits of existing data, pushes and unreadable history get scope=completo', () => {
+  const edit = repoWith({ 'factory/kinds.yaml': readFileSync(new URL('../factory/kinds.yaml', import.meta.url), 'utf8') + '\n' })
+  try {
+    assert.equal(runScript(edit, { GITHUB_EVENT_NAME: 'pull_request' }).output, 'scope=completo\n')
+  } finally {
+    rmSync(edit, { recursive: true, force: true })
+  }
   const platform = repoWith({ 'content/campanas/tarea-1.json': '{}', 'lib/x.js': '' })
   const data = repoWith({ 'content/campanas/tarea-1.json': '{}' })
   try {

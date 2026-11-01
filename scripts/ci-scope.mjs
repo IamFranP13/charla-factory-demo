@@ -20,10 +20,12 @@ function scope() {
   if (process.env.GITHUB_EVENT_NAME !== 'pull_request') return 'completo'
   try {
     const kinds = parse(readFileSync(join(root, 'factory/kinds.yaml'), 'utf8'))
-    const diff = execFileSync('git', ['diff', '--name-status', '--no-renames', 'HEAD^1', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    // `:<old mode> <new mode> <old sha> <new sha> <status>\t<path>` per changed file.
+    const diff = execFileSync('git', ['diff', '--raw', '--no-renames', 'HEAD^1', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
     const changes = diff.split('\n').filter(Boolean).map((line) => {
-      const [status, path] = line.split('\t')
-      return { status, path }
+      const [meta, path] = line.split('\t')
+      const [, mode, , , status] = meta.split(' ')
+      return { status, path, mode }
     })
     return ciScope(changes, kinds)
   } catch {
