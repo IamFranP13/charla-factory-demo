@@ -82,7 +82,7 @@ test('narrative: in progress at each station, in plain words addressed to "tu pe
     ['entrada', [], /entrado|entrar/i],
     ['spec', ['entrada'], /Spec writer.*tipo/],
     ['build', ['entrada', 'spec'], /Builder escribe/],
-    ['approver', [...HASTA_REVISION, ...REV], /Approver.*cuatro/],
+    ['approver', [...HASTA_REVISION, ...REV], /Approver.*tres/],
   ]
   for (const [estacion, previas, patron] of casos) {
     const n = espera(estacion, previas)

@@ -127,6 +127,23 @@ test('tomar: compares the copy\'s files with a clean clone of the base, applies 
   assert.ok(!git(clone, 'ls-files').includes('.fabrica'))
 }))
 
+test('cambios: the diff over the base and the text before/after of each changed file, read from the host-made clone', scratch(async (root) => {
+  const { source, copias, copy } = await world(root)
+  put(copy.dir, 'a.txt', 'dos')
+  put(copy.dir, 'content/campanas/tarea-5.json', '{"nueva":true}')
+  rmSync(join(copy.dir, 'viejo.txt'))
+  const node = trabajoNode({ source, copias })
+  const made = await node.tomar({ dir: copy.dir, base: copy.base, numero: 5, resumen: 'x' })
+  const changes = await node.cambios({ clone: made.clone, base: copy.base, files: made.files })
+  assert.match(changes.diff, /^diff --git a\/a\.txt b\/a\.txt/m)
+  assert.match(changes.diff, /\+dos/)
+  assert.match(changes.diff, /\+\{"nueva":true\}/)
+  assert.equal(changes.antes['a.txt'], 'uno')
+  assert.equal(changes.antes['content/campanas/tarea-5.json'], null)
+  assert.deepEqual(changes.despues.map((f) => [f.path, f.content]).sort(), [['a.txt', 'dos'], ['content/campanas/tarea-5.json', '{"nueva":true}']])
+  await assert.rejects(node.cambios({ clone: made.clone, base: 'nope', files: [] }), /base/)
+}))
+
 test('tomar: an unchanged copy makes no commit; a refused file ends in a Refusal and nothing is committed', scratch(async (root) => {
   const { source, copias, copy } = await world(root)
   const node = trabajoNode({ source, copias })
