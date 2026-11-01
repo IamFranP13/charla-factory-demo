@@ -1,0 +1,64 @@
+name: Deploy
+
+# Production deploy of the site, instead of Cloudflare's git builds (one per push, one at a time): with the audience
+# filing requests at once, a burst of merges must end in one or two deploys, each with everything merged so far.
+# Cloudflare: automatic deployments off on every branch, so this workflow is the only way to production.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The site build runs code a model wrote (the features): this job holds no secret.
+  build:
+    runs-on: ubuntu-latest
+    # A newer push to main cancels this build: only the latest main is worth deploying.
+    concurrency:
+      group: deploy-build
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # The Turnstile site key is public and read at build time by the request form.
+      - run: npm run build
+        env:
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+          retention-days: 1
+
+  # Holds the Cloudflare token and runs no repository code: it only uploads the built site and bundles functions/.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # An upload in progress is never cut; a newer one waiting replaces an older one waiting.
+    concurrency:
+      group: deploy-upload
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+      - env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PROJECT || 'charla-factory-demo' }}
+        run: npx --yes wrangler@4.156.0 pages deploy dist --project-name "$PROJECT" --branch main --commit-hash "$GITHUB_SHA" --commit-dirty=true

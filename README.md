@@ -139,12 +139,13 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 
 1. Create a Pages project from the repository. Build command `npm run build`, output directory `dist`. The `functions/` folder is picked up automatically.
    **Set the build environment variable `NODE_VERSION` = `26`** (Settings → Variables and Secrets → Production *and* Preview, type *Plaintext*). The build runs `scripts/validate-content.mjs` and `scripts/build-features.mjs`, which evaluate the domain and the features in the sandbox, and the sandbox refuses to run on a Node without the network switch (before 26): with an older Node the build fails with an explicit message instead of running model code.
+   **Production is deployed by `.github/workflows/deploy.yml`, not by Cloudflare's git builds**: Cloudflare builds one push at a time, so a burst of merges during the talk would queue one build per merge. In the project, turn off automatic deployments on every branch (Settings → Builds → Branch control: production and preview), so neither `main` nor the `tarea/*` branches build there. The workflow builds on each push to `main` (a newer push cancels a build in progress), uploads `dist` and deploys it with `wrangler pages deploy`; a burst of merges ends in one or two deploys. The build job holds no secret (the site build runs code a model wrote); the upload job holds the token and runs no repository code. GitHub: secrets `CLOUDFLARE_API_TOKEN` (an API token with **Cloudflare Pages: Edit** only) and `CLOUDFLARE_ACCOUNT_ID`; variables `TURNSTILE_SITE_KEY` (public, read at build time) and optionally `CLOUDFLARE_PROJECT` (default `charla-factory-demo`). The variables below stay in Cloudflare: the functions read them at run time.
 2. Create a Turnstile widget for the site's domain.
 3. Environment variables (production):
 
 | Variable | Value |
 |----------|-------|
-| `TURNSTILE_SITE_KEY` | Turnstile site key (used at build time) |
+| `TURNSTILE_SITE_KEY` | Turnstile site key (used at build time: also a GitHub repository variable, for `deploy.yml`) |
 | `TURNSTILE_SECRET` | Turnstile secret key |
 | `GITHUB_TOKEN` | Fine-grained token, this repository only, **Issues: read and write**, nothing else (also read by `/api/estado`) |
 | `GITHUB_REPO` | `owner/repo` |

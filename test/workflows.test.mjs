@@ -77,7 +77,7 @@ test('gate.yml: never checks out or runs the pull request head', () => {
 })
 
 test('no workflow interpolates expressions into run scripts (untrusted text goes through env)', () => {
-  for (const name of ['gate', 'factory', 'ci', 'rebuild']) {
+  for (const name of ['gate', 'factory', 'ci', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps) {
         if (s.run) assert.doesNotMatch(s.run, /\$\{\{/, `${name}: run script interpolates an expression`)
@@ -133,7 +133,7 @@ test('ci.yml: pull_request and push to main run install, test and build in job "
 })
 
 test('every action is pinned to a major version', () => {
-  for (const name of ['factory', 'gate', 'ci', 'rebuild']) {
+  for (const name of ['factory', 'gate', 'ci', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses)) {
         assert.match(s.uses, /^[\w-]+\/[\w-]+@v\d+$/, `${name}: ${s.uses}`)
@@ -211,7 +211,7 @@ test('every workflow takes Node from .node-version, and that version satisfies A
   const have = version.split('.').map(Number)
   const ok = have[0] > min[0] || (have[0] === min[0] && have.length >= 3 && (have[1] > min[1] || (have[1] === min[1] && have[2] >= min[2])))
   assert.ok(ok, `.node-version ${version} does not satisfy astro ${astro}`)
-  for (const name of ['ci', 'gate', 'factory', 'rebuild']) {
+  for (const name of ['ci', 'gate', 'factory', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
         assert.equal(s.with['node-version-file'], '.node-version', `${name}: setup-node must read .node-version`)
@@ -296,4 +296,40 @@ test('rebuild.yml: the App token is scoped to what the script writes', () => {
   assert.equal(app.with['permission-contents'], 'write')
   assert.equal(app.with['permission-pull-requests'], 'write')
   assert.equal(app.with['permission-issues'], 'write')
+})
+
+test('deploy.yml: every push to main deploys, a burst of merges ends in one or two deploys', () => {
+  const wf = load('deploy')
+  assert.deepEqual(wf.on.push, { branches: ['main'] })
+  assert.ok('workflow_dispatch' in wf.on, 'the owner can redeploy by hand')
+  assert.equal(wf.on.pull_request, undefined)
+  assert.equal(wf.on.pull_request_target, undefined)
+  assert.deepEqual(wf.permissions, { contents: 'read' })
+  // A newer push cancels a build in progress; an upload in progress is never cut, only a pending one is replaced.
+  assert.deepEqual(wf.jobs.build.concurrency, { group: 'deploy-build', 'cancel-in-progress': true })
+  assert.deepEqual(wf.jobs.deploy.concurrency, { group: 'deploy-upload', 'cancel-in-progress': false })
+  assert.equal(wf.jobs.deploy.needs, 'build')
+})
+
+test('deploy.yml: the build (which runs code a model wrote) has no secret; the upload holds the token and runs no repository code', () => {
+  const wf = load('deploy')
+  const text = raw('deploy')
+  const build = steps(wf, 'build')
+  assert.doesNotMatch(JSON.stringify(wf.jobs.build), /secrets\./, 'no secret in the build job')
+  assert.equal(build.find((s) => s.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false)
+  assert.ok(build.some((s) => s.run === 'npm ci'))
+  assert.equal(build.find((s) => s.run === 'npm run build').env.TURNSTILE_SITE_KEY, '${{ vars.TURNSTILE_SITE_KEY }}', 'the form needs its public key at build time')
+  const upload = build.find((s) => s.uses?.startsWith('actions/upload-artifact@'))
+  assert.equal(upload.with.name, 'site')
+  assert.equal(upload.with.path, 'dist')
+
+  const deploy = steps(wf, 'deploy')
+  assert.equal(deploy.find((s) => s.uses?.startsWith('actions/checkout@')).with['persist-credentials'], false)
+  assert.ok(deploy.find((s) => s.uses?.startsWith('actions/download-artifact@'))?.with.name === 'site')
+  for (const s of deploy) assert.doesNotMatch(s.run ?? '', /npm (ci|install|run|test)|node /, 'no repository code runs next to the token')
+  const run = deploy.find((s) => s.run?.includes('pages deploy'))
+  assert.match(run.run, /npx --yes wrangler@\d+\.\d+\.\d+ pages deploy dist --project-name "\$PROJECT" --branch main --commit-hash "\$GITHUB_SHA"/)
+  assert.equal(run.env.CLOUDFLARE_API_TOKEN, '${{ secrets.CLOUDFLARE_API_TOKEN }}')
+  assert.equal(run.env.CLOUDFLARE_ACCOUNT_ID, '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}')
+  assert.equal((text.match(/secrets\./g) ?? []).length, 2, 'the Cloudflare token and account are the only secrets')
 })
