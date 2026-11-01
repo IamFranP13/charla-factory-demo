@@ -385,3 +385,12 @@ test('the container accepts the same credential modes as the host check (400 and
     assert.throws(() => loadCredential(f), /600/)
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+test('by default the proxy allows Sonnet and Haiku, never Opus', async () => {
+  const t = await setup({ proxy: { allowedModels: undefined } })
+  try {
+    for (const [model, status] of [['claude-sonnet-5-5', 200], ['claude-haiku-4-5', 200], ['claude-opus-5-5', 403], ['claude-fable-5-1', 403]]) {
+      assert.equal((await t.call('/v1/messages', { token: t.tokens.issue(40), body: { model, messages: [] } })).status, status, model)
+    }
+  } finally { await t.done() }
+})

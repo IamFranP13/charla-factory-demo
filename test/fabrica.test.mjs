@@ -276,7 +276,7 @@ test('start line says which origins it takes; web and todas say it loudly', asyn
 
 test('parseArgs: defaults, --paralelo 1..6, bad values refused', () => {
   const d = parseArgs([])
-  assert.deepEqual([d.paralelo, d.modelo, d.tiempoMin, d.conservar, d.unaVez, d.sondeoS], [3, 'claude-haiku-4-5', 10, false, false, 10])
+  assert.deepEqual([d.paralelo, d.modelo, d.tiempoMin, d.conservar, d.unaVez, d.sondeoS], [3, 'claude-sonnet-5-5', 10, false, false, 10])
   assert.equal(parseArgs(['--paralelo', '6']).paralelo, 6)
   assert.equal(parseArgs(['--paralelo=2', '--conservar', '--una-vez', '--modelo', 'claude-haiku-4-5', '--tiempo', '3']).tiempoMin, 3)
   for (const bad of [['--paralelo', '7'], ['--paralelo', '0'], ['--paralelo', 'x'], ['--tiempo', '-1'], ['--nope'], ['--paralelo']]) {

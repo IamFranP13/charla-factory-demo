@@ -22,7 +22,7 @@ const USAGE = `Usage: npm run fabrica -- [options]
   --origen O     whose requests to take: prueba (yours, filed with \`npm run tarea\`; default), web (the public's)
                  or todas (both). An issue with no origin label, or an unknown one, counts as web
   --paralelo N   agents at once, 1 to 6 (default 3)
-  --modelo M     model (default claude-haiku-4-5)
+  --modelo M     model (default claude-sonnet-5-5)
   --esfuerzo E   model effort for the agent and the reviewers: low, medium, high, xhigh or max (default low)
   --tiempo MIN   wall-clock limit per task in minutes (default 10)
   --turnos N     max turns per agent (default 30)

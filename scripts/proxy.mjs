@@ -12,7 +12,7 @@ const file = process.env.LIMONIA_CREDENCIAL ?? join(homedir(), '.config/limonia/
 const host = process.env.PROXY_HOST ?? '127.0.0.1'
 const port = Number(process.env.PROXY_PORT ?? 8787)
 const socket = process.env.PROXY_ADMIN_SOCKET ?? join(process.env.XDG_RUNTIME_DIR ?? '/tmp', 'limonia', 'proxy-admin.sock')
-const allowedModels = (process.env.PROXY_MODELOS ?? 'claude-haiku-').split(',').map((s) => s.trim()).filter(Boolean)
+const allowedModels = (process.env.PROXY_MODELOS ?? 'claude-sonnet-,claude-haiku-').split(',').map((s) => s.trim()).filter(Boolean)
 
 let credential
 try { credential = loadCredential(file) } catch (e) { console.error(e.message); process.exit(1) }
