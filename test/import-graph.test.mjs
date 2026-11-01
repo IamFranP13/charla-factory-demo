@@ -11,8 +11,8 @@ import { dirname, join, relative, resolve } from 'node:path'
 const root = new URL('..', import.meta.url).pathname
 const MODEL_CODE = ['src/domain/', 'src/features/']
 const ENTRIES = [
-  'scripts/factory.mjs', 'scripts/gate.mjs', 'scripts/validate-content.mjs', 'scripts/build-features.mjs',
-  'scripts/deploy-meta.mjs', 'scripts/reset-demo.mjs', 'scripts/preflight.mjs', 'scripts/simulate.mjs', 'scripts/numbers.mjs',
+  'scripts/gate.mjs', 'scripts/validate-content.mjs', 'scripts/build-features.mjs',
+  'scripts/deploy-meta.mjs', 'scripts/reset-demo.mjs', 'scripts/preflight.mjs', 'scripts/numbers.mjs',
 ]
 
 const walk = (dir) =>
@@ -192,5 +192,5 @@ test('no test file reaches src/domain/ or src/features/ through its imports (onl
 test('the entry points that run with secrets exist (the walk is not vacuous)', () => {
   for (const entry of ENTRIES) assert.ok(existsSync(join(root, entry)), entry)
   assert.ok(reach('scripts/gate.mjs').files.includes('lib/github.js'))
-  assert.ok(reach('scripts/factory.mjs').files.includes('lib/sandbox.js'))
+  assert.ok(reach('scripts/build-features.mjs').files.includes('lib/sandbox.js'))
 })

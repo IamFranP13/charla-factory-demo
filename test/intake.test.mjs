@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { handleIntake } from '../lib/intake.js'
-import { parseIssueBody } from '../scripts/factory.mjs'
+import { parseIssueBody } from './issue-body.mjs'
 import { onRequestPost } from '../functions/api/peticion.js'
 
 const ENV = { TURNSTILE_SECRET: 's3cret', INTAKE_OPEN: '1', GITHUB_TOKEN: 'ghp_TOKEN', GITHUB_REPO: 'me/repo' }
@@ -51,7 +51,7 @@ test('creates the issue and answers 201 with its number', async () => {
   assert.equal(issue.body, 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"Pon un cohete en el muro"}\n```\n')
 })
 
-test('the issue body is one line that parseIssueBody reads back, even with newlines and backticks', async () => {
+test('the issue body is one line that the reader finds, even with newlines and backticks', async () => {
   const peticion = 'Línea uno\nlínea "dos" con ```código```'
   const { calls, fetchImpl } = network()
   await intake(post({ ...valid, peticion }), ENV, fetchImpl, () => 0.99)
@@ -206,7 +206,7 @@ test('rejects U+2028/U+2029: the factory cannot read them back', async () => {
   }
 })
 
-test('every accepted request is readable by the factory (same length unit and limit)', async () => {
+test('every accepted request is readable back from the issue body (same length unit and limit)', async () => {
   for (const peticion of ['hola mundo', '😀'.repeat(150)]) {
     const { calls, fetchImpl } = network()
     const response = await intake(post({ ...valid, peticion }), ENV, fetchImpl)

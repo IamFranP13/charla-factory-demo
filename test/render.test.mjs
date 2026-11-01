@@ -1,13 +1,10 @@
-// Screenshots for the visual reviewers: what the factory renders, what it gives to whom, and how it fails.
+// Screenshots of a candidate site: how the renderer builds, serves and shoots it, and how it fails.
 
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { runFactory } from '../lib/factory.js'
-import { rehearsalCopy } from '../lib/rehearsal.js'
-import { replayProvider, openAIProvider, providersFromEnv } from '../lib/providers.js'
 import { renderSite, serveDir, findBrowser, RenderError, SHOTS } from '../lib/render.js'
 
 const repo = new URL('..', import.meta.url).pathname
@@ -15,147 +12,7 @@ const CSS = 'src/styles/global.css'
 const read = (path) => readFileSync(join(repo, path), 'utf8')
 
 const scratches = []
-const scratch = () => {
-  const root = mkdtempSync(join(tmpdir(), 'render-'))
-  scratches.push(root)
-  rehearsalCopy(repo, root, ['content', 'catalogo', 'data', 'config', 'brain', 'design', 'src', 'factory', 'policy', 'AGENTS.md'])
-  return root
-}
 after(() => scratches.forEach((dir) => rmSync(dir, { recursive: true, force: true })))
-
-// --- The factory: when it renders, what the reviewers get ---
-
-const ok = { aprobado: true, motivo: 'bien' }
-const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:140%;' }] }] }
-const UNSAFE = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;background:url(https://example.com/x.png);' }] }] }
-const png = 'data:image/png;base64,iVBORw0KGgo='
-const SHOTS_2 = [{ id: 'a', label: 'Inicio ANTES', dataUrl: png }, { id: 'b', label: 'Inicio DESPUÉS', dataUrl: png }]
-
-// A model that answers each station from a script (a list per station: one answer per call) and records what it was sent.
-function scripted(answers, { name = 'scripted' } = {}) {
-  const sent = []
-  return {
-    name,
-    sent,
-    async complete({ station, messages }) {
-      sent.push({ station, content: messages[0].content })
-      const next = answers[station]
-      const answer = Array.isArray(next) ? next[Math.min(sent.filter((s) => s.station === station).length - 1, next.length - 1)] : next
-      return { text: JSON.stringify(answer), usage: { input: 1, output: 1 } }
-    },
-  }
-}
-const model = (build, name) => scripted({ spec: { tipo: 'estilo', resumen: 'x', criterios: [] }, build, seguridad: ok, ux: ok, ui: ok }, { name })
-const spyRender = (impl = async () => SHOTS_2) => {
-  const calls = []
-  return { calls, render: async (...args) => { calls.push(args); return impl(...args) } }
-}
-async function run(provider, render, { id = 80 } = {}) {
-  const events = []
-  const result = await runFactory({ task: { id, profile: 'marketing', request: 'x' }, root: scratch(), provider, render, trace: (e) => events.push(e) })
-  return { result, events }
-}
-
-test('estilo renders the candidate only after the static check: an unsafe change never reaches the renderer', async () => {
-  const unsafe = spyRender()
-  const refused = await run(model(UNSAFE), unsafe.render)
-  assert.equal(unsafe.calls.length, 0)
-  assert.notEqual(refused.result.status, 'ok')
-
-  const safe = spyRender()
-  const accepted = await run(model(FIX), safe.render)
-  assert.equal(accepted.result.status, 'ok')
-  assert.equal(safe.calls.length, 1)
-  assert.deepEqual(safe.calls[0][1].map((f) => f.path), [CSS])
-  assert.match(safe.calls[0][1][0].content, /left:12%;width:140%;/)
-})
-
-test('ux and ui receive the prompt and each labelled screenshot; every other station keeps a plain string', async () => {
-  const provider = model(FIX)
-  const { result } = await run(provider, spyRender().render)
-  assert.equal(result.status, 'ok')
-  for (const station of ['ux', 'ui']) {
-    const { content } = provider.sent.find((s) => s.station === station)
-    assert.ok(Array.isArray(content), station)
-    assert.equal(content[0].type, 'text')
-    assert.match(content[0].text, station === 'ux' ? /UX reviewer/ : /UI reviewer/)
-    assert.match(content[0].text, /Screenshots of the site/)
-    assert.deepEqual(content.slice(1), [
-      { type: 'text', text: 'Inicio ANTES' }, { type: 'image_url', image_url: { url: png } },
-      { type: 'text', text: 'Inicio DESPUÉS' }, { type: 'image_url', image_url: { url: png } },
-    ])
-  }
-  for (const station of ['spec', 'build', 'seguridad']) {
-    assert.equal(typeof provider.sent.find((s) => s.station === station).content, 'string', station)
-  }
-})
-
-test('the shot count goes in the detail of the build trace', async () => {
-  const { events } = await run(model(FIX), spyRender().render)
-  assert.match(events.find((e) => e.station === 'build' && e.status === 'ok').detail, /src\/styles\/global\.css · 2 capturas$/)
-})
-
-test('other kinds never render and keep plain strings', async () => {
-  const { render, calls } = spyRender()
-  const provider = scripted({
-    spec: { tipo: 'campana', resumen: 'x' },
-    build: { ficheros: [{ ruta: 'content/campanas/tarea-81.json', contenido: { titulo: 'Hola', texto: 'Texto', color: 'oliva' } }] },
-    seguridad: ok, ux: ok, ui: ok,
-  })
-  const { result } = await run(provider, render, { id: 81 })
-  assert.equal(result.status, 'ok')
-  assert.equal(calls.length, 0)
-  assert.ok(provider.sent.every((s) => typeof s.content === 'string'))
-})
-
-test('a candidate that does not build goes back to the Builder with the tail of the error, and a fixed one goes on', async () => {
-  let n = 0
-  const { render, calls } = spyRender(async () => {
-    if (++n === 1) throw new RenderError('la web con el cambio no se construye: Unexpected "}" in global.css', { candidate: true })
-    return SHOTS_2
-  })
-  const provider = model(FIX)
-  const { result, events } = await run(provider, render)
-  assert.equal(result.status, 'ok')
-  assert.equal(result.attempts, 2)
-  assert.equal(calls.length, 2)
-  assert.match(events.find((e) => e.station === 'build' && e.status === 'error').detail, /no se construye: Unexpected "}"/)
-  const builds = provider.sent.filter((s) => s.station === 'build')
-  assert.equal(builds.length, 2)
-  assert.match(builds[1].content, /does not build with your change[\s\S]*Unexpected "}" in global\.css/)
-  assert.equal(provider.sent.filter((s) => s.station === 'ux').length, 1, 'the reviewers only see the attempt that built')
-})
-
-test('a render that fails closes the task with a real model, and is allowed with replay (noted in the trace)', async () => {
-  const broken = spyRender(async () => { throw new RenderError('no hay navegador') })
-  const real = await run(model(FIX, 'openai:vision'), broken.render)
-  assert.equal(real.result.status, 'failed')
-  assert.match(real.events.find((e) => e.station === 'build' && e.status === 'error').detail, /^no se pudo ver la web: no hay navegador/)
-  assert.ok(!real.events.some((e) => e.station === 'ux'), 'no reviewer ran')
-
-  const request = 'el botón del hero no se ve bien'
-  const events = []
-  const hero = await runFactory({ task: { id: 82, profile: 'marketing', request }, root: scratch(), provider: replayProvider(), render: broken.render, trace: (e) => events.push(e) })
-  assert.equal(hero.status, 'ok')
-  assert.match(events.find((e) => e.station === 'build' && e.status === 'ok').detail, /sin capturas.*no hay navegador/)
-})
-
-test('the replay provider and the OpenAI-compatible one accept array content', async () => {
-  const multimodal = [{ role: 'user', content: [{ type: 'text', text: 'hola' }, { type: 'image_url', image_url: { url: png } }] }]
-  const answer = await replayProvider().complete({ station: 'ux', messages: multimodal, task: { kind: 'estilo', task: { request: 'x' } } })
-  assert.equal(JSON.parse(answer.text).aprobado, true)
-
-  let sent
-  const fetchImpl = async (_url, init) => { sent = JSON.parse(init.body); return { ok: true, json: async () => ({ choices: [{ message: { content: '{}' } }], usage: {} }) } }
-  await openAIProvider({ url: 'https://x', key: 'k', model: 'm', fetchImpl }).complete({ messages: multimodal })
-  assert.deepEqual(sent.messages, multimodal)
-})
-
-test('providersFromEnv: empty review variables (unset repository variables reach Actions as "") fall back to the main model', () => {
-  const env = { FACTORY_PROVIDER: 'openai', FACTORY_API_URL: 'https://main', FACTORY_API_KEY: 'k', FACTORY_MODEL: 'm', FACTORY_REVIEW_MODEL: 'vision', FACTORY_REVIEW_API_URL: '', FACTORY_REVIEW_API_KEY: '' }
-  assert.equal(providersFromEnv(env).reviewProvider.name, 'openai:vision')
-  assert.equal(providersFromEnv({ ...env, FACTORY_REVIEW_MODEL: '' }).reviewProvider.name, 'openai:m')
-})
 
 // --- renderSite, with the children and the server injected ---
 

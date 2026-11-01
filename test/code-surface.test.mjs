@@ -1,5 +1,5 @@
-// Code kinds (bug, feature, cambio) around the factory: policy, providers, task state, the planted bugs,
-// the feature registry and the reset. (The factory run itself is in factory-code.test.mjs, the isolation in sandbox.test.mjs.)
+// Code kinds (bug, feature, cambio) around the factory: policy, task state, the planted bugs,
+// the feature registry and the reset. (The isolation is in sandbox.test.mjs.)
 import { hasSandbox, needsSandbox, probeDomain } from './sandbox-node.mjs'
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
@@ -8,7 +8,6 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, readdi
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parsePolicy, routeFor } from '../lib/policy.js'
-import { openAIProvider, providersFromEnv } from '../lib/providers.js'
 import { initialState, applyEvent, finishState, renderState, parseState, replaceState } from '../lib/estado.js'
 import { derivar } from '../lib/estado.js'
 import { rehearsalCopy } from '../lib/rehearsal.js'
@@ -62,33 +61,6 @@ test('policy: the feature and domain rules come before the rule of the platform,
   assert.equal(routeFor(policy, ['src/features/tarea-9/index.js', 'src/features/tarea-9/index.test.mjs']).route, 'auto')
   assert.equal(routeFor(policy, ['src/features/tarea-9/index.js', 'src/features/contrato.js']).route, 'human')
 })
-
-// --- providers ---
-
-test('openai provider: 1000 output tokens by default, more when the station asks (code)', async () => {
-  const bodies = []
-  const fetchImpl = async (url, init) => {
-    bodies.push(JSON.parse(init.body))
-    return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }], usage: {} }), { status: 200 })
-  }
-  const p = openAIProvider({ url: 'https://a', key: 'k', model: 'm', fetchImpl })
-  await p.complete({ messages: [] })
-  await p.complete({ messages: [], maxTokens: 4000 })
-  assert.deepEqual(bodies.map((b) => b.max_tokens), [1000, 4000])
-})
-
-test('providers from env: FACTORY_CODE_MODEL is optional and only changes the model that builds code', () => {
-  const base = { FACTORY_PROVIDER: 'openai', FACTORY_API_URL: 'https://a', FACTORY_API_KEY: 'k', FACTORY_MODEL: 'builder-model' }
-  const withCode = providersFromEnv({ ...base, FACTORY_CODE_MODEL: 'coder-model' })
-  assert.equal(withCode.provider.name, 'openai:builder-model')
-  assert.equal(withCode.codeProvider.name, 'openai:coder-model')
-  assert.equal(providersFromEnv(base).codeProvider.name, 'openai:builder-model')
-  assert.equal(providersFromEnv({ ...base, FACTORY_CODE_MODEL: '' }).codeProvider.name, 'openai:builder-model', 'an unset Actions variable arrives as an empty string')
-  const replay = providersFromEnv({})
-  assert.equal(replay.codeProvider, replay.provider)
-})
-
-// --- task state ---
 
 test('state: the type decided by the spec travels with the task, and nothing else can set it', () => {
   let state = initialState('negocio', '2026-01-01T00:00:00.000Z')

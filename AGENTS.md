@@ -1,14 +1,14 @@
 # AGENTS.md
 
-Rules for every agent working on this repository: the factory agents in GitHub Actions and any local harness (Pi, Claude Code, OpenCode...). Same rules at both scales.
+Rules for every agent working on this repository: the factory agents and any local harness (Pi, Claude Code, OpenCode...). Same rules at both scales.
 
 ## What this repository is
 
-LIMONIA, a fictional fruit and vegetable exporter from Murcia (a web app: home, catalogue, quote calculator), plus the tiny factory that changes it. The audience asks for changes through a form; agents build them; a risk gate written in code decides whether a change goes straight to `main` or waits for a human: safe changes merge by themselves, risky ones wait for a person. A request can be data (a campaign, a product, a price...) or small code (a bug fix, a new section, a change of a business rule).
+LIMONIA, a fictional fruit and vegetable exporter from Murcia (a web app: home, catalogue, quote calculator), plus the tiny factory that changes it. The audience asks for changes through a form; agents build them (being rebuilt, see below); a risk gate written in code decides whether a change goes straight to `main` or waits for a human: safe changes merge by themselves, risky ones wait for a person. A request can be data (a campaign, a product, a price...) or small code (a bug fix, a new section, a change of a business rule).
 
 ## Where things live
 
-The Spec writer classifies every request into a **kind** (`factory/kinds.yaml`); the kind, not the profile, decides what may be written. The profile (Marketing, Producto, Negocio) is only who asked.
+Every request is a **kind** (`factory/kinds.yaml`); the kind, not the profile, decides what may be written. The profile (Marketing, Producto, Negocio) is only who asked.
 
 | Kind | Path | What | Gate |
 |------|------|------|------|
@@ -24,9 +24,9 @@ The Spec writer classifies every request into a **kind** (`factory/kinds.yaml`);
 
 ## The factory
 
-Every request goes through the same stations, whatever the kind: `spec` (reads `brain/`, names the kind) → `build` → `seguridad` · `ux` · `ui` (models) and `codigo` (code, no model) in parallel → `approver` (code: four approvals, or back to `build` once with every reason; a second refusal ends the task). Then the risk gate decides: `puerta` → `merge` → `produccion`. The task state lives in the issue body as `<!-- factory:state {...} -->`; scripts write it, never a model.
+The old factory (stations `spec`, `build`, `seguridad`, `ux`, `ui`, `codigo`, `approver` run by a GitHub Actions workflow with a replay model) has been removed. It is being rebuilt as Claude Code agents with tools, run by a local orchestrator (`odd/tasks/fabrica-agentes.md`). Until then requests wait in the queue (issues labelled `entrada`). What stays: the risk gate (`gate`), CI, `rebuild` and `deploy` workflows, the intake, the board, and the task state in the issue body as `<!-- factory:state {...} -->`, which scripts write, never a model.
 
-Code is never trusted. Platform code (`lib/`, `scripts/`, `functions/`, the gate) never imports `src/domain/` or `src/features/`: those are evaluated only in the sandbox (`lib/sandbox.js`, Node 26+, which refuses to run without the network switch), and `test/import-graph.test.mjs` enforces it. `codigo` checks it as text first (no `node:` imports, `fetch`, `eval`, `Function`, `process`, `globalThis`, `require`, dynamic `import()`, no `\u`/`\x` escapes; relative imports only inside `src/domain/` and `src/features/`) and only then runs the tests of the domain and the features in a throwaway copy with no `.git`, an empty environment (no secrets), a read-only view of that copy, no network and a time limit. Nothing a model writes is ever imported by the factory itself. The same holds for the look: an `.astro` file is code, so `estilo` is checked as text first (`lib/estilo.js`, in the build and in `codigo`): CSS without `@import`, `url(` or `://`; a component with its frontmatter and its `{…}` expressions unchanged (each in the same context), the same words (`estilo` changes the look, never what the site says), no `<script>`, `set:html`, event handlers, `import` or external URLs, and never a new file. Only then is the candidate site rendered (`lib/render.js`: a throwaway copy, built and photographed by a headless browser with an empty environment, no secrets, time limits) and the `ux` and `ui` reviewers, which must be a vision model, judge the screenshots; nothing visual is measured in code.
+Code is never trusted. Platform code (`lib/`, `scripts/`, `functions/`, the gate) never imports `src/domain/` or `src/features/`: those are evaluated only in the sandbox (`lib/sandbox.js`, Node 26+, which refuses to run without the network switch), and `test/import-graph.test.mjs` enforces it. The static check (no `node:` imports, `fetch`, `eval`, `Function`, `process`, `globalThis`, `require`, dynamic `import()`, no `\u`/`\x` escapes; relative imports only inside `src/domain/` and `src/features/`) runs first, and only then the tests of the domain and the features, in a throwaway copy with no `.git`, an empty environment (no secrets), a read-only view of that copy, no network and a time limit. The same holds for the look: an `.astro` file is code, so `estilo` is checked as text first (`lib/estilo.js`): CSS without `@import`, `url(` or `://`; a component with its frontmatter and its `{…}` expressions unchanged (each in the same context), the same words (`estilo` changes the look, never what the site says), no `<script>`, `set:html`, event handlers, `import` or external URLs, and never a new file. A candidate site can then be rendered and photographed (`lib/render.js`: a throwaway copy, built and shot by a headless browser with an empty environment, no secrets, time limits) so a reviewer can judge the screenshots; nothing visual is measured in code.
 
 ## Rules
 
@@ -43,5 +43,6 @@ Code is never trusted. Platform code (`lib/`, `scripts/`, `functions/`, the gate
 npm test                 # all tests
 npm run build            # build the site into dist/
 npm run gate -- <files>  # which route a set of changed files takes
-npm run simulate         # run the whole factory locally with the replay model
+npm run preflight        # checks before the talk (policy, seed, hole)
+npm run reset-demo       # put the demo back to its seed (dry run; --apply to write)
 ```

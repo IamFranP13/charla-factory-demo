@@ -7,54 +7,6 @@ const raw = (name) => readFileSync(new URL(`../.github/workflows/${name}.yml`, i
 const load = (name) => parse(raw(name))
 const steps = (wf, job) => wf.jobs[job].steps
 
-test('factory.yml: triggers on issues opened/labeled, only for the "entrada" label', () => {
-  const wf = load('factory')
-  assert.deepEqual(Object.keys(wf.on), ['issues'])
-  assert.deepEqual(wf.on.issues.types, ['opened', 'labeled'])
-  assert.match(wf.jobs.factory.if, /contains\(github\.event\.issue\.labels\.\*\.name, 'entrada'\)/)
-})
-
-test('factory.yml: one run per issue and minimal permissions', () => {
-  const wf = load('factory')
-  assert.match(wf.concurrency.group, /github\.event\.issue\.number/)
-  assert.deepEqual(wf.permissions, { contents: 'read', issues: 'write' })
-})
-
-test('factory.yml: pushes and opens the PR with a GitHub App token', () => {
-  const wf = load('factory')
-  const app = steps(wf, 'factory').find((s) => s.uses?.startsWith('actions/create-github-app-token@'))
-  assert.ok(app, 'create-github-app-token step')
-  assert.equal(app.with['app-id'], '${{ secrets.FACTORY_APP_ID }}')
-  assert.equal(app.with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
-  const pr = steps(wf, 'factory').find((s) => s.id === 'pr')
-  assert.match(pr.env.GH_TOKEN, /steps\.app\.outputs\.token/)
-  assert.match(pr.run, /gh pr create/)
-  assert.match(pr.run, /Closes #\$ISSUE/)
-  assert.match(pr.run, /perfil:\$PROFILE/)
-  assert.match(pr.run, /tarea\/\$ISSUE/)
-})
-
-test('factory.yml: runs the factory with provider vars and the API key secret', () => {
-  const step = steps(load('factory'), 'factory').find((s) => s.id === 'factory')
-  assert.match(step.run, /node scripts\/factory\.mjs --issue "\$ISSUE"/)
-  assert.equal(step.env.FACTORY_PROVIDER, '${{ vars.FACTORY_PROVIDER }}')
-  assert.equal(step.env.FACTORY_API_URL, '${{ vars.FACTORY_API_URL }}')
-  assert.equal(step.env.FACTORY_MODEL, '${{ vars.FACTORY_MODEL }}')
-  assert.equal(step.env.FACTORY_API_KEY, '${{ secrets.FACTORY_API_KEY }}')
-})
-
-test('factory.yml: installs the dev dependencies and gives the factory a browser and the review model, for the screenshots of a visual change', () => {
-  const list = steps(load('factory'), 'factory')
-  const install = list.find((s) => s.run?.startsWith('npm ci'))
-  assert.equal(install.run, 'npm ci', 'Astro (a dev dependency) is needed to render the candidate site')
-  const step = list.find((s) => s.id === 'factory')
-  assert.equal(step.env.FACTORY_BROWSER, 'google-chrome')
-  assert.equal(step.env.FACTORY_REVIEW_MODEL, '${{ vars.FACTORY_REVIEW_MODEL }}')
-  assert.equal(step.env.FACTORY_REVIEW_API_URL, '${{ vars.FACTORY_REVIEW_API_URL }}')
-  assert.equal(step.env.FACTORY_REVIEW_API_KEY, '${{ secrets.FACTORY_REVIEW_API_KEY }}')
-  assert.equal(step.env.FACTORY_API_KEY, '${{ secrets.FACTORY_API_KEY }}', 'the key stays in this step only')
-})
-
 test('gate.yml: triggers, stable job name and permissions', () => {
   const wf = load('gate')
   assert.deepEqual(Object.keys(wf.on).sort(), ['pull_request_review', 'pull_request_target'])
@@ -77,7 +29,7 @@ test('gate.yml: never checks out or runs the pull request head', () => {
 })
 
 test('no workflow interpolates expressions into run scripts (untrusted text goes through env)', () => {
-  for (const name of ['gate', 'factory', 'ci', 'rebuild', 'deploy']) {
+  for (const name of ['gate', 'ci', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps) {
         if (s.run) assert.doesNotMatch(s.run, /\$\{\{/, `${name}: run script interpolates an expression`)
@@ -133,7 +85,7 @@ test('ci.yml: pull_request and push to main run install, test and build in job "
 })
 
 test('every action is pinned to a major version', () => {
-  for (const name of ['factory', 'gate', 'ci', 'rebuild', 'deploy']) {
+  for (const name of ['gate', 'ci', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses)) {
         assert.match(s.uses, /^[\w-]+\/[\w-]+@v\d+$/, `${name}: ${s.uses}`)
@@ -158,24 +110,6 @@ test('gate.yml: an approval re-runs the original risk-gate run instead of adding
 })
 
 // --- the task state in the issue body ---
-
-test('factory.yml: the pull request number reaches the issue state only through the script', () => {
-  const list = steps(load('factory'), 'factory')
-  const pr = list.find((s) => s.id === 'pr')
-  assert.match(pr.run, /number=/, 'the PR step exposes the number it created')
-  const mark = list.find((s) => s.run?.includes('--pr'))
-  assert.match(mark.run, /node scripts\/factory\.mjs --issue "\$ISSUE" --pr "\$PR_NUMBER"/)
-  assert.equal(mark.env.PR_NUMBER, '${{ steps.pr.outputs.number }}')
-  assert.match(mark.if, /steps\.pr\.outcome == 'success'|steps\.pr\.outputs\.number/)
-  assert.ok(list.indexOf(mark) > list.indexOf(pr))
-  for (const s of list) assert.doesNotMatch(s.run ?? '', /factory:state|gh api.*PATCH/, 'no workflow edits the state by hand')
-})
-
-test('factory.yml: still no expression in the mark step run script and the GitHub token is the default one', () => {
-  const mark = steps(load('factory'), 'factory').find((s) => s.run?.includes('--pr'))
-  assert.doesNotMatch(mark.run, /\$\{\{/)
-  assert.equal(mark.env?.GH_TOKEN ?? '${{ github.token }}', '${{ github.token }}')
-})
 
 test('gate.yml: the judging job may write issues (to update the task state) and nothing else changed', () => {
   const job = load('gate').jobs['risk-gate']
@@ -211,7 +145,7 @@ test('every workflow takes Node from .node-version, and that version satisfies A
   const have = version.split('.').map(Number)
   const ok = have[0] > min[0] || (have[0] === min[0] && have.length >= 3 && (have[1] > min[1] || (have[1] === min[1] && have[2] >= min[2])))
   assert.ok(ok, `.node-version ${version} does not satisfy astro ${astro}`)
-  for (const name of ['ci', 'gate', 'factory', 'rebuild', 'deploy']) {
+  for (const name of ['ci', 'gate', 'rebuild', 'deploy']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
         assert.equal(s.with['node-version-file'], '.node-version', `${name}: setup-node must read .node-version`)
@@ -219,25 +153,6 @@ test('every workflow takes Node from .node-version, and that version satisfies A
       }
     }
   }
-})
-
-test('factory.yml: no credential is left in .git/config; the push carries an explicit token that is never echoed', () => {
-  const wf = load('factory')
-  const all = steps(wf, 'factory')
-  const checkout = all.find((s) => s.uses?.startsWith('actions/checkout@'))
-  assert.equal(checkout.with['persist-credentials'], false, 'the factory step runs with the model key: no token persisted in .git/config')
-  const pr = all.find((s) => s.id === 'pr')
-  assert.match(pr.run, /git push "https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{REPO\}\.git" "tarea\/\$ISSUE"/)
-  assert.doesNotMatch(pr.run, /git push origin/)
-  assert.equal(pr.env.GH_TOKEN, '${{ steps.app.outputs.token }}')
-  assert.equal(pr.env.REPO, '${{ github.repository }}')
-  for (const step of all) {
-    assert.doesNotMatch(step.run ?? '', /echo[^\n]*(GH_TOKEN|x-access-token)|set -x|git remote (add|set-url)|git config[^\n]*(extraheader|credential)/, step.id ?? step.name)
-  }
-  // The guard reads the remote too, and no longer has the persisted credential: it passes the token explicitly as well.
-  const guard = all.find((s) => s.id === 'guard')
-  assert.match(guard.run, /git ls-remote --exit-code --heads "https:\/\/x-access-token:\$\{GH_TOKEN\}@github\.com\/\$\{GITHUB_REPOSITORY\}\.git" "tarea\/\$ISSUE"/)
-  assert.doesNotMatch(guard.run, /ls-remote[^\n]* origin/)
 })
 
 test('workflows: every job runs Node 26 or newer, the one with the network switch the sandbox needs', () => {

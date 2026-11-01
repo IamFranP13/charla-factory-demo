@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { STATIONS, initialState, applyEvent, finishState, renderState, parseState, replaceState } from '../lib/factory.js'
-import { parseIssueBody } from '../scripts/factory.mjs'
+import { STATIONS, initialState, applyEvent, finishState, renderState, parseState, replaceState } from '../lib/estado.js'
+import { parseIssueBody } from './issue-body.mjs'
 
 const NOW = '2026-10-27T10:00:00.000Z'
 const requestBlock = (peticion, perfil = 'marketing') => `Petición desde la web.\n\n\`\`\`json\n${JSON.stringify({ perfil, peticion })}\n\`\`\`\n`
@@ -191,11 +191,8 @@ test('mergeCommit: a 40-hex sha or absent', () => {
   }
 })
 
-test('the state helpers live in a module with no Node imports, and lib/factory.js re-exports them', async () => {
+test('the state helpers live in a module with no Node imports', async () => {
   const { readFileSync } = await import('node:fs')
   const source = readFileSync(new URL('../lib/estado.js', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /from 'node:|require\(/)
-  const state = await import('../lib/estado.js')
-  const factory = await import('../lib/factory.js')
-  for (const name of ['STATIONS', 'initialState', 'applyEvent', 'finishState', 'renderState', 'parseState', 'replaceState']) assert.equal(factory[name], state[name], name)
 })

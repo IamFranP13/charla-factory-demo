@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { issueFor } from '../lib/intake.js'
-import { parseIssueBody } from '../scripts/factory.mjs'
+import { parseIssueBody } from './issue-body.mjs'
 import { initialState, replaceState, finishState, applyEvent } from '../lib/estado.js'
 import {
   planRequests, issuesFor, percentile, resumen, newTrack, observar, seguir, informe,

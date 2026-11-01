@@ -57,10 +57,10 @@ test('codePathError: only feature files, the assigned new folder, existing featu
     'src/domain/sub/x.js',
     'src/domain/a.b.js',
     'src/pages/index.astro',
-    'lib/factory.js',
+    'lib/sandbox.js',
     'policy/risk.yaml',
     'package.json',
-    'src/features/../../lib/factory.js',
+    'src/features/../../lib/sandbox.js',
     'src/features/tarea-7/../../../lib/sandbox.js',
   ]
   for (const path of denied) assert.notEqual(codePathError(root, 7, path), null, path)
@@ -96,10 +96,10 @@ test('staticCheck rejects every way into the machine, naming what it found', () 
     'import.meta': 'export const a = import.meta.url',
     'import()': "export const a = () => import('./x.js')",
     'bare module': "import yaml from 'yaml'\nexport default {}",
-    'out of the folders': "import x from '../../../lib/factory.js'\nexport default {}",
+    'out of the folders': "import x from '../../../lib/sandbox.js'\nexport default {}",
     'Node-only domain loader': "import { cargarEstado } from '../../domain/estado-node.js'\nexport default {}",
     'export from outside': "export * from '../../../lib/sandbox.js'",
-    'path trick': "import x from '../../domain/../../lib/factory.js'\nexport default {}",
+    'path trick': "import x from '../../domain/../../lib/sandbox.js'\nexport default {}",
     'size': `export const a = '${'x'.repeat(MAX_FILE_CHARS)}'`,
   }
   for (const [name, content] of Object.entries(bad)) {

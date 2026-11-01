@@ -16,7 +16,7 @@ import { readdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'no
 import { dirname, join, relative } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { pathToFileURL } from 'node:url'
-import { isAudienceFile } from '../lib/factory.js'
+import { isAudienceFile } from '../lib/audiencia.js'
 import { gh, ghJson, repoSlug } from '../lib/github.js'
 
 const SEED = 'factory/seed'

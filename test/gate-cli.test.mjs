@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { approvalsAtHead } from '../lib/github.js'
 import { parsePolicy } from '../lib/policy.js'
-import { initialState, replaceState, parseState } from '../lib/factory.js'
+import { initialState, replaceState, parseState } from '../lib/estado.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const gate = join(repo, 'scripts/gate.mjs')

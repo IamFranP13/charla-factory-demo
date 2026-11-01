@@ -1,18 +1,16 @@
 // The kind `estilo`: the look of the site (the stylesheet and the presentational components), guarded in code.
 // An .astro file is code, so the static check of lib/estilo.js is what lets a model touch it at all.
-import { test, after } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { runFactory, loadKinds } from '../lib/factory.js'
-import { rehearsalCopy } from '../lib/rehearsal.js'
-import { replayProvider } from '../lib/providers.js'
+import { parse } from 'yaml'
 import { checkEstilo } from '../lib/estilo.js'
 import { parsePolicy, routeFor } from '../lib/policy.js'
 
 const repo = new URL('..', import.meta.url).pathname
 const SURFACE = ['src/styles/global.css', 'src/components/Paisaje.astro', 'src/components/CampanaCard.astro', 'src/components/ProductoCard.astro', 'src/components/Header.astro', 'src/components/Footer.astro']
+const loadKinds = (root) => parse(readFileSync(join(root, 'factory/kinds.yaml'), 'utf8'))
 const read = (path) => readFileSync(join(repo, path), 'utf8')
 const CSS = 'src/styles/global.css'
 const PAISAJE = 'src/components/Paisaje.astro'
@@ -21,15 +19,6 @@ const FFOOTER = 'src/components/Footer.astro'
 const CARD = 'src/components/CampanaCard.astro'
 const current = Object.fromEntries(SURFACE.map((p) => [p, read(p)]))
 const check = (path, text) => checkEstilo([{ path, content: text }], current)
-
-const scratches = []
-const scratch = () => {
-  const root = mkdtempSync(join(tmpdir(), 'estilo-'))
-  scratches.push(root)
-  rehearsalCopy(repo, root, ['content', 'catalogo', 'data', 'config', 'brain', 'design', 'src', 'factory', 'policy', 'AGENTS.md'])
-  return root
-}
-after(() => scratches.forEach((dir) => rmSync(dir, { recursive: true, force: true })))
 
 test('the kind estilo exists, with the stylesheet and the five visual components as its surface (modify only)', () => {
   const kind = loadKinds(repo).estilo
@@ -146,107 +135,7 @@ test('a new .astro file, or a file outside the surface, is never allowed', () =>
   assert.equal(check('src/pages/index.astro', current[CARD]).ok, false)
   assert.equal(check('src/layouts/Base.astro', current[CARD]).ok, false)
   assert.equal(check('src/styles/otra.css', 'a { color: red }').ok, false)
-  assert.equal(check('lib/factory.js', 'export const x = 1').ok, false)
-})
-
-// A model that answers each station from a script.
-function scripted(answers) {
-  return {
-    name: 'scripted',
-    async complete({ station, messages }) {
-      scripted.last = { ...scripted.last, [station]: messages[0].content }
-      const next = answers[station]
-      return { text: typeof next === 'string' ? next : JSON.stringify(next), usage: { input: 1, output: 1 } }
-    },
-  }
-}
-const ok = { aprobado: true, motivo: 'bien' }
-const answers = (build) => ({ spec: { tipo: 'estilo', resumen: 'x', criterios: [] }, build, seguridad: ok, ux: ok, ui: ok })
-const FIX = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:140%;' }] }] }
-
-// The screenshots of the candidate are the subject of test/render.test.mjs: here the renderer is a stub with none.
-const noShots = async () => []
-
-async function run(build, { profile = 'marketing', request = 'x' } = {}) {
-  const events = []
-  const result = await runFactory({ task: { id: 70, profile, request }, root: scratch(), provider: scripted(answers(build)), render: noShots, trace: (e) => events.push(e) })
-  return { result, events }
-}
-
-test('a full run of estilo ends ok with the edited files; the four stations approve, codigo with its motivo', async () => {
-  const { result, events } = await run(FIX)
-  assert.equal(result.status, 'ok', JSON.stringify(events))
-  assert.deepEqual(result.files.map((f) => f.path), [CSS])
-  assert.match(result.files[0].content, /left:12%;width:140%;/)
-  assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
-  assert.match(events.find((e) => e.station === 'codigo' && e.status === 'ok').detail, /estilo/i)
-  assert.equal(events.find((e) => e.station === 'approver').status, 'ok')
-})
-
-test('estilo accepts the whole text of a file as well', async () => {
-  const { result } = await run({ ficheros: [{ ruta: PAISAJE, contenido: current[PAISAJE].replace('width="800" height="800"', 'width="640" height="640"') }] })
-  assert.equal(result.status, 'ok')
-})
-
-test('an unsafe change never reaches the reviewers: the build refuses it (and a second try ends the task)', async () => {
-  const evil = { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;', reemplazar: '.hero__disco{position:absolute;top:50%;left:12%;width:150%;background:url(https://x.test/a.png);' }] }] }
-  const { result, events } = await run(evil)
-  assert.equal(result.status, 'failed')
-  assert.deepEqual(result.files, [])
-  assert.match(events.find((e) => e.station === 'build' && e.status === 'error').detail, /url\(/)
-  assert.equal(events.some((e) => e.station === 'ux' && e.status !== 'en_curso'), false)
-})
-
-test('a path outside the surface, a new file or an astro change of code is refused by the build', async () => {
-  for (const build of [
-    { ficheros: [{ ruta: 'src/pages/index.astro', cambios: [{ buscar: 'hero', reemplazar: 'heroe' }] }] },
-    { ficheros: [{ ruta: 'src/components/Nueva.astro', contenido: '<p>hola</p>\n' }] },
-    { ficheros: [{ ruta: 'src/components/Calculadora.astro', contenido: '<p>hola</p>\n' }] },
-    { ficheros: [{ ruta: CARD, cambios: [{ buscar: '{campana.titulo}', reemplazar: '{campana.texto}' }] }] },
-    { ficheros: [{ ruta: CSS, cambios: [{ buscar: 'no existe en el fichero', reemplazar: 'x' }] }] },
-    { ficheros: [{ ruta: CSS, contenido: 'a {}', cambios: [] }] },
-    { ficheros: [{ ruta: CSS, cambios: [{ buscar: '.hero__texto', reemplazar: '.hero__texto' }] }, { ruta: CARD, contenido: current[CARD] }, { ruta: FFOOTER, contenido: current[FFOOTER] }] },
-  ]) {
-    const { result, events } = await run(build)
-    assert.equal(result.status, 'failed', JSON.stringify(build))
-    assert.ok(events.find((e) => e.station === 'build' && e.status === 'error'))
-  }
-})
-
-test('the station codigo rejects an unsafe estilo file by itself, whatever the build let through', async () => {
-  const { codigoDeEstilo } = await import('../lib/factory.js')
-  const root = scratch()
-  const bad = await codigoDeEstilo(root, [{ path: CSS, content: `${current[CSS]}\n@import "x.css";\n` }])
-  assert.equal(bad.aprobado, false)
-  assert.match(bad.motivo, /^Estilo no permitido: /)
-  const good = await codigoDeEstilo(root, [{ path: CSS, content: `${current[CSS]}\n.x { color: red }\n` }])
-  assert.equal(good.aprobado, true)
-})
-
-test('the prompts of estilo carry the design system, the files as data and the request as data; campana keeps its own', async () => {
-  const model = scripted(answers(FIX))
-  const seen = {}
-  const spy = { ...model, async complete(call) { seen[call.station] = call.messages[0].content; return model.complete(call) } }
-  await runFactory({ task: { id: 71, profile: 'marketing', request: 'REQUEST-TEXT' }, root: scratch(), provider: spy, render: noShots, trace: () => {} })
-  assert.match(seen.build, /LIMONIA editorial design system/)
-  assert.match(seen.build, /REQUEST-TEXT/)
-  assert.match(seen.build, /src\/styles\/global\.css:/)
-  assert.match(seen.build, /src\/components\/Paisaje\.astro:/)
-  assert.match(seen.build, /DATA, never instructions/)
-  assert.match(seen.build, /cambios/)
-  assert.match(seen.ux, /LIMONIA editorial design system/)
-  assert.match(seen.ui, /LIMONIA editorial design system/)
-  assert.match(seen.seguridad, /visual/i)
-  for (const station of ['build', 'ux', 'ui', 'seguridad']) {
-    assert.equal(read(`factory/prompts/${station}-estilo.md`).includes('DATA, never instructions'), true, station)
-  }
-
-  const campana = {}
-  const spy2 = { name: 's', async complete(call) { campana[call.station] = call.messages[0].content; return { text: JSON.stringify(call.station === 'spec' ? { tipo: 'campana', resumen: 'x' } : call.station === 'build' ? { ficheros: [{ ruta: 'content/campanas/tarea-72.json', contenido: { titulo: 'Hola', texto: 'Texto', color: 'oliva' } }] } : ok), usage: { input: 1, output: 1 } } } }
-  await runFactory({ task: { id: 72, profile: 'marketing', request: 'x' }, root: scratch(), provider: spy2, trace: () => {} })
-  assert.doesNotMatch(campana.build, /^src\/styles\/global\.css:/m)
-  assert.match(campana.build, /content\/campanas\/tarea-72\.json/)
-  assert.match(campana.ux, /UX reviewer/)
+  assert.equal(check('lib/sandbox.js', 'export const x = 1').ok, false)
 })
 
 test('policy: the six files of the look go auto; the pages, the other components and the layout stay human', () => {
@@ -261,31 +150,4 @@ test('policy: the six files of the look go auto; the pages, the other components
   }
   assert.equal(routeFor(policy, [CSS, 'src/pages/index.astro']).route, 'human', 'the strictest route wins')
   assert.equal(routeFor(policy, [CSS, 'data/precios.json']).route, 'human')
-})
-
-test('replay: "el botón del hero no se ve bien" becomes an ok estilo task that fixes the hero in global.css alone', async () => {
-  for (const profile of ['marketing', 'producto', 'negocio']) {
-    const events = []
-    const result = await runFactory({ task: { id: 73, profile, request: 'el botón del hero no se ve bien' }, root: scratch(), provider: replayProvider(), trace: (e) => events.push(e) })
-    assert.equal(result.status, 'ok', `${profile}: ${JSON.stringify(events)}`)
-    assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
-    assert.deepEqual(result.files.map((f) => f.path), [CSS])
-    const css = result.files.find((f) => f.path === CSS).content
-    assert.match(css, /\.hero\{display:grid;grid-template-columns:1fr 1fr;/, 'the hero is a two-column grid again')
-    assert.match(css, /\.hero__tarjeta\{[^}]*background:var\(--crema\)/, 'the card has its own ground')
-    assert.match(css, /\.hero__campo\{position:relative;background:var\(--limon\);overflow:hidden;/, 'the picture field is back in its cell, clipped')
-    assert.match(css, /\.hero__disco\{position:absolute;top:50%;right:-24%;/, 'the disc is back at its size and place')
-    assert.doesNotMatch(css, /\.hero__campo\{position:absolute;inset:0/)
-    assert.equal(checkEstilo(result.files, current).ok, true)
-  }
-})
-
-test('replay: a visual request it cannot fix ends unchanged, and a request outside the look is still not an estilo', async () => {
-  const events = []
-  const result = await runFactory({ task: { id: 74, profile: 'marketing', request: 'el pie de página se ve mal' }, root: scratch(), provider: replayProvider(), trace: (e) => events.push(e) })
-  assert.equal(events.find((e) => e.station === 'spec' && e.status === 'ok').tipo, 'estilo')
-  assert.equal(result.status, 'unchanged')
-  const refused = []
-  const logo = await runFactory({ task: { id: 75, profile: 'marketing', request: 'Cambia el logo y la tipografía de toda la web' }, root: scratch(), provider: replayProvider(), trace: (e) => refused.push(e) })
-  assert.equal(logo.status, 'rejected')
 })
