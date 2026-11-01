@@ -85,6 +85,21 @@ npm run agente:imagen   # builds limonia-agente:dev
 npm run agente:medir    # start-up times: 5 bare starts, claude --version, node --version, npm run build
 ```
 
+## The model proxy
+
+The agent container never holds the maintainer's credential. Claude Code runs with `ANTHROPIC_BASE_URL=http://limonia-proxy:8787` and a per-task token; the proxy (`lib/proxy.js`, standard library only) holds the real credential and forwards only `POST /v1/messages` and `/v1/messages/count_tokens` to `https://api.anthropic.com`, only for models whose name starts with `claude-haiku-` (`PROXY_MODELOS`, comma-separated, to change it). It strips every incoming auth header, sets the real one, and logs one line per request (task, model, status, ms, tokens), never headers or bodies.
+
+- **Credential**: a file outside the repo, `~/.config/limonia/claude-credencial` (or `LIMONIA_CREDENCIAL`), refused unless only its owner can read it (600 or 400), never read from argv. An API key (`sk-ant-api…`) goes as `x-api-key`; a subscription token from `claude setup-token` (`sk-ant-oat…`) as `Authorization: Bearer` plus `anthropic-beta: oauth-2025-04-20`. The API-key path and the OAuth header shape are tested against a fake upstream; **the OAuth path is to be verified live** (what the upstream accepts for a subscription token, and whether Claude Code needs other betas, which are passed through).
+- **Tokens**: the orchestrator asks for one per task on the admin unix socket (`$XDG_RUNTIME_DIR/limonia/proxy-admin.sock`, mode 600, never mounted into agents): `POST /tokens {"tarea": 7, "ttl_s": 1800, "max": 300}` returns `{"token": …}`; `DELETE /tokens/7` revokes. A token expires (default 30 min) and has a request budget (default 300), then the proxy answers 401 or 429. The agent sends it as `ANTHROPIC_AUTH_TOKEN` (Bearer) or `ANTHROPIC_API_KEY` (`x-api-key`).
+- **Refused (403, nothing forwarded)**: a body with `mcp_servers`, `container`, a `source` of type `url` anywhere (an image or document Anthropic would fetch), or any tool whose `type` is not `custom` (server-side tools such as web fetch/search, code execution or the bash/editor server tools make Anthropic's servers act outside the internal network); an `anthropic-beta` value outside the list `ALLOWED_BETAS` in `lib/proxy.js` (taken from the beta strings in the pinned Claude Code binary, keeping only those that shape a plain messages call, plus the two Claude Code 2.1.316 sends on every request, seen live; a Claude Code update that needs another shows up as `status=403` in the log and is added on purpose). Redirects from upstream are never followed (502), the forwarded body is the parsed JSON re-serialised, and only content-type, request-id, retry-after, cache-control and `anthropic-ratelimit-*` response headers reach the agent. A request can never crash the proxy (400/500 instead), and a request body must arrive within 30 s.
+- **Network**: agents join only `limonia-agentes`, a Docker `--internal` network (no route out). The proxy runs as a container on that network and on the default bridge, so it is the only thing agents can reach. Known limit: agents on the same network can reach each other; one network per task belongs to T4. (A host process bound to the network's gateway is not reachable from containers on Docker 29.)
+
+```bash
+npm run proxy:red                 # create the internal network
+npm run proxy                     # run the proxy container (foreground)
+npm run proxy:red -- check        # from an agent container: internet fails, the proxy answers
+```
+
 ## Run it locally (free, offline)
 
 ```bash

@@ -19,7 +19,9 @@
     "carga": "node scripts/carga.mjs",
     "rebuild": "node scripts/rebuild.mjs",
     "agente:imagen": "docker build -f factory/agente/Dockerfile -t limonia-agente:dev .",
-    "agente:medir": "node scripts/agente-medir.mjs"
+    "agente:medir": "node scripts/agente-medir.mjs",
+    "proxy": "node scripts/proxy-red.mjs up",
+    "proxy:red": "node scripts/proxy-red.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.1"
