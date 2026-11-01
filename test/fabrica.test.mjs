@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, readFileSync, existsSync, chmodSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { issueFor } from '../lib/intake.js'
@@ -517,4 +517,151 @@ test('Ctrl+C once: stops taking tasks and lets the running one finish; twice: ki
   assert.ok(x.events.includes('revoke:1') && x.events.includes('net-limonia-t1'))
   assert.ok(x.events.includes('rm:/copias/t1'), 'the copy of an interrupted task is not kept')
   assert.ok(eligible(state))
+})
+
+// --- verification round: blockers and advisories ------------------------------------------------------------------------
+
+const LIB = new URL('../lib/fabrica.js', import.meta.url).href
+const gitEnv = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' }
+async function copyWithCommit(root) {
+  const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: gitEnv }).trim()
+  const source = join(root, 'real')
+  mkdirSync(source)
+  git(source, 'init', '-q', '-b', 'main')
+  writeFileSync(join(source, 'a.txt'), 'uno')
+  git(source, 'add', '.')
+  git(source, 'commit', '-qm', 'uno')
+  git(source, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
+  const node = gitNode({ source, copias: join(root, 'copias'), fetch: false })
+  const copy = await node.prepare({ numero: 5 })
+  writeFileSync(join(copy.dir, 'b.txt'), 'dos')
+  git(copy.dir, 'add', 'b.txt')
+  git(copy.dir, 'commit', '-qm', 'Tarea #5: b')
+  return { source, copy, git }
+}
+const collectInChild = (source, root, copy) => spawnSync(process.execPath, ['--input-type=module', '-e', `
+  import { gitNode } from ${JSON.stringify(LIB)}
+  const node = gitNode({ source: ${JSON.stringify(source)}, copias: ${JSON.stringify(join(root, 'copias'))}, fetch: false, timeoutMs: 1000 })
+  try { console.log(JSON.stringify(await node.collect({ dir: ${JSON.stringify(copy.dir)}, base: ${JSON.stringify(copy.base)}, numero: 5 }))) } catch (e) { console.log('ERR ' + e.message) }
+`], { encoding: 'utf8', timeout: 15000 })
+
+test('B1: a FIFO in the copy\'s .git cannot hang collect: every host-side git call has a timeout and the task fails', async () => {
+  for (const victim of ['refs/heads/tarea/5', 'config']) {
+    const root = mkdtempSync(join(tmpdir(), 'fabrica-fifo-'))
+    try {
+      const { source, copy } = await copyWithCommit(root)
+      rmSync(join(copy.dir, '.git', victim), { force: true })
+      execFileSync('mkfifo', [join(copy.dir, '.git', victim)])
+      const r = collectInChild(source, root, copy)
+      assert.equal(r.signal, null, `${victim}: collect hung`)
+      assert.equal(r.status, 0)
+      assert.match(r.stdout, /^ERR /, victim)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }
+})
+
+test('A1: collect refuses a copy whose .git points elsewhere (alternates, gitfile, symlink)', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'fabrica-alt-'))
+  try {
+    const { source, copy } = await copyWithCommit(root)
+    const node = gitNode({ source, copias: join(root, 'copias'), fetch: false })
+    const ask = () => node.collect({ dir: copy.dir, base: copy.base, numero: 5 })
+    assert.equal((await ask()).commits.length, 1, 'a normal copy still works')
+    writeFileSync(join(copy.dir, '.git/objects/info/alternates'), `${source}/.git/objects\n`)
+    await assert.rejects(ask(), /alternates/)
+    rmSync(join(copy.dir, '.git/objects/info/alternates'))
+    const gitdir = join(root, 'moved')
+    execFileSync('mv', [join(copy.dir, '.git'), gitdir])
+    writeFileSync(join(copy.dir, '.git'), `gitdir: ${gitdir}\n`)
+    await assert.rejects(ask(), /\.git/)
+    rmSync(join(copy.dir, '.git'))
+    symlinkSync(gitdir, join(copy.dir, '.git'))
+    await assert.rejects(ask(), /\.git/)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('A2: collect lists commits with one bounded git log and caps the files', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'fabrica-log-'))
+  try {
+    const { source, copy, git } = await copyWithCommit(root)
+    for (let i = 0; i < 3; i++) {
+      writeFileSync(join(copy.dir, `f${i}.txt`), String(i))
+      git(copy.dir, 'add', '.')
+      git(copy.dir, 'commit', '-qm', `Tarea #5: f${i}`)
+    }
+    const seen = await gitNode({ source, copias: join(root, 'copias'), fetch: false }).collect({ dir: copy.dir, base: copy.base, numero: 5 })
+    assert.deepEqual(seen.commits.map((c) => c.subject), ['Tarea #5: b', 'Tarea #5: f0', 'Tarea #5: f1', 'Tarea #5: f2'])
+    assert.ok(seen.commits.every((c) => /^[0-9a-f]{40}$/.test(c.sha)))
+    assert.deepEqual(seen.files, ['b.txt', 'f0.txt', 'f1.txt', 'f2.txt'])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('B2: docker runs in its own process group, so the terminal\'s first Ctrl+C does not reach the container', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'fabrica-sig-'))
+  try {
+    mkdirSync(join(root, 'bin'))
+    const out = join(root, 'out.txt')
+    writeFileSync(join(root, 'bin/docker'), `#!/bin/bash\ntrap 'echo INT >> ${out}; exit 130' INT\nsleep 2 & wait\necho done >> ${out}\n`)
+    chmodSync(join(root, 'bin/docker'), 0o755)
+    const harness = `
+      import { dockerNode } from ${JSON.stringify(LIB)}
+      process.on('SIGINT', () => {})
+      const { exit } = dockerNode().run(['run'], { env: {}, input: '', onLine() {} })
+      setTimeout(() => process.kill(-process.pid, 'SIGINT'), 400)
+      console.log('exit ' + await exit)
+    `
+    const child = spawn(process.execPath, ['--input-type=module', '-e', harness], { detached: true, env: { ...process.env, PATH: `${join(root, 'bin')}:${process.env.PATH}` }, stdio: ['ignore', 'pipe', 'inherit'] })
+    let stdout = ''
+    child.stdout.on('data', (c) => { stdout += c })
+    await new Promise((resolve) => child.on('close', resolve))
+    assert.equal(stdout.trim(), 'exit 0')
+    assert.equal(readFileSync(out, 'utf8'), 'done\n')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('A3: two instances cannot both take a stale lock: a live lock grabbed by mistake is given back', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'fabrica-race-'))
+  try {
+    writeFileSync(join(dir, 'fabrica.lock'), '111\n')
+    let b
+    const aliveForA = (pid) => {
+      if (pid === 111) {
+        // While A is judging the stale lock, B finishes taking it.
+        b = acquireLock({ dir, pid: 222, isAlive: () => false })
+        return false
+      }
+      return pid === 222
+    }
+    await assert.rejects(acquireLock({ dir, pid: 333, isAlive: aliveForA }), /ya hay una fábrica.*222/)
+    await b
+    assert.equal(readFileSync(join(dir, 'fabrica.lock'), 'utf8').trim(), '222')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('A4: on start, leftover task containers and networks of a crashed run are removed (after the lock, before any claim)', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  w.deps.docker.limpiar = async () => w.events.push('limpiar')
+  await w.fabrica.start()
+  assert.deepEqual(w.events.slice(0, 3), ['lock', 'limpiar', 'state:1:en_curso/en_curso/null'])
+})
+
+test('A5: bidi and format characters in the agent\'s summary never reach the public reason', () => {
+  const r = validateResultado(JSON.stringify({ estado: 'rechazada', resumen: 'Hecho\u202Eadiós\u200b\u2066x' }))
+  assert.equal(r.resumen, 'Hecho adiós x')
+  assert.equal(presenterLine(1, 'a\u202Eb'), '#1 a b')
+})
+
+test('A6: --modelo must start with a letter (no option injection into claude)', () => {
+  for (const bad of ['--dangerously', '-x', '1abc', '.x']) assert.throws(() => parseArgs(['--modelo', bad]), /modelo/, bad)
+  assert.equal(parseArgs(['--modelo', 'claude-haiku-4-5']).modelo, 'claude-haiku-4-5')
 })
