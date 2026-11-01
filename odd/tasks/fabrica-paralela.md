@@ -21,12 +21,12 @@ Maintainer changes go straight to `main`.
 | T1 | S1 (before) | parent: enable `Factory`, run carga N=9, reset | a4a4f26 (carga clock fix), b64f818 (reset) |
 | T8 | S7 | parent (Risk: item 5 CI, required check) + independent verify | 41e1386, fix after verify (see L11) |
 | T2 | S2 | parent: revert runner + agent lane | 8201346 |
-| T3 | S3 | parent; owner switches off Cloudflare git deploys and adds `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` | f963f06 (pushed; first live deploy running) |
+| T3 | S3 | parent; owner switches off Cloudflare git deploys and adds `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` | f963f06 (live; Cloudflare git deploys off) |
 | T4 | S4 | parent | already true: lib/estado.js:335-366 (compare merge...deployed) |
 | T5 | S5 | dropped (L7) | |
 | T6 | S6 | gentle-ai-worker (background, context backstop) (Risk: item 5 CI) | ea750bb; live proof L20 |
 | T7 | S1 (after) | parent: carga N=9 again, compare | L13 |
-| T9 | S1, S3 | parent: carga N=9 with grouped deploys | |
+| T9 | S1, S3 | parent: carga N=9 with grouped deploys | L21 |
 
 ## Log
 
@@ -50,3 +50,4 @@ Maintainer changes go straight to `main`.
 - **L18** Pre-existing defect found by the live T6 test (#74/#75, PRs #76/#77): an estilo PR that fixes the planted hero always fails CI, because test/estilo.test.mjs ("legit changes pass…", "the estilo surface of the seed … carries the planted hero bug") asserts the live global.css equals the seed with the bug. So the hero fix demo can never merge and the T6 live conflict never happens. Not caused by T8 (estilo PRs always ran the full suite). Needs a decision.
 - **L19** User: "si" (fix the two tests). Closed #74-#77. First deploy.yml run: build 26 s + upload 12 s, deploy.json = f963f06, Turnstile key and /api/estado OK; owner told to turn off Cloudflare's production auto-deploy. Tests fixed: the planted hero is asserted on the seed only; RED reproduced by applying the replay's hero fix to global.css (2 failing), GREEN 46/46 with the fix and without it, npm test 532 pass / 0 fail with the hero fixed.
 - **L20** Live T6 proof (issue #78): factory PR #79 opened 10:29:21; maintainer commit b6b2921 on the same `.hero{` line pushed 10:29:23; rebuild marked `reconstruida`, commented as murciatech-factory[bot], closed #79 (CONFLICTING) and relabelled; Factory reran on the new main and opened #80 (MERGEABLE) at ~10:30:47; #80 merged and the issue closed at ~10:33:49; the old PR's mark-closed did not touch the state (pr stayed 80). deploy.yml put 59f8f93 live; Cloudflare's git build also deployed it, so its production auto-deploy is still on (owner step pending; risk: a slower Cloudflare build can publish an older commit over a newer one). Demo reset (global.css = seed).
+- **L21** Owner: Cloudflare production auto-deploy off (no "Cloudflare Pages" check on any commit after 2184e46). T9 (Actions, replay, N=9, all deployed): arranque 22 s; PR opened 34 s; merged median 96 s, p90 241 s; deployed median 159 s (baseline 340, after T8 387), p90/max 291 s (baseline 418). The burst of merges ran 3 deploys; 6 superseded builds were cancelled. Remaining tail: feature requests (negocio) take the full CI with the sandbox (merged at 198-241 s). Demo reset.
