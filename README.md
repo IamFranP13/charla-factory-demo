@@ -8,7 +8,7 @@ The whole platform is a couple of thousand lines of plain JavaScript and a handf
 
 ## Status: the factory is being rebuilt
 
-The old factory (a chain of model stations run by a GitHub Actions workflow, with a replay model) has been removed. It is being replaced by **Claude Code agents with tools**, run by a local orchestrator on the maintainer's PC (`odd/tasks/fabrica-agentes.md`). The factory is **off** until you run `npm run fabrica` (see below): the form keeps accepting requests, the issues wait in the queue (label `entrada`), and the risk gate, CI, rebuild, deploy and the board work on any pull request. For now the orchestrator stops after the agent's commit (no push, no pull request: task T5).
+The old factory (a chain of model stations run by a GitHub Actions workflow, with a replay model) has been removed. It is being replaced by **Claude Code agents with tools**, run by a local orchestrator on the maintainer's PC (`odd/tasks/fabrica-agentes.md`). The factory is **off** until you run `npm run fabrica` (see below): the form keeps accepting requests, the issues wait in the queue (label `entrada`), and the risk gate, CI, rebuild, deploy and the board work on any pull request. After an agent finishes, the orchestrator itself re-checks its work, pushes the branch and has a workflow open the pull request (see below); then the gate decides.
 
 ## How it works
 
@@ -106,7 +106,7 @@ The factory is off until you switch it on. It needs the proxy running (`npm run 
 
 ```bash
 npm run fabrica                       # up to 3 agents at once
-npm run fabrica -- --paralelo 1 --una-vez --limpiar
+npm run fabrica -- --paralelo 1 --una-vez
 ```
 
 **Who may ask the factory**: every request carries an origin label. The form files `origen:web` (the web can never choose another); your own tests are filed with `npm run tarea` as `origen:prueba`. By default the factory takes **only `origen:prueba`**, so the public site cannot make it work unless you decide so. An issue with no origin label, with both, or with an unknown one counts as `web` (it is never taken by default). `--origen prueba|web|todas` chooses (`web` and `todas` print "acepta peticiones del público" when the factory starts).
@@ -117,7 +117,7 @@ npm run fabrica                                        # rehearsals: works only 
 npm run fabrica -- --origen web                        # the talk: works the audience's requests
 ```
 
-Options: `--origen prueba|web|todas` (default `prueba`), `--paralelo N` (1-6, default 3), `--modelo` (default `claude-haiku-4-5`), `--tiempo MIN` (wall clock per task, default 10), `--turnos N` (default 40), `--sondeo S` (queue check, default 10 s), `--limpiar` (remove each copy at the end), `--una-vez` (stop when the queue is empty).
+Options: `--origen prueba|web|todas` (default `prueba`), `--paralelo N` (1-6, default 3), `--modelo` (default `claude-haiku-4-5`), `--tiempo MIN` (wall clock per task, default 10), `--turnos N` (default 40), `--sondeo S` (queue check, default 10 s), `--conservar` (keep each copy and clean clone at the end, for debugging; removed by default), `--una-vez` (stop when the queue is empty).
 
 - **One instance**: a lock in `$XDG_RUNTIME_DIR/limonia/fabrica.lock` (pid; a dead pid is taken over).
 - **Queue**: the open issues labelled `entrada` of the chosen origin filed by the repository owner, oldest first. Pending = not claimed, or claimed by a run that is gone (no PR, not finished): it restarts from scratch. On start it reconciles the queue, then checks every ~10 s. The rest wait for a free slot.
@@ -126,7 +126,11 @@ Options: `--origen prueba|web|todas` (default `prueba`), `--paralelo N` (1-6, de
 - **Host-side git**: every call on a copy has a 10 s limit and `GIT_DIR`/`GIT_WORK_TREE` pinned to it; a copy whose `.git` is not a plain directory or has alternates is refused (the task ends `fallida`). On start, containers `limonia-agente-t*` and networks `limonia-t*` left by a crashed run are removed. Docker runs in its own process group, so the terminal's Ctrl+C never reaches the containers.
 - **Ctrl+C**: once, no new tasks and the running ones finish; twice, the containers are killed, their claims released back to the queue and their copies removed.
 - **The view for the presenter**: one line per step (`#7 Edit content/campanas/tarea-7.json`), the short trace of each task is kept in `~/.local/state/limonia/tareas/t<n>.traza.txt`.
-- **Outcome**: the agent writes `/work/.fabrica/resultado.json` (`{ "estado": "ok" | "rechazada" | "fallida", "resumen": "…" }`); the orchestrator validates it (size, shape, plain text) and reads it only if it is a regular file inside the copy. It then lists the commits and files of `tarea/<n>` against the commit the copy started from, records the state and prints where the copy is. It does not push or open a pull request yet (T5).
+- **Outcome**: the agent writes `/work/.fabrica/resultado.json` (`{ "estado": "ok" | "rechazada" | "fallida", "resumen": "…" }`); the orchestrator validates it (size, shape, plain text) and reads it only if it is a regular file inside the copy.
+- **Taking the work (nothing of the copy's git is trusted, none of it is read)**: the host walks the copy's working tree (without `.git`, `node_modules`, `.fabrica`, `dist`) and takes **regular files only**. A symlink, device or FIFO, a file over 2 MB, more than 1000 files, more than 60 changes, a tree deeper than 12 levels, a name with `.`/`..`/empty segments, `.git`, control characters or a backslash, or a path outside the repo, ends the task `fallida` ("el agente dejó archivos que la fábrica no acepta"). The files are compared with a **fresh clean clone** the host makes of the commit the copy started from (`t<n>.limpio`), applied there (edits, additions and deletions, exec bit) and committed on `tarea/<n>` with the factory author and a host-built message (`Tarea #<n>: <one sanitised line>`); hooks are off (`core.hooksPath=/dev/null`) and no user or system git config is read. The agent's own commits are ignored: only its files count.
+- **Re-check outside the agent**: a **new** container (same image, `--network none`, `--cap-drop ALL`, limits, 10 min, no token, no environment secret) runs `npm test && npm run build` on the clean clone. The host never runs the repository's tests or build. If it fails, the task ends `fallida` (a fixed reason); the last lines of output go only to `~/.local/state/limonia/tareas/t<n>.traza.txt`. The `codigo` station of the board shows it (`en_curso` → `ok`/`error`).
+- **Publishing**: `tarea/<n>` is pushed with your own `gh` credentials (an explicit `https://github.com/<repo>.git` url; the token from `gh auth token` lives only in the environment of that one git process, never in argv or `.git/config`, and is scrubbed from any message). Then `gh workflow run abrir-pr.yml --ref main -f tarea=<n>` starts `.github/workflows/abrir-pr.yml`: `workflow_dispatch` only, code of `main` only (it never checks out or runs the branch), it validates the input is a plain task number and that the branch exists and the issue is an open `entrada` issue of the owner, mints the factory App token and opens the pull request `tarea/<n>` → `main` as the App (title `Tarea #<n> · <perfil>`, body `Closes #<n>`, label `perfil:<perfil>`), and records its number in the task state. The orchestrator marks `pr` when it sees the pull request and moves on (it does not wait for the merge): the gate takes it from there, as for any pull request.
+- **Cleanup**: the copy and the clean clone are removed at the end (`--conservar` keeps them).
 
 ## Run it locally (free, offline)
 

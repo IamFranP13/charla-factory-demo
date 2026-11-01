@@ -29,7 +29,7 @@ test('gate.yml: never checks out or runs the pull request head', () => {
 })
 
 test('no workflow interpolates expressions into run scripts (untrusted text goes through env)', () => {
-  for (const name of ['gate', 'ci', 'rebuild', 'deploy']) {
+  for (const name of ['gate', 'ci', 'rebuild', 'deploy', 'abrir-pr']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps) {
         if (s.run) assert.doesNotMatch(s.run, /\$\{\{/, `${name}: run script interpolates an expression`)
@@ -85,7 +85,7 @@ test('ci.yml: pull_request and push to main run install, test and build in job "
 })
 
 test('every action is pinned to a major version', () => {
-  for (const name of ['gate', 'ci', 'rebuild', 'deploy']) {
+  for (const name of ['gate', 'ci', 'rebuild', 'deploy', 'abrir-pr']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses)) {
         assert.match(s.uses, /^[\w-]+\/[\w-]+@v\d+$/, `${name}: ${s.uses}`)
@@ -145,7 +145,7 @@ test('every workflow takes Node from .node-version, and that version satisfies A
   const have = version.split('.').map(Number)
   const ok = have[0] > min[0] || (have[0] === min[0] && have.length >= 3 && (have[1] > min[1] || (have[1] === min[1] && have[2] >= min[2])))
   assert.ok(ok, `.node-version ${version} does not satisfy astro ${astro}`)
-  for (const name of ['ci', 'gate', 'rebuild', 'deploy']) {
+  for (const name of ['ci', 'gate', 'rebuild', 'deploy', 'abrir-pr']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
         assert.equal(s.with['node-version-file'], '.node-version', `${name}: setup-node must read .node-version`)
@@ -238,4 +238,39 @@ test('deploy.yml: the build (which runs code a model wrote) has no secret; the u
   assert.equal(run.env.CLOUDFLARE_API_TOKEN, '${{ secrets.CLOUDFLARE_API_TOKEN }}')
   assert.equal(run.env.CLOUDFLARE_ACCOUNT_ID, '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}')
   assert.equal((text.match(/secrets\./g) ?? []).length, 2, 'the Cloudflare token and account are the only secrets')
+})
+
+test('abrir-pr.yml: manual dispatch only, from main, minimal permissions, never the branch\'s code', () => {
+  const wf = load('abrir-pr')
+  assert.deepEqual(Object.keys(wf.on), ['workflow_dispatch'], 'nothing a branch or a pull request does can start it')
+  assert.deepEqual(Object.keys(wf.on.workflow_dispatch.inputs), ['tarea'])
+  assert.equal(wf.on.workflow_dispatch.inputs.tarea.required, true)
+  assert.deepEqual(wf.permissions, { contents: 'read' })
+  assert.equal(wf.jobs.abrir.if, "github.ref == 'refs/heads/main'", 'its definition and code are those of main')
+  assert.equal(wf.jobs.abrir.env.TAREA, '${{ inputs.tarea }}', 'the input reaches scripts through env, never interpolated')
+  const text = raw('abrir-pr')
+  assert.doesNotMatch(JSON.stringify(wf.jobs), /tarea\//, 'the branch name is never an argument of a checkout or a script here')
+  assert.doesNotMatch(text, /pull_request|refs\/pull|head_ref|github\.event\.inputs/)
+  const checkouts = steps(wf, 'abrir').filter((s) => s.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkouts.length, 1)
+  assert.equal(checkouts[0].with.ref, 'main')
+  assert.equal(checkouts[0].with['persist-credentials'], false)
+})
+
+test('abrir-pr.yml: the input is validated before the App token exists, and the token is only in the step that opens the PR', () => {
+  const list = steps(load('abrir-pr'), 'abrir')
+  const runs = list.filter((s) => s.run)
+  assert.deepEqual(runs.map((s) => s.run), ['node scripts/publicar-pr.mjs --comprobar "$TAREA"', 'node scripts/publicar-pr.mjs "$TAREA"'])
+  const appIndex = list.findIndex((s) => s.uses?.startsWith('actions/create-github-app-token@'))
+  assert.ok(list.indexOf(runs[0]) < appIndex && appIndex < list.indexOf(runs[1]), 'validate, then mint, then open')
+  assert.equal(runs[0].env, undefined, 'the validation holds no credential')
+  assert.deepEqual(list.filter((s) => s.env?.GH_TOKEN).map((s) => s.run), ['node scripts/publicar-pr.mjs "$TAREA"'])
+  assert.equal(runs[1].env.GH_TOKEN, '${{ steps.app.outputs.token }}')
+  const app = list[appIndex]
+  assert.equal(app.id, 'app')
+  assert.equal(app.with['app-id'], '${{ secrets.FACTORY_APP_ID }}')
+  assert.equal(app.with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
+  assert.deepEqual(Object.keys(app.with).filter((k) => k.startsWith('permission-')).sort(), ['permission-contents', 'permission-issues', 'permission-pull-requests'])
+  assert.equal(app.with['permission-contents'], 'read', 'the App never writes code here')
+  assert.equal((raw('abrir-pr').match(/secrets\./g) ?? []).length, 2)
 })

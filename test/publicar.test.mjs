@@ -175,6 +175,7 @@ test('recheckArgs: a new container with no network, no capabilities, limits, the
   assert.equal(flag('--security-opt'), 'no-new-privileges')
   assert.equal(flag('--user'), '1000:1000')
   for (const f of ['--cpus', '--memory', '--pids-limit', '--tmpfs']) assert.ok(args.includes(f), f)
+  assert.ok(args.some((a) => a.startsWith('/tmp:') && a.split(':')[1].split(',').includes('exec')), 'the tests run helper scripts from /tmp (docker mounts tmpfs noexec by default)')
   assert.ok(args.some((a) => a.includes('source=/copias/t7.limpio') && a.includes('target=/work')))
   const envs = args.flatMap((a, i) => (a === '-e' ? [args[i + 1]] : []))
   assert.ok(envs.every((e) => !/token|key|secret|sk-|ANTHROPIC/i.test(e)), envs.join(','))

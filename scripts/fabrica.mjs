@@ -2,8 +2,10 @@
 // Switches the factory on: works the queue (open issues of the owner labelled `entrada`) with Claude Code agents, each
 // one in its own container. The logic lives in lib/fabrica.js; this only wires the real Docker, git, gh and proxy.
 //
-//   npm run fabrica -- [--origen prueba|web|todas] [--paralelo N] [--modelo M] [--tiempo MIN] [--turnos N] [--limpiar] [--una-vez]
+//   npm run fabrica -- [--origen prueba|web|todas] [--paralelo N] [--modelo M] [--tiempo MIN] [--turnos N] [--conservar] [--una-vez]
 //
+// After an agent finishes `ok` the work is re-checked in a container with no network, pushed as `tarea/<n>` with the
+// maintainer's own `gh` credentials, and the workflow abrir-pr.yml (on main) opens the pull request as the factory App.
 // Needs the model proxy running (`npm run proxy`), the image (`npm run agente:imagen`) and `gh` logged in as the owner.
 // Ctrl+C: stop taking tasks and let the running ones finish; a second Ctrl+C kills them and returns them to the queue.
 // Exit codes: 0 done · 1 the factory could not run · 2 usage error.
@@ -13,6 +15,7 @@ import { join } from 'node:path'
 import {
   acquireLock, createFabrica, dockerNode, filesNode, githubNode, gitNode, parseArgs, proxyNode,
 } from '../lib/fabrica.js'
+import { publicarNode, trabajoNode } from '../lib/publicar.js'
 
 const USAGE = `Usage: npm run fabrica -- [options]
   --origen O     whose requests to take: prueba (yours, filed with \`npm run tarea\`; default), web (the public's)
@@ -22,7 +25,7 @@ const USAGE = `Usage: npm run fabrica -- [options]
   --tiempo MIN   wall-clock limit per task in minutes (default 10)
   --turnos N     max turns per agent (default 40)
   --sondeo S     seconds between queue checks (default 10)
-  --limpiar      remove each task's copy when it ends
+  --conservar    keep each task's copy and clean clone when it ends (for debugging; removed by default)
   --una-vez      stop when the queue is empty and nothing is running`
 
 let options
@@ -45,6 +48,8 @@ try {
   // The maintainer's own `gh`: the repository and its owner come from it unless the environment already says.
   process.env.GITHUB_REPOSITORY ||= execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { encoding: 'utf8', cwd: root }).trim()
   const repo = process.env.GITHUB_REPOSITORY
+  const trabajo = trabajoNode({ source: root, copias })
+  const publicacion = publicarNode({ repo })
   const fabrica = createFabrica({
     owner: repo.split('/')[0],
     ids: { uid: process.getuid(), gid: process.getgid() },
@@ -53,6 +58,7 @@ try {
     proxy: proxyNode({ socket: join(runtime, 'proxy-admin.sock') }),
     docker: dockerNode(),
     git: gitNode({ source: root, copias }),
+    trabajo: { dir: trabajo.dir, tomar: trabajo.tomar, publicar: publicacion.publicar },
     files: filesNode({ playbook: join(root, 'factory/agente/playbook.md'), copias }),
     clock: {
       now: () => new Date().toISOString(),

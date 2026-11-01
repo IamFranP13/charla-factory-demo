@@ -38,9 +38,10 @@ async function until(condition, what = 'condition') {
 }
 
 // Everything the orchestrator touches, faked, with one shared ordered event log.
-function world({ issues = [], proxyAlive = true, behavior, options = {}, resultados = {}, collect, failClaim = false } = {}) {
+function world({ issues = [], proxyAlive = true, behavior, options = {}, resultados = {}, tomar, verif, publicar, failClaim = false } = {}) {
   const events = []
   const runs = []
+  const rechecks = []
   const logs = []
   const states = new Map(issues.map((i) => [i.number, i]))
   const timers = []
@@ -61,7 +62,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
         const next = change(current)
         if (next !== current) {
           i.body = replaceState(i.body, next)
-          events.push(`state:${n}:${next.estaciones.spec}/${next.estaciones.build}/${next.resultado}`)
+          events.push(`state:${n}:${next.estaciones.spec}/${next.estaciones.build}/${next.resultado}${next.estaciones.codigo === 'pendiente' ? '' : `/codigo:${next.estaciones.codigo}`}${next.pr ? `/pr:${next.pr}` : ''}`)
         }
         return next
       },
@@ -80,18 +81,31 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
         const name = args[args.indexOf('--name') + 1]
         const n = Number(/t(\d+)$/.exec(name)[1])
         const record = { args, env, input, name, n }
-        runs.push(record)
-        events.push(`run:${n}`)
+        const isVerif = name.startsWith('limonia-verif')
+        ;(isVerif ? rechecks : runs).push(record)
+        events.push(`${isVerif ? 'verif' : 'run'}:${n}`)
         const exit = new Promise((resolve) => {
           live.set(name, resolve)
-          Promise.resolve(behavior?.(record, { onLine, finish: resolve })).then((code) => { if (code !== undefined) resolve(code) })
+          Promise.resolve((isVerif ? (verif ?? (() => 0)) : behavior)?.(record, { onLine, finish: resolve })).then((code) => { if (code !== undefined) resolve(code) })
         })
         return { exit }
       },
     },
     git: {
       prepare: async ({ numero }) => { events.push(`copy:${numero}`); return { dir: `/copias/t${numero}`, base: 'b'.repeat(40) } },
-      collect: async ({ numero }) => collect?.(numero) ?? { commits: [{ sha: 'c'.repeat(40), subject: `Tarea #${numero}` }], files: ['content/campanas/tarea-1.json'] },
+    },
+    trabajo: {
+      dir: (numero) => `/copias/t${numero}.limpio`,
+      tomar: async ({ numero, resumen }) => {
+        events.push(`tomar:${numero}`)
+        if (tomar) return tomar({ numero, resumen })
+        return { clone: `/copias/t${numero}.limpio`, files: ['content/campanas/tarea-1.json'] }
+      },
+      publicar: async ({ clone, numero }) => {
+        events.push(`push:${numero}`)
+        if (publicar) return publicar({ clone, numero })
+        return { pr: 40 + numero }
+      },
     },
     files: {
       playbook: async () => 'PLAYBOOK TEXT',
@@ -106,8 +120,8 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
     },
     log: (line) => logs.push(line),
   }
-  const fabrica = createFabrica(deps, { paralelo: 3, modelo: 'claude-haiku-4-5', tiempoMin: 10, turnos: 30, limpiar: false, unaVez: true, sondeoS: 10, ...options })
-  return { fabrica, events, runs, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
+  const fabrica = createFabrica(deps, { paralelo: 3, modelo: 'claude-haiku-4-5', tiempoMin: 10, turnos: 30, conservar: false, unaVez: true, sondeoS: 10, ...options })
+  return { fabrica, events, runs, rechecks, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
 }
 const ok = (resumen = 'Hecho') => JSON.stringify({ estado: 'ok', resumen })
 
@@ -233,9 +247,9 @@ test('start line says which origins it takes; web and todas say it loudly', asyn
 
 test('parseArgs: defaults, --paralelo 1..6, bad values refused', () => {
   const d = parseArgs([])
-  assert.deepEqual([d.paralelo, d.modelo, d.tiempoMin, d.limpiar, d.unaVez, d.sondeoS], [3, 'claude-haiku-4-5', 10, false, false, 10])
+  assert.deepEqual([d.paralelo, d.modelo, d.tiempoMin, d.conservar, d.unaVez, d.sondeoS], [3, 'claude-haiku-4-5', 10, false, false, 10])
   assert.equal(parseArgs(['--paralelo', '6']).paralelo, 6)
-  assert.equal(parseArgs(['--paralelo=2', '--limpiar', '--una-vez', '--modelo', 'claude-haiku-4-5', '--tiempo', '3']).tiempoMin, 3)
+  assert.equal(parseArgs(['--paralelo=2', '--conservar', '--una-vez', '--modelo', 'claude-haiku-4-5', '--tiempo', '3']).tiempoMin, 3)
   for (const bad of [['--paralelo', '7'], ['--paralelo', '0'], ['--paralelo', 'x'], ['--tiempo', '-1'], ['--nope'], ['--paralelo']]) {
     assert.throws(() => parseArgs(bad), /./, bad.join(' '))
   }
@@ -351,7 +365,7 @@ test('presenter lines: one per step, tool + short target; control characters nev
 
 // --- git ---------------------------------------------------------------------------------------------------------------
 
-test('gitNode: a self-contained copy of origin/main with its own .git, no remote, on tarea/<n>; collect sees the commits', async () => {
+test('gitNode: a self-contained copy of origin/main with its own .git, no remote, on tarea/<n>', async () => {
   const root = mkdtempSync(join(tmpdir(), 'fabrica-git-'))
   const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } }).trim()
   try {
@@ -380,11 +394,6 @@ test('gitNode: a self-contained copy of origin/main with its own .git, no remote
     writeFileSync(join(dir, 'b.txt'), 'tres')
     git(dir, 'add', 'b.txt')
     git(dir, 'commit', '-qm', 'Tarea #5: b')
-    writeFileSync(join(dir, 'b.txt'), 'cuatro')
-    git(dir, 'commit', '-qam', 'Tarea #5: b2')
-    const seen = await node.collect({ dir, base, numero: 5 })
-    assert.deepEqual(seen.commits.map((c) => c.subject), ['Tarea #5: b', 'Tarea #5: b2'])
-    assert.deepEqual(seen.files, ['b.txt'])
     // preparing again starts from scratch
     const again = await node.prepare({ numero: 5 })
     assert.ok(!existsSync(join(again.dir, 'b.txt')))
@@ -414,7 +423,8 @@ test('a full task: claim first, then copy, network, token, container; success re
   await w.fabrica.start()
   assert.deepEqual(w.events, [
     'lock', 'state:1:en_curso/en_curso/null', 'copy:1', 'net+limonia-t1', 'connect:limonia-t1:limonia-proxy', 'token:1', 'run:1',
-    'revoke:1', 'net-limonia-t1', 'state:1:ok/ok/null', 'unlock',
+    'revoke:1', 'net-limonia-t1', 'tomar:1', 'state:1:ok/ok/null', 'state:1:ok/ok/null/codigo:en_curso', 'verif:1', 'state:1:ok/ok/null/codigo:ok',
+    'push:1', 'state:1:ok/ok/null/codigo:ok/pr:41', 'rm:/copias/t1', 'rm:/copias/t1.limpio', 'unlock',
   ])
   const run = w.runs[0]
   assert.equal(run.env.ANTHROPIC_AUTH_TOKEN, 'lim-token-1')
@@ -427,16 +437,34 @@ test('a full task: claim first, then copy, network, token, container; success re
   assert.ok(w.timers[0].cancelled, 'the wall-clock timer is cancelled when the container ends')
   assert.equal(w.timers[0].ms, 10 * 60_000)
   assert.ok(w.logs.some((l) => l === '#1 Read AGENTS.md'))
-  assert.ok(w.logs.some((l) => /#1 ok.*Campaña añadida.*\/copias\/t1.*tarea\/1.*1 commit/.test(l)), w.logs.join('\n'))
+  assert.ok(w.logs.some((l) => /#1 ok.*Campaña añadida.*tarea\/1.*1 archivo/.test(l)), w.logs.join('\n'))
+  assert.ok(w.logs.some((l) => /#1 comprobación fuera del agente.*ok/.test(l)), w.logs.join('\n'))
+  assert.ok(w.logs.some((l) => /#1 pull request #41/.test(l)), w.logs.join('\n'))
   const state = w.stateOf(1)
-  assert.deepEqual([state.estaciones.spec, state.estaciones.build, state.estaciones.puerta, state.resultado, state.pr], ['ok', 'ok', 'pendiente', null, null])
-  assert.ok(!w.events.some((e) => e.startsWith('rm:')), 'the copy is kept for T5 without --limpiar')
+  assert.deepEqual([state.estaciones.spec, state.estaciones.build, state.estaciones.codigo, state.estaciones.puerta, state.resultado, state.pr], ['ok', 'ok', 'ok', 'pendiente', null, 41])
+  // The re-check is a second container, with no network and no token, on the clean clone.
+  const check = w.rechecks[0]
+  assert.equal(check.name, 'limonia-verif-t1')
+  assert.equal(check.args[check.args.indexOf('--network') + 1], 'none')
+  assert.deepEqual(check.env, {}, 'no token reaches the re-check')
+  assert.ok(check.args.some((a) => a.includes('source=/copias/t1.limpio')))
+  assert.ok(!JSON.stringify(check.args).includes('lim-token'))
 })
 
-test('--limpiar removes the copy after the outcome', async () => {
-  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, options: { limpiar: true } })
+test('the copy and the clean clone are removed at the end; --conservar keeps both', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
   await w.fabrica.start()
-  assert.ok(w.events.includes('rm:/copias/t1'))
+  assert.ok(w.events.includes('rm:/copias/t1') && w.events.includes('rm:/copias/t1.limpio'))
+  const k = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, options: { conservar: true } })
+  await k.fabrica.start()
+  assert.ok(!k.events.some((e) => e.startsWith('rm:')))
+  assert.ok(k.logs.some((l) => /copia \/copias\/t1/.test(l) && /clon \/copias\/t1\.limpio/.test(l)), 'says where they are')
+})
+
+test('a failed task also removes the copy and the clone (the local trace stays)', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: () => 1 })
+  await w.fabrica.start()
+  assert.ok(w.events.includes('rm:/copias/t1') && w.events.includes('rm:/copias/t1.limpio'))
 })
 
 test('the token lives about as long as the time limit', async () => {
@@ -453,10 +481,10 @@ test('failures: a bad resultado, a non-zero exit, no commits, a crash in setup �
     ['missing', {}, () => 0, undefined],
     ['malformed', { '/copias/t1': '{nope' }, () => 0, undefined],
     ['exit code', { '/copias/t1': ok() }, () => 1, undefined],
-    ['no commits', { '/copias/t1': ok() }, () => 0, () => ({ commits: [], files: [] })],
+    ['no changes', { '/copias/t1': ok() }, () => 0, ({ numero }) => ({ clone: `/copias/t${numero}.limpio`, files: [] })],
   ]
-  for (const [name, resultados, behavior, collect] of cases) {
-    const w = world({ issues: [issue(1)], resultados, behavior, collect })
+  for (const [name, resultados, behavior, tomar] of cases) {
+    const w = world({ issues: [issue(1)], resultados, behavior, tomar })
     await w.fabrica.start()
     assert.ok(w.events.includes('revoke:1'), name)
     assert.ok(w.events.includes('net-limonia-t1'), name)
@@ -475,7 +503,7 @@ test('failures: a bad resultado, a non-zero exit, no commits, a crash in setup �
 })
 
 test('a rejected task is recorded as rejected with the agent\'s one-line reason, and revokes too', async () => {
-  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': JSON.stringify({ estado: 'rechazada', resumen: 'No tiene que ver con LIMONIA' }) }, behavior: () => 0, collect: () => ({ commits: [], files: [] }) })
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': JSON.stringify({ estado: 'rechazada', resumen: 'No tiene que ver con LIMONIA' }) }, behavior: () => 0 })
   await w.fabrica.start()
   const state = w.stateOf(1)
   assert.deepEqual([state.estaciones.spec, state.resultado, state.motivo], ['rechazada', 'rejected', 'No tiene que ver con LIMONIA'])
@@ -559,85 +587,6 @@ test('Ctrl+C once: stops taking tasks and lets the running one finish; twice: ki
 // --- verification round: blockers and advisories ------------------------------------------------------------------------
 
 const LIB = new URL('../lib/fabrica.js', import.meta.url).href
-const gitEnv = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' }
-async function copyWithCommit(root) {
-  const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', env: gitEnv }).trim()
-  const source = join(root, 'real')
-  mkdirSync(source)
-  git(source, 'init', '-q', '-b', 'main')
-  writeFileSync(join(source, 'a.txt'), 'uno')
-  git(source, 'add', '.')
-  git(source, 'commit', '-qm', 'uno')
-  git(source, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
-  const node = gitNode({ source, copias: join(root, 'copias'), fetch: false })
-  const copy = await node.prepare({ numero: 5 })
-  writeFileSync(join(copy.dir, 'b.txt'), 'dos')
-  git(copy.dir, 'add', 'b.txt')
-  git(copy.dir, 'commit', '-qm', 'Tarea #5: b')
-  return { source, copy, git }
-}
-const collectInChild = (source, root, copy) => spawnSync(process.execPath, ['--input-type=module', '-e', `
-  import { gitNode } from ${JSON.stringify(LIB)}
-  const node = gitNode({ source: ${JSON.stringify(source)}, copias: ${JSON.stringify(join(root, 'copias'))}, fetch: false, timeoutMs: 1000 })
-  try { console.log(JSON.stringify(await node.collect({ dir: ${JSON.stringify(copy.dir)}, base: ${JSON.stringify(copy.base)}, numero: 5 }))) } catch (e) { console.log('ERR ' + e.message) }
-`], { encoding: 'utf8', timeout: 15000 })
-
-test('B1: a FIFO in the copy\'s .git cannot hang collect: every host-side git call has a timeout and the task fails', async () => {
-  for (const victim of ['refs/heads/tarea/5', 'config']) {
-    const root = mkdtempSync(join(tmpdir(), 'fabrica-fifo-'))
-    try {
-      const { source, copy } = await copyWithCommit(root)
-      rmSync(join(copy.dir, '.git', victim), { force: true })
-      execFileSync('mkfifo', [join(copy.dir, '.git', victim)])
-      const r = collectInChild(source, root, copy)
-      assert.equal(r.signal, null, `${victim}: collect hung`)
-      assert.equal(r.status, 0)
-      assert.match(r.stdout, /^ERR /, victim)
-    } finally {
-      rmSync(root, { recursive: true, force: true })
-    }
-  }
-})
-
-test('A1: collect refuses a copy whose .git points elsewhere (alternates, gitfile, symlink)', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'fabrica-alt-'))
-  try {
-    const { source, copy } = await copyWithCommit(root)
-    const node = gitNode({ source, copias: join(root, 'copias'), fetch: false })
-    const ask = () => node.collect({ dir: copy.dir, base: copy.base, numero: 5 })
-    assert.equal((await ask()).commits.length, 1, 'a normal copy still works')
-    writeFileSync(join(copy.dir, '.git/objects/info/alternates'), `${source}/.git/objects\n`)
-    await assert.rejects(ask(), /alternates/)
-    rmSync(join(copy.dir, '.git/objects/info/alternates'))
-    const gitdir = join(root, 'moved')
-    execFileSync('mv', [join(copy.dir, '.git'), gitdir])
-    writeFileSync(join(copy.dir, '.git'), `gitdir: ${gitdir}\n`)
-    await assert.rejects(ask(), /\.git/)
-    rmSync(join(copy.dir, '.git'))
-    symlinkSync(gitdir, join(copy.dir, '.git'))
-    await assert.rejects(ask(), /\.git/)
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test('A2: collect lists commits with one bounded git log and caps the files', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'fabrica-log-'))
-  try {
-    const { source, copy, git } = await copyWithCommit(root)
-    for (let i = 0; i < 3; i++) {
-      writeFileSync(join(copy.dir, `f${i}.txt`), String(i))
-      git(copy.dir, 'add', '.')
-      git(copy.dir, 'commit', '-qm', `Tarea #5: f${i}`)
-    }
-    const seen = await gitNode({ source, copias: join(root, 'copias'), fetch: false }).collect({ dir: copy.dir, base: copy.base, numero: 5 })
-    assert.deepEqual(seen.commits.map((c) => c.subject), ['Tarea #5: b', 'Tarea #5: f0', 'Tarea #5: f1', 'Tarea #5: f2'])
-    assert.ok(seen.commits.every((c) => /^[0-9a-f]{40}$/.test(c.sha)))
-    assert.deepEqual(seen.files, ['b.txt', 'f0.txt', 'f1.txt', 'f2.txt'])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
 
 test('B2: docker runs in its own process group, so the terminal\'s first Ctrl+C does not reach the container', async () => {
   const root = mkdtempSync(join(tmpdir(), 'fabrica-sig-'))
@@ -683,6 +632,61 @@ test('A3: two instances cannot both take a stale lock: a live lock grabbed by mi
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('failures after the agent: a refused file, a failing re-check, a failed publication — fixed reasons, nothing from the output in the public reason', async () => {
+  const { Refusal } = await import('../lib/publicar.js')
+  const cases = [
+    ['refusal', { tomar: async () => { throw new Refusal('enlace simbólico: /etc/passwd') } }, /no acepta/, 'build', 'error'],
+    ['recheck fails', { verif: (_r, { onLine }) => { onLine('FALLO SECRETO DEL TEST'); return 1 } }, /fuera del agente/, 'codigo', 'error'],
+    ['publication fails', { publicar: async () => { throw new Error('envio: gho_SECRET denied') } }, /publicar/, 'codigo', 'ok'],
+  ]
+  for (const [name, extra, motivo, station, status] of cases) {
+    const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, ...extra })
+    await w.fabrica.start()
+    const state = w.stateOf(1)
+    assert.equal(state.resultado, 'failed', name)
+    assert.equal(state.estaciones[station], status, name)
+    assert.match(state.motivo, motivo, name)
+    assert.ok(!/SECRETO|SECRET|passwd/.test(state.motivo), `${name}: nothing from the output reaches the public reason`)
+    assert.equal(state.pr, null, name)
+    if (name !== 'publication fails') assert.ok(!w.events.includes('push:1'), `${name}: nothing is published`)
+    if (name === 'refusal') assert.ok(!w.events.includes('verif:1'), 'no re-check of a refused tree')
+    assert.ok(!w.logs.some((l) => /gho_SECRET/.test(l)), `${name}: a credential-looking text never reaches the terminal`)
+  }
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: (_r, { onLine }) => { onLine('FALLO SECRETO DEL TEST'); return 1 } })
+  const traces = []
+  w.deps.files.writeTrace = async (n, lines) => traces.push(...lines)
+  await w.fabrica.start()
+  assert.ok(traces.some((l) => /FALLO SECRETO DEL TEST/.test(l)), 'the last lines of the re-check are in the local trace')
+  assert.ok(!w.logs.some((l) => /FALLO SECRETO/.test(l)), 'not on the terminal')
+})
+
+test('re-check timeout: the verification container is killed and the task fails', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: () => undefined })
+  const done = w.fabrica.start()
+  await until(() => w.timers.length === 2, 'the re-check timer')
+  assert.equal(w.timers[1].ms, 10 * 60_000)
+  w.timers[1].fn()
+  await done
+  assert.deepEqual(w.kills, ['limonia-verif-t1'])
+  assert.equal(w.stateOf(1).resultado, 'failed')
+  assert.match(w.stateOf(1).motivo, /tardó/)
+})
+
+test('a pull request that does not show up in time is not a failure: the branch is up and the workflow records it', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, publicar: async () => ({ pr: null }) })
+  await w.fabrica.start()
+  const state = w.stateOf(1)
+  assert.equal(state.resultado, null)
+  assert.deepEqual([state.estaciones.codigo, state.pr], ['ok', null])
+  assert.ok(w.logs.some((l) => /#1 .*pull request/.test(l) && /sin número|todavía/.test(l)), w.logs.join('\n'))
+})
+
+test('a rejected task is neither re-checked nor published', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': JSON.stringify({ estado: 'rechazada', resumen: 'No' }) }, behavior: () => 0 })
+  await w.fabrica.start()
+  assert.ok(!w.events.some((e) => /^(tomar|verif|push)/.test(e)))
 })
 
 test('A4: on start, leftover task containers and networks of a crashed run are removed (after the lock, before any claim)', async () => {
