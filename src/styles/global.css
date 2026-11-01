@@ -76,7 +76,7 @@ a:hover{color:var(--oliva)}
 .campo-oliva h2,.campo-oliva p{color:#fff}
 
 /* Hero */
-.hero{position:relative;padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px);overflow:hidden}
+.hero{position:relative;isolation:auto;padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px);overflow:hidden}
 .hero__tarjeta{position:relative;z-index:1;display:flex;flex-direction:column;background:transparent;border-top-right-radius:var(--cuarto);overflow:hidden}
 .tira{display:flex;height:40px;flex:none;overflow:hidden}
 .tira i{flex:none;width:28px;height:100%;background:var(--oliva-oscuro)}
