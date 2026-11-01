@@ -1,0 +1,46 @@
+# Parallel factory for the live talk
+
+The audience files requests at the start of (or during) the talk and every one is worked at once, in GitHub Actions.
+The bottleneck is after the agents: merging and deploying. Replaces the local runner and the agent lane (runner-local.md).
+Maintainer changes go straight to `main`.
+
+## Specs
+
+- **S1** Measure before changing: `scripts/carga.mjs` against the Actions factory with the replay, N=9, before and after; report per stage (arranque, PR abierta, fusionada, desplegada: mediana, p90, max). Then `npm run reset-demo -- --apply`.
+- **S2** The local runner and the agent lane are removed from `main` (`lib/runner.js`, `lib/app-token.js`, `scripts/runner.mjs`, `lib/agente.js`, `lib/linear.js`, `scripts/agente.mjs`, `factory/agente.md`, their tests, scripts and docs); the `Factory` workflow is on. `carga` stays, its help no longer mentions the runner.
+- **S3** Grouped deploys: a `deploy.yml` workflow on push to `main` with `concurrency: { group: deploy, cancel-in-progress: true }` builds and runs `wrangler pages deploy`; Cloudflare's git-triggered production deploys and the `tarea/*` previews are turned off (owner, in the Cloudflare dashboard). A burst of merges ends in one or two deploys.
+- **S4** The board marks every merged task whose commit is contained in the deployed commit as "en producción", not only the one whose merge commit equals it.
+- **S5** Requests do not collide: the data kinds (`precios`, `descuentos`, `transporte`) write one file per entry instead of one shared file, so two requests collide only on the same entry.
+- **S7** Faster merge: one CI run per ref at a time (a newer push to `main`, or to the same PR, cancels the run in progress), so a burst of merges runs the full CI on `main` once; a pull request that only adds new regular JSON files directly in the new-file folders of `factory/kinds.yaml` (`campana`, `producto`, `destino`) gets a `build` check that validates and builds the site without the full suite; any other change (and every push to `main`) runs the full CI as today. Fails closed: when the scope cannot be read, the full CI runs.
+- **S6** A factory PR that conflicts with `main` is rebuilt automatically on the current `main`, at most once, instead of staying blocked.
+
+## Tasks
+
+| ID | Specs | Route | Commit |
+|----|-------|-------|--------|
+| T1 | S1 (before) | parent: enable `Factory`, run carga N=9, reset | a4a4f26 (carga clock fix), b64f818 (reset) |
+| T8 | S7 | parent (Risk: item 5 CI, required check) + independent verify | 41e1386, fix after verify (see L11) |
+| T2 | S2 | parent: revert runner + agent lane | 8201346 |
+| T3 | S3 | parent; owner switches off Cloudflare git deploys and adds `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` | parked: branch `park/deploy-agrupado` (dbb76e8) |
+| T4 | S4 | parent | already true: lib/estado.js:335-366 (compare merge...deployed) |
+| T5 | S5 | dropped (L7) | |
+| T6 | S6 | gentle-ai-worker (background, context backstop) (Risk: item 5 CI) | ea750bb |
+| T7 | S1 (after) | parent: carga N=9 again, compare | |
+
+## Log
+
+- **L1** User: "La idea es en la charla poder mostrar la factory y que alguien del publico pueda al comienzo de la charla o durante la demo puedan meter pr en directo y que tiran de los agentes. Lo importante de esto es paralelizar los trabajos como muestra el repo que te pasé, realmente me da igual que se haga remoto o en mi pc, pero tienen que cada llamada de la fábrica lanzarse a la vez. Esto nos da problemas como el código no esté actualizado por los cambios entre pr y que a la hora de mergear y subir a prod sea muy lento. Cuál sería la mejor manera de hacer esto?"
+- **L2** Evidence: `factory.yml` already runs one job per issue in parallel; `main` protection has `strict: false` (no up-to-date requirement); Cloudflare Pages builds on every push to `main`, one at a time. Plan proposed: stay in Actions, avoid collisions, grouped deploys, drop the runner and T3 of runner-local. User: "si me gusta como lo planteas".
+- **L3** The `Factory` workflow was `disabled_manually` (for the local runner); T1 enables it.
+- **L4** Baseline run (#38-#46): 7 of 9 PRs merged between 09:00:46 and 09:01:38; every PR also gets a "Cloudflare Pages" preview check, so previews share Cloudflare's build queue. T5 scope: ~20 files (domain, gate policy, replay, seed); `precios`/`descuentos` already take the human route.
+- **L5** `TURNSTILE_SITE_KEY` is read at build time (src/components/PeticionForm.astro:4): deploy.yml passes it from a repository variable.
+- **L6** Baseline (Actions, replay, N=9, all 9 deployed): arranque median 24 s; PR opened ~36 s (GitHub created_at was +1 h, fixed in carga); merged median 212 s, p90 293 s; deployed median 340 s, max 418 s. Cloudflare did NOT queue nine builds: deploys landed 125-160 s after each merge, several merges per deploy. The largest stage is PR opened -> merged (~3 min: CI `build` runs npm ci, the full suite and the site build on every PR).
+- **L7** User: "si hazlo" to: speed up the PR CI (new S7, T8), park T3 (deploy.yml kept on branch `park/deploy-agrupado`), drop T5, keep T6, then T7; push without deploy.yml. Pushed 8201346..b64f818 to main.
+- **L8** Parent decision: keep CI on pushes to `main` (maintainers push straight to `main`) but cancel superseded runs, instead of removing it.
+- **L9** T8 residual risk accepted by the parent: a data-only PR no longer runs test/web.test.mjs (rendered pages list every campaign/product/destination); the templates are unchanged by such a PR and validate-content.mjs checks the data in the build.
+- **L10** T6 design constraints (parent): a factory PR is `tarea/<n>` opened by the factory App with body `Closes #<n>`; factory.yml's guard runs only for an open issue labelled `entrada` whose branch `tarea/<n>` does not exist yet. The rebuild must happen without a human, at most once per task (recorded in the task state written by scripts, never by a model), never for a PR that is not a factory PR of this repository, and never with model-written code holding a token beyond what factory.yml already gives it. A second conflict ends the task as today's refusals do (the issue says why).
+- **L11** Independent verify of 41e1386: S7 pass, checks 1/2/4/5 pass; advisory (medium): an edit of an existing product/destination skipped test/seed.test.mjs (sample orders, not checked by validate-content) and would turn main red. Parent fixed it: only new regular files (status A, mode 100644) are `datos`; added the verifier's regression cases.
+- **L12** T6 worker done (uncommitted): lib/rebuild.js, scripts/rebuild.mjs, test/rebuild.test.mjs, .github/workflows/rebuild.yml, lib/estado.js (`reconstruida` flag kept across state rewrites); npm test 524 pass / 0 fail. Not run live. Open: race with gate.yml mark-closed when the PR is closed; independent verify launched.
+- **L13** After T8 (Actions, replay, N=9, all deployed): arranque 22 s; PR opened 33 s; merged median 81 s (was 212), p90 156 s (was 293); deployed median 387 s (was 340), max 390 s (was 418). All nine reached production together ~230 s after the last merge: with faster merges, Cloudflare's single build queue (production + one preview per PR) is now the bottleneck, so T3 (parked on `park/deploy-agrupado`) becomes the next lever. Demo reset and pushed.
+- **L14** Independent verify of T6: S6 FAIL. D1 (blocker) gate.mjs --closed of the old PR overwrites the rebuilt task's state (no check that state.pr is the closed PR); D2 (blocker) a PR already conflicting when it opens after the last push is never rebuilt; D3 (low) a failed step after closing leaves the task behind; advisories: App token without permission-* inputs, null updateIssueState still closes. Sent back to the worker (mvxmwiev-4-8rww).
+- **L15** Re-verify of T6: D1 and D2 fixed; new blocker B1: the D3 fix (`stranded()`) could restart the factory after a person refused the rebuilt PR (breaks at most once). Two verification rounds used, so the parent simplified instead of a third round: `stranded()` removed (D3 stays covered by 404/422 tolerance; a failed step after the flag is reported, never retried) and `updateIssueState` writes nothing when the change returns the same state (removes the lost-update window of `--closed`). RED observed (8 failing), GREEN 92/92 focused, npm test 530 pass / 0 fail. Accepted advisory: after a rebuild the board can show the old run as refused for ~20-60 s until the factory restarts. Not run live yet.
