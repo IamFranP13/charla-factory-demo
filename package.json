@@ -18,6 +18,7 @@
     "reset-demo": "node scripts/reset-demo.mjs",
     "carga": "node scripts/carga.mjs",
     "rebuild": "node scripts/rebuild.mjs",
+    "fabrica": "node scripts/fabrica.mjs",
     "agente:imagen": "docker build -f factory/agente/Dockerfile -t limonia-agente:dev .",
     "agente:medir": "node scripts/agente-medir.mjs",
     "proxy": "node scripts/proxy-red.mjs up",

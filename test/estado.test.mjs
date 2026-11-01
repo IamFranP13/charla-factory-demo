@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { handleEstado, derivar, createMemoryCache, STATION_LABELS, MENSAJES, enlaceFor } from '../lib/estado.js'
-import { initialState, finishState, replaceState, replaceTrace, parseState, STATIONS } from '../lib/estado.js'
+import { resetState, applyEvent, initialState, finishState, replaceState, replaceTrace, parseState, STATIONS } from '../lib/estado.js'
 
 const NOW = '2026-10-27T10:00:00.000Z'
 const SHA_A = 'a'.repeat(40)
@@ -364,4 +364,12 @@ test('replaceTrace: trace markers typed inside the request are data, never the t
   }
   assert.equal(twice.match(/Cabecera/g).length, 1)
   assert.match(twice, /dos/)
+})
+
+test('resetState: back to the queue from scratch; only who asked and the rebuilt-once record survive', () => {
+  let state = applyEvent(initialState('negocio', NOW), { station: 'spec', status: 'ok', tipo: 'precios' }, NOW)
+  state = finishState({ ...state, pr: 7, ruta: 'human', vueltas: 1, reconstruida: true }, 'failed', NOW, 'algo')
+  const back = resetState(state, '2026-10-27T11:00:00.000Z')
+  assert.deepEqual(back, { ...initialState('negocio', '2026-10-27T11:00:00.000Z'), reconstruida: true })
+  assert.equal(resetState(initialState('marketing', NOW), NOW).reconstruida, undefined)
 })

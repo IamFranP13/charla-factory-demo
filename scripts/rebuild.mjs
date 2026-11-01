@@ -1,21 +1,18 @@
 #!/usr/bin/env node
-// After a push to main: every open factory pull request that conflicts with main is closed and its task is run again
-// by the factory on the current main, at most once per task (see lib/rebuild.js).
+// After a push to main: every open factory pull request that conflicts with main is closed and its task goes back to
+// the orchestrator's queue (`npm run fabrica` works it again on the current main), at most once per task (lib/rebuild.js).
 //
 //   node scripts/rebuild.mjs
 //
-// Needs GITHUB_REPOSITORY and GH_TOKEN: the factory App token (the label that re-runs the factory only triggers the
-// Factory workflow when it is added by an App, not by GITHUB_TOKEN). Runs the code of main only.
+// Needs GITHUB_REPOSITORY and GH_TOKEN: the factory App token. Runs the code of main only.
 // Exit codes: 0 done · 1 some pull request could not be processed · 2 usage or setup error.
 
 import { pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { gh, ghJson, repoSlug } from '../lib/github.js'
-import { parseState } from '../lib/estado.js'
+import { parseState, resetState } from '../lib/estado.js'
 import { updateIssueState } from '../lib/issue-state.js'
 import { rebuildConflicts } from '../lib/rebuild.js'
-
-const LABEL = 'entrada'
 
 // A call whose target may already be gone (or already be right): 404 and 422 "does not exist" are not failures.
 function tolerant(args, options) {
@@ -44,11 +41,8 @@ function githubCalls(repo) {
     closePull: (number) => patch(`${api}/pulls/${number}`, { state: 'closed' }),
     deleteBranch: (ref) => tolerant(['api', '-X', 'DELETE', `${api}/git/refs/heads/${ref}`]),
     closeIssue: (number) => patch(`${api}/issues/${number}`, { state: 'closed', state_reason: 'not_planned' }),
-    // Take the label off and put it back: the new `labeled` event runs the Factory workflow again.
-    relabel: (number) => {
-      tolerant(['api', '-X', 'DELETE', `${api}/issues/${number}/labels/${LABEL}`])
-      gh(['api', '-X', 'POST', `${api}/issues/${number}/labels`, '--input', '-'], { input: JSON.stringify({ labels: [LABEL] }) })
-    },
+    // Pending again, no claim and no pull request; `reconstruida` stays so the at-most-once rule holds.
+    requeue: (number) => updateIssueState(number, (state) => resetState(state)),
   }
 }
 

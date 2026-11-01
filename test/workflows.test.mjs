@@ -181,7 +181,7 @@ test('gate.yml: a draft pull request is judged but never merged; marking it read
 test('rebuild.yml: after a push to main only, minimal permissions, one queue, the App token only in the script step', () => {
   const wf = load('rebuild')
   assert.deepEqual(wf.on.push, { branches: ['main'] })
-  assert.deepEqual(Object.keys(wf.on).sort(), ['push', 'workflow_run'])
+  assert.deepEqual(Object.keys(wf.on), ['push'], 'the Factory workflow is gone: nothing else triggers a rebuild')
   assert.deepEqual(wf.permissions, { contents: 'read' })
   assert.deepEqual(wf.concurrency, { group: 'rebuild', 'cancel-in-progress': false })
   const list = steps(wf, 'rebuild')
@@ -195,15 +195,6 @@ test('rebuild.yml: after a push to main only, minimal permissions, one queue, th
   assert.equal(list.find((s) => s.id === 'app').with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
   assert.equal(JSON.stringify(wf).includes('pull_request'.concat('_target')), false, 'no pull_request_target')
   assert.deepEqual(Object.keys(wf.on).filter((k) => k.startsWith('pull_request')), [], 'no pull request event')
-})
-
-test('rebuild.yml: also after the Factory workflow completes (a pull request that opens already conflicting), same queue', () => {
-  const wf = load('rebuild')
-  assert.deepEqual(wf.on.workflow_run, { workflows: ['Factory'], types: ['completed'] })
-  assert.deepEqual(wf.on.push, { branches: ['main'] })
-  assert.equal(wf.concurrency.group, 'rebuild')
-  const checkout = steps(wf, 'rebuild').find((s) => s.uses?.startsWith('actions/checkout@'))
-  assert.equal(checkout.with.ref, undefined, 'main\'s code, never the head of the triggering run')
 })
 
 test('rebuild.yml: the App token is scoped to what the script writes', () => {

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { issueFor } from '../lib/intake.js'
-import { initialState, replaceState, parseState } from '../lib/estado.js'
+import { initialState, replaceState, parseState, resetState } from '../lib/estado.js'
 import { candidates, mergeableOf, rebuildConflicts, MAX_CHECKS } from '../lib/rebuild.js'
 
 const REPO = 'owner/repo'
@@ -45,9 +45,9 @@ function fake({ pulls = [], mergeable = {}, tasks = {}, failOn = null, updateRet
       deleteBranch: write('deleteBranch'),
       // The tasks a run left half way: rebuilt, their pull request closed, the factory not yet restarted.
       closeIssue: write('closeIssue'),
-      relabel: (n) => {
-        write('relabel')(n)
-        tasks[n].restarted = true
+      requeue: (n) => {
+        write('requeue')(n)
+        tasks[n].state = resetState(tasks[n].state)
       },
     },
     sleeps: () => seen,
@@ -86,23 +86,30 @@ test('mergeableOf: asks again while GitHub computes it, a bounded number of time
   assert.equal(clean.sleeps()[1], 1)
 })
 
-test('a conflicting factory PR is recorded as rebuilt, closed, its branch deleted and the task relabelled, in that order', async () => {
+test('a conflicting factory PR is recorded as rebuilt, closed, its branch deleted and the task sent back to the orchestrator queue, in that order', async () => {
   const f = fake({ pulls: [pull(11, 5)], tasks: { 5: open(11) } })
   const result = await run(f)
-  assert.deepEqual(names(f.calls), ['updateState', 'comment', 'closePull', 'deleteBranch', 'relabel'])
+  assert.deepEqual(names(f.calls), ['updateState', 'comment', 'closePull', 'deleteBranch', 'requeue'])
   assert.deepEqual(f.calls.slice(2).map((c) => c.slice(1)), [[11], ['tarea/5'], [5]])
   assert.equal(f.calls[1][1], 5)
   assert.match(f.calls[1][2], /conflicto/)
   assert.match(f.calls[1][2], /una sola vez/)
   assert.equal(f.github.task(5).state.reconstruida, true)
   assert.deepEqual(result, [{ pr: 11, tarea: 5, accion: 'reconstruida' }])
+  // Pending again for the orchestrator (no claim, no pull request), and the at-most-once record is kept.
+  const back = f.github.task(5).state
+  assert.equal(back.reconstruida, true)
+  assert.equal(back.pr, null)
+  assert.equal(back.resultado, null)
+  assert.deepEqual(Object.values(back.estaciones).filter((v) => v !== 'pendiente'), ['ok'])
+  assert.equal(back.estaciones.entrada, 'ok')
 })
 
 test('at most once: a task already rebuilt that conflicts again is closed with a clear comment, never rebuilt', async () => {
   const f = fake({ pulls: [pull(12, 6)], tasks: { 6: open(12, { reconstruida: true }) } })
   const result = await run(f)
   assert.deepEqual(names(f.calls), ['updateState', 'comment', 'closePull', 'deleteBranch', 'closeIssue'])
-  assert.ok(!names(f.calls).includes('relabel'))
+  assert.ok(!names(f.calls).includes('requeue'))
   assert.match(f.calls[1][2], /segunda vez/)
   assert.match(f.calls[1][2], /Cierro la tarea/)
   assert.match(f.github.task(6).state.motivo, /conflicto/)
@@ -163,7 +170,7 @@ test('scripts/rebuild.mjs: usage error without the repository, and --help', () =
 test('a step that fails after the pull request is closed is reported and never retried: at most once wins', async () => {
   const f = fake({ pulls: [pull(1, 1)], tasks: { 1: open(1) }, failOn: 'deleteBranch' })
   assert.equal((await run(f))[0].accion, 'error')
-  assert.ok(!names(f.calls).includes('relabel'))
+  assert.ok(!names(f.calls).includes('requeue'))
   const later = fake({ pulls: [], tasks: { 1: { ...f.github.task(1), prClosed: true } } })
   assert.deepEqual(await run(later), [])
   assert.deepEqual(later.calls, [], 'no open pull request: nothing is touched')

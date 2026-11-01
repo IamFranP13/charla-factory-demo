@@ -1,0 +1,67 @@
+#!/usr/bin/env node
+// Switches the factory on: works the queue (open issues of the owner labelled `entrada`) with Claude Code agents, each
+// one in its own container. The logic lives in lib/fabrica.js; this only wires the real Docker, git, gh and proxy.
+//
+//   npm run fabrica -- [--paralelo N] [--modelo M] [--tiempo MIN] [--turnos N] [--limpiar] [--una-vez]
+//
+// Needs the model proxy running (`npm run proxy`), the image (`npm run agente:imagen`) and `gh` logged in as the owner.
+// Ctrl+C: stop taking tasks and let the running ones finish; a second Ctrl+C kills them and returns them to the queue.
+// Exit codes: 0 done · 1 the factory could not run · 2 usage error.
+import { execFileSync } from 'node:child_process'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import {
+  acquireLock, createFabrica, dockerNode, filesNode, githubNode, gitNode, parseArgs, proxyNode,
+} from '../lib/fabrica.js'
+
+const USAGE = `Usage: npm run fabrica -- [options]
+  --paralelo N   agents at once, 1 to 6 (default 3)
+  --modelo M     model (default claude-haiku-4-5)
+  --tiempo MIN   wall-clock limit per task in minutes (default 10)
+  --turnos N     max turns per agent (default 40)
+  --sondeo S     seconds between queue checks (default 10)
+  --limpiar      remove each task's copy when it ends
+  --una-vez      stop when the queue is empty and nothing is running`
+
+let options
+try {
+  options = parseArgs(process.argv.slice(2))
+} catch (error) {
+  console.error(`fabrica: ${error.message}\n${USAGE}`)
+  process.exit(2)
+}
+if (options.ayuda) {
+  console.log(USAGE)
+  process.exit(0)
+}
+
+const root = join(import.meta.dirname, '..')
+const runtime = join(process.env.XDG_RUNTIME_DIR ?? `/tmp/limonia-${process.getuid()}`, 'limonia')
+const copias = join(process.env.XDG_STATE_HOME ?? join(homedir(), '.local/state'), 'limonia', 'tareas')
+
+try {
+  // The maintainer's own `gh`: the repository and its owner come from it unless the environment already says.
+  process.env.GITHUB_REPOSITORY ||= execFileSync('gh', ['repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner'], { encoding: 'utf8', cwd: root }).trim()
+  const repo = process.env.GITHUB_REPOSITORY
+  const fabrica = createFabrica({
+    owner: repo.split('/')[0],
+    ids: { uid: process.getuid(), gid: process.getgid() },
+    lock: () => acquireLock({ dir: runtime }),
+    github: githubNode({ repo }),
+    proxy: proxyNode({ socket: join(runtime, 'proxy-admin.sock') }),
+    docker: dockerNode(),
+    git: gitNode({ source: root, copias }),
+    files: filesNode({ playbook: join(root, 'factory/agente/playbook.md'), copias }),
+    clock: {
+      now: () => new Date().toISOString(),
+      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+      timeout: (ms, fn) => { const t = setTimeout(fn, ms); return () => clearTimeout(t) },
+    },
+    log: (line) => console.log(`${new Date().toTimeString().slice(0, 8)} ${line}`),
+  }, options)
+  process.on('SIGINT', () => fabrica.interrupt())
+  await fabrica.start()
+} catch (error) {
+  console.error(`fabrica: ${error.message}`)
+  process.exit(1)
+}

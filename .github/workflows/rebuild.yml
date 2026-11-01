@@ -1,19 +1,14 @@
 name: Rebuild
 
-# A factory pull request that conflicts with main is closed and its task is run again on the current main,
-# at most once (the record lives in the task state of the issue). After every push to main.
+# A factory pull request that conflicts with main is closed and its task goes back to the orchestrator's queue
+# (it is worked again on the current main), at most once (the record lives in the task state of the issue).
+# After every push to main.
 on:
   push:
     branches: [main]
-  # A pull request that opens already conflicting (the last push to main came before it) is found when the factory ends.
-  # The code is still main's: the checkout below names no ref.
-  workflow_run:
-    workflows: [Factory]
-    types: [completed]
 
 # GITHUB_TOKEN only reads the code. Everything that writes (close the pull request, delete its branch, comment,
-# update the task state, give the label back) uses the factory App token: the label only re-runs the Factory
-# workflow when an App adds it.
+# put the task back in the queue) uses the factory App token.
 permissions:
   contents: read
 
