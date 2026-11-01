@@ -109,10 +109,18 @@ npm run fabrica                       # up to 3 agents at once
 npm run fabrica -- --paralelo 1 --una-vez --limpiar
 ```
 
-Options: `--paralelo N` (1-6, default 3), `--modelo` (default `claude-haiku-4-5`), `--tiempo MIN` (wall clock per task, default 10), `--turnos N` (default 40), `--sondeo S` (queue check, default 10 s), `--limpiar` (remove each copy at the end), `--una-vez` (stop when the queue is empty).
+**Who may ask the factory**: every request carries an origin label. The form files `origen:web` (the web can never choose another); your own tests are filed with `npm run tarea` as `origen:prueba`. By default the factory takes **only `origen:prueba`**, so the public site cannot make it work unless you decide so. An issue with no origin label, with both, or with an unknown one counts as `web` (it is never taken by default). `--origen prueba|web|todas` chooses (`web` and `todas` print "acepta peticiones del público" when the factory starts).
+
+```bash
+npm run tarea -- "Pon un cohete en el muro"            # file a test request (origen:prueba); --perfil marketing|producto|negocio
+npm run fabrica                                        # rehearsals: works only your test requests
+npm run fabrica -- --origen web                        # the talk: works the audience's requests
+```
+
+Options: `--origen prueba|web|todas` (default `prueba`), `--paralelo N` (1-6, default 3), `--modelo` (default `claude-haiku-4-5`), `--tiempo MIN` (wall clock per task, default 10), `--turnos N` (default 40), `--sondeo S` (queue check, default 10 s), `--limpiar` (remove each copy at the end), `--una-vez` (stop when the queue is empty).
 
 - **One instance**: a lock in `$XDG_RUNTIME_DIR/limonia/fabrica.lock` (pid; a dead pid is taken over).
-- **Queue**: the open issues labelled `entrada` filed by the repository owner, oldest first. Pending = not claimed, or claimed by a run that is gone (no PR, not finished): it restarts from scratch. On start it reconciles the queue, then checks every ~10 s. The rest wait for a free slot.
+- **Queue**: the open issues labelled `entrada` of the chosen origin filed by the repository owner, oldest first. Pending = not claimed, or claimed by a run that is gone (no PR, not finished): it restarts from scratch. On start it reconciles the queue, then checks every ~10 s. The rest wait for a free slot.
 - **Claim**: before anything starts, the task state (`<!-- factory:state … -->`, written only by the scripts) gets `spec` and `build` `en_curso`; the reviewers, approver, gate and merge stay `pendiente`. At the end: `ok` (both `ok`, no result yet), `rechazada` (`spec` refused, result `rejected`, the agent's one-line reason) or `fallida` (`build` `error`, result `failed`, a fixed reason: time out, no valid `resultado.json`, no commit, agent error).
 - **Per task**: a self-contained copy of `origin/main` (`git init` + fetch of that one ref: no remote, no hard links, no local-only commits) in `~/.local/state/limonia/tareas/t<n>` on branch `tarea/<n>`; a network `limonia-t<n>` (`--internal`) with the proxy connected; a proxy token that expires about a minute after the time limit and is revoked at the end (success, failure or timeout); a container `limonia-agente-t<n>` (`--rm`, that network only, copy at `/work`, `--cap-drop ALL`, `no-new-privileges`, 2 CPUs, 2 GB, 512 pids, tmpfs home, the host user's uid) running `claude -p` with the playbook `factory/agente/playbook.md` and the request fenced as data. The token reaches the container through the environment of `docker` (`-e ANTHROPIC_AUTH_TOKEN`, no value in argv); the real credential is never near the orchestrator.
 - **Host-side git**: every call on a copy has a 10 s limit and `GIT_DIR`/`GIT_WORK_TREE` pinned to it; a copy whose `.git` is not a plain directory or has alternates is refused (the task ends `fallida`). On start, containers `limonia-agente-t*` and networks `limonia-t*` left by a crashed run are removed. Docker runs in its own process group, so the terminal's Ctrl+C never reaches the containers.

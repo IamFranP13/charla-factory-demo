@@ -54,10 +54,11 @@ test('planRequests: prefers requests that take the automatic route', () => {
 test('issuesFor: identical to the intake issue and readable by parseIssueBody', () => {
   const plan = planRequests(6, battery)
   const issues = issuesFor(plan)
-  assert.deepEqual(issues, plan.map((p) => issueFor(p.perfil, p.peticion)))
+  assert.deepEqual(issues, plan.map((p) => issueFor(p.perfil, p.peticion, 'prueba')))
   issues.forEach((i, k) => {
     assert.deepEqual(parseIssueBody(i.body), { profile: plan[k].perfil, request: plan[k].peticion })
     assert.ok(i.labels.includes('entrada') && i.labels.includes(`perfil:${plan[k].perfil}`))
+    assert.ok(i.labels.includes('origen:prueba') && !i.labels.includes('origen:web'))
   })
 })
 

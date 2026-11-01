@@ -2,7 +2,7 @@
 // Switches the factory on: works the queue (open issues of the owner labelled `entrada`) with Claude Code agents, each
 // one in its own container. The logic lives in lib/fabrica.js; this only wires the real Docker, git, gh and proxy.
 //
-//   npm run fabrica -- [--paralelo N] [--modelo M] [--tiempo MIN] [--turnos N] [--limpiar] [--una-vez]
+//   npm run fabrica -- [--origen prueba|web|todas] [--paralelo N] [--modelo M] [--tiempo MIN] [--turnos N] [--limpiar] [--una-vez]
 //
 // Needs the model proxy running (`npm run proxy`), the image (`npm run agente:imagen`) and `gh` logged in as the owner.
 // Ctrl+C: stop taking tasks and let the running ones finish; a second Ctrl+C kills them and returns them to the queue.
@@ -15,6 +15,8 @@ import {
 } from '../lib/fabrica.js'
 
 const USAGE = `Usage: npm run fabrica -- [options]
+  --origen O     whose requests to take: prueba (yours, filed with \`npm run tarea\`; default), web (the public's)
+                 or todas (both). An issue with no origin label, or an unknown one, counts as web
   --paralelo N   agents at once, 1 to 6 (default 3)
   --modelo M     model (default claude-haiku-4-5)
   --tiempo MIN   wall-clock limit per task in minutes (default 10)

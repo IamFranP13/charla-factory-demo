@@ -28,7 +28,7 @@ Uso: node scripts/carga.mjs --n N [opciones]
   --dry-run         muestra lo que crearía, sin crear nada
   --help            esta ayuda
 
-Crea las issues con tu \`gh\` en el formato exacto de la entrada, con peticiones de la batería
+Crea las issues con tu \`gh\` en el formato exacto de la entrada (origen \`prueba\`, la fábrica las coge por defecto), con peticiones de la batería
 que el replay convierte en cambio, y las sigue hasta que cada una termina o se agota el tiempo:
 issue → arranque → PR abierta → fusionada → desplegada (mediana, p90, max).
 Necesita el workflow Factory activo. Al terminar, ejecuta

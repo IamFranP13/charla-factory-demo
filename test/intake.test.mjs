@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { handleIntake } from '../lib/intake.js'
+import { handleIntake, issueFor } from '../lib/intake.js'
 import { parseIssueBody } from './issue-body.mjs'
 import { onRequestPost } from '../functions/api/peticion.js'
 
@@ -47,7 +47,7 @@ test('creates the issue and answers 201 with its number', async () => {
   assert.equal(create.init.headers.accept, 'application/vnd.github+json')
   const issue = JSON.parse(create.init.body)
   assert.equal(issue.title, '[Marketing] Pon un cohete en el muro')
-  assert.deepEqual(issue.labels, ['entrada', 'perfil:marketing'])
+  assert.deepEqual(issue.labels, ['entrada', 'perfil:marketing', 'origen:web'])
   assert.equal(issue.body, 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"Pon un cohete en el muro"}\n```\n')
 })
 
@@ -87,7 +87,7 @@ test('the server assigns the profile at random, in equal parts; the client canno
     const response = await intake(post({ ...valid, perfil: 'marketing' }), ENV, fetchImpl, () => draw)
     assert.deepEqual(await response.json(), { tarea: 42, perfil })
     const issue = JSON.parse(calls[2].init.body)
-    assert.deepEqual(issue.labels, ['entrada', `perfil:${perfil}`])
+    assert.deepEqual(issue.labels, ['entrada', `perfil:${perfil}`, 'origen:web'])
     assert.match(issue.title, new RegExp(`^\\[${label}\\] `))
   }
 })
@@ -219,4 +219,20 @@ test('every accepted request is readable back from the issue body (same length u
 test('the task cap is clamped to 100: the issue list is not paginated', async () => {
   const { fetchImpl } = network({ existing: 100 })
   await expectError(await intake(post(valid), { ...ENV, INTAKE_MAX_TASKS: '150' }, fetchImpl), 429, 'Hemos alcanzado el máximo de tareas de la charla.')
+})
+
+test('the web always files origen:web: a body that tries to set an origin or extra labels changes nothing', async () => {
+  const { calls, fetchImpl } = network()
+  const response = await intake(post({ ...valid, origen: 'prueba', labels: ['origen:prueba', 'x'], origin: 'prueba', 'origen:prueba': true }), ENV, fetchImpl)
+  assert.equal(response.status, 201)
+  const issue = JSON.parse(calls[2].init.body)
+  assert.deepEqual(issue.labels, ['entrada', 'perfil:marketing', 'origen:web'])
+  assert.equal(issue.body, 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"Pon un cohete en el muro"}\n```\n')
+})
+
+test('issueFor: origin defaults to web and can be prueba; the body is the same', () => {
+  assert.deepEqual(issueFor('marketing', 'hola').labels, ['entrada', 'perfil:marketing', 'origen:web'])
+  const prueba = issueFor('negocio', 'hola', 'prueba')
+  assert.deepEqual(prueba.labels, ['entrada', 'perfil:negocio', 'origen:prueba'])
+  assert.equal(prueba.body, issueFor('negocio', 'hola').body)
 })

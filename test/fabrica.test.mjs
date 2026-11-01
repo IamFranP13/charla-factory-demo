@@ -18,7 +18,7 @@ const REAL_SECRET = 'sk-ant-oat01-THE-REAL-CREDENTIAL'
 // --- helpers --------------------------------------------------------------------------------------------------------
 
 const issueBody = (peticion = 'Una campaña de naranjas', perfil = 'marketing') => issueFor(perfil, peticion).body
-const issue = (number, { state = null, user = OWNER, created = `2026-10-27T10:00:${String(number).padStart(2, '0')}Z`, peticion, labels = ['entrada'], over = {} } = {}) => ({
+const issue = (number, { state = null, user = OWNER, created = `2026-10-27T10:00:${String(number).padStart(2, '0')}Z`, peticion, labels = ['entrada', 'origen:prueba'], over = {} } = {}) => ({
   number,
   title: `[Marketing] tarea ${number}`,
   state: 'open',
@@ -127,12 +127,28 @@ test('queue: owner-filed open issues labelled entrada, oldest first; others, clo
     issue(4, { user: 'Intruso' }),
     issue(6, { over: { state: 'closed' } }),
     issue(7, { over: { pull_request: {} } }),
-    issue(8, { labels: ['otra'] }),
+    issue(8, { labels: ['otra', 'origen:prueba'] }),
     issue(9, { user: 'OWNER', created: '2026-10-27T10:04:00Z' }),
     issue(10, { over: { body: 'sin petición' } }),
   ]
   assert.deepEqual(pendingTasks(list, { owner: OWNER }).map((t) => t.numero), [3, 9, 5])
   assert.deepEqual(pendingTasks(list, { owner: OWNER, skip: (n) => n === 3 }).map((t) => t.numero), [9, 5])
+})
+
+test('queue origin: default takes only prueba; web, no label, both, unknown are never taken by default', () => {
+  const list = [
+    issue(1, { labels: ['entrada', 'origen:prueba'] }),
+    issue(2, { labels: ['entrada', 'origen:web'] }),
+    issue(3, { labels: ['entrada'] }),
+    issue(4, { labels: ['entrada', 'origen:prueba', 'origen:web'] }),
+    issue(5, { labels: ['entrada', 'origen:otra'] }),
+    issue(6, { labels: ['entrada', 'origen:prueba', 'origen:otra'] }),
+  ]
+  const take = (origen) => pendingTasks(list, { owner: OWNER, origen }).map((t) => t.numero)
+  assert.deepEqual(pendingTasks(list, { owner: OWNER }).map((t) => t.numero), [1])
+  assert.deepEqual(take('prueba'), [1])
+  assert.deepEqual(take('web'), [2, 3, 4, 5, 6])
+  assert.deepEqual(take('todas'), [1, 2, 3, 4, 5, 6])
 })
 
 test('queue: pending = no claim, or claimed earlier (crashed) without a PR; finished, with a PR or already built are not', () => {
@@ -193,6 +209,27 @@ test('lock: one instance only; a stale pid is taken over; release frees it', asy
 })
 
 // --- arguments ---------------------------------------------------------------------------------------------------------
+
+test('parseArgs: --origen prueba|web|todas, default prueba, anything else refused', () => {
+  assert.equal(parseArgs([]).origen, 'prueba')
+  for (const o of ['prueba', 'web', 'todas']) {
+    assert.equal(parseArgs(['--origen', o]).origen, o)
+    assert.equal(parseArgs([`--origen=${o}`]).origen, o)
+  }
+  for (const bad of [['--origen'], ['--origen', 'publico'], ['--origen', 'WEB'], ['--origen', '']]) assert.throws(() => parseArgs(bad), /origen/, bad.join(' '))
+})
+
+test('start line says which origins it takes; web and todas say it loudly', async () => {
+  const lineFor = async (origen) => {
+    const w = world({ options: { origen, unaVez: true } })
+    await w.fabrica.start()
+    return w.logs.find((l) => l.includes('fábrica encendida'))
+  }
+  assert.match(await lineFor('prueba'), /origen: prueba/)
+  assert.doesNotMatch(await lineFor('prueba'), /público/)
+  assert.match(await lineFor('web'), /origen: web.*acepta peticiones del público/)
+  assert.match(await lineFor('todas'), /origen: prueba y web.*acepta peticiones del público/)
+})
 
 test('parseArgs: defaults, --paralelo 1..6, bad values refused', () => {
   const d = parseArgs([])
