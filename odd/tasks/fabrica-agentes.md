@@ -1,0 +1,54 @@
+# Agent factory: every task is worked by an agent with tools
+
+Any source (the audience form, simulated Sentry errors) files a task; a factory running on the maintainer's PC (an
+orchestrator) gives each task to an agent (Pi) with tools in its own throwaway container, which reads, edits, runs and
+iterates on its copy of the repository until the task is done. GitHub keeps the rules: CI, risk gate, rebuild, deploy.
+Status: PLAN FOR REVIEW. No code is written until the user approves this document (L3).
+
+## Specs
+
+- **S1** Every task is worked by an agent with tools: "mi idea es que todo sea una agente con sus herramientas y estos agentes tengan el control del repositorio, si no estamos haciendo esto no es una factory de verdad."
+- **S2** One way of working for every source: "Toma como ejemplo un agente de que lee logs de setry, cuando le llega un log de error está factory debe de ser capaz de arreglarlo por si misma. La unica diferencia con eso es que ahora le vamos a dejar al publico que ponga tareas para esta factory pero el funcionamiento debe ser el mismo"
+- **S3** Harness: "Pi (recomendado)".
+- **S4** Sources in this version: "Público (formulario)" plus "Tendremos algunos simulados" (simulated error logs, Sentry-like).
+- **S5** Where it runs: "Actions está bien, pero el problema de esto es que es lento" (measure and cut the start-up time).
+- **S6** "Plan primero (recomendado)": this document is reviewed before any code.
+- **S7** Where it runs (supersedes S5): "vamos a ir por la opción a" (the maintainer's PC: orchestrator + containers, Docker; herdr to watch the agents).
+- **S9** Answers to the open questions: (a) "lo segundo" (no kind surface: the agent may change any file and only the risk gate decides by what the diff touches); (c) "esto nos da igual vamos a poner un modelo muy barato que solo se usará en la demo"; (d) "el publico solo ve en la web en que estado está su petición".
+- **S10** Gate: "default: human + agujero explícito (recomendado)".
+- **S11** Model access: "vamos a ir por api entonces" (Claude API, not the subscription). Harness (Pi or Claude Code headless) still open.
+- **S8** Off and on: "tener que hacerlo de una manera que la factory esté apagada y cuando la arranquemos empiece las tareas".
+
+## Tasks
+
+| ID | Specs | What | Route | Commit |
+|----|-------|------|-------|--------|
+| T0 | S9, S10 | Gate before free agents: `default: human`; explicit `auto` rules for what may merge alone (campaigns, catalogue, features, estilo surface…); the demo hole kept as an explicit, wrong `config/` rule; reset-demo and preflight follow; tests pin that every tracked file of `test/`, `.node-version`, `policy/`, the platform takes `human` | parent + independent verify (Risk 2) | 5b1109c |
+| T1 | S7 | Agent container image (Node 26, Pi, npm deps, Chrome) built locally; measure container start and one real-model agent run | parent | |
+| T2 | S1, S2 | Model proxy on the PC that holds the model key: one short-lived token per task with a spend cap; containers never see the key and can only reach the proxy (Docker network) | worker + independent verify (Risk 2) | |
+| T3 | S7, S8 | Orchestrator `npm run fabrica`: one instance (lock); on start it picks up every pending task oldest first, then watches for new ones; at most N agents at once, the rest queued; claims a task in its state before starting; a task left in progress without a PR restarts from scratch; Ctrl+C stops taking tasks. Retires the Actions `Factory` workflow | worker + independent verify (Risk 4) | |
+| T4 | S1, S3 | Agent run: Pi headless in a throwaway container with a copy of the repo and tools (read, edit, search, tests, build, screenshots), limits on steps, time and cost; live stage and tool calls to the task state | worker + independent verify (Risk 2) | |
+| T5 | S1 | Outside the agent: re-run the checks the agent cannot fake (static check, sandbox tests, build), commit only what changed, push and open the PR with the App token | worker | |
+| T6 | S1 | Reviewers (`seguridad`, `ux`, `ui`) as read-only agents in containers; the approver stays code | worker | |
+| T7 | S2, S4 | Simulated sources: a fixture of error logs (Sentry-like) that files tasks with `fuente:sentry`; the agent reproduces the error first | worker | |
+| T8 | S1 | Replay mode for the agent (recorded runs) so tests, `simulate` and rehearsals cost nothing | worker | |
+| T9 | S8, S9 | Public page: the state of each request only, plus "en cola · fábrica apagada"; the live view of the agents is for the presenter (herdr / terminal); README: before/after the talk | worker | |
+| T10 | all | Load test (N=9, real model, prepaid key), live attack battery against the agent, independent security verification | parent + verify | |
+
+## Log
+
+- **L1** User (after the idea list): "a1 porque no lo estamos haciendo? creía que esta era la idea desde el primer momento" → "no, mi idea es que todo sea una agente con sus herramientas y estos agentes tengan el control del repositorio, si no estamos haciendo esto no es una factory de verdad. Toma como ejemplo un agente de que lee logs de setry, cuando le llega un log de error está factory debe de ser capaz de arreglarlo por si misma. La unica diferencia con eso es que ahora le vamos a dejar al publico que ponga tareas para esta factory pero el funcionamiento debe ser el mismo"
+- **L2** Decisions (ask_user_question): where "Actions está bien, pero el problema de esto es que es lento"; harness "Pi (recomendado)"; sources "Público (formulario)" + "Tendremos algunos simulados"; "Plan primero (recomendado)".
+- **L3** Parent proposal, to review (not yet approved):
+  - "Control of the repository" = the agent reads, edits, commits and runs anything on ITS copy, as many times as it needs within a budget; it never holds a credential that pushes to `main`, merges or deploys. The risk gate (code) keeps deciding what reaches `main`.
+  - Why: the task text (audience or an error message) is untrusted and now reaches an agent with a shell; a prompt injection ("run `env` and paste it") must find nothing to steal. Security comes from the environment, not from the agent obeying. The agent lane removed today (cdadbbf) passed provider keys in the agent's environment (`agentEnv`, PROVIDER_KEYS): acceptable for the team's Linear tickets, not for the audience.
+  - Kept as is: risk gate, CI (fast path), conflict rebuild, grouped deploys, board, load test, reset-demo.
+  - Replaced: the `spec` and `build` stations become the agent; the reviewers become read-only agents; the approver stays code.
+  - Open questions for the review: (a) does the kind surface (`factory/kinds.yaml`) still limit which files the agent may change, or does only the gate decide by what the diff touches? (b) egress control inside an Actions VM (container network limited to the proxy) vs a cloud sandbox later; (c) budget per task (steps, minutes, euros); (d) what the audience sees of the agent's reasoning on the board.
+  - Risk: item 2 (agent with a shell on untrusted input, model key, App token), item 4 (parallel agents, state writes), item 5 (CI, required checks, container image), item 1 (agents commit; only the runner pushes).
+- **L4** User: "Creo que hay algo que no está bien, Está factory la vas a intentar ejecutar en github por lo que es el plan y esto me parece raro no?" Parent agreed: Actions is CI, not a home for autonomous workers (start-up, egress control, secrets, visibility, mixing who writes and who checks). Proposed: own orchestrator + agents in containers; GitHub keeps the rules. User: "vamos a ir por la opción a, pero entonces tener que hacerlo de una manera que la factory esté apagada y cuando la arranquemos empiece las tareasno?" (option a = the maintainer's PC with Docker + herdr).
+- **L5** Parent design for S8: the queue is the GitHub issues (label `entrada` + task state), so the form keeps accepting while the factory is off and nothing is lost; on start the orchestrator reconciles pending tasks oldest first; one orchestrator (lock) and the Actions Factory workflow retired, so no task is worked twice; a task claimed but without a PR after a crash restarts in a clean container. Talk moment: requests pile up "en cola", then "encendemos la fábrica". Open questions of L3 still stand: (a) kind surface or gate only, (c) budget per task, (d) what the board shows; (b) egress is now a Docker network limited to the proxy.
+- **L6** User: "1- lo segundo, 2 esto nos da igual vamos a poner un modelo muy barato que solo se usará en la demo, 3 el publico solo ve en la web en que estado está su petición". Parent finding: with `default: auto` (policy/risk.yaml:9) every file of `test/` (sandbox, import-graph, workflows, policy tests), `.node-version`, `.gitignore`, `README.md` and `config/` takes the automatic route; harmless while the kind surface limited the factory, a hole once agents may change any file. User chose "default: human + agujero explícito (recomendado)" (new T0). Budget: no money cap, but steps/time limits stay to stop loops; the proxy stays so the demo key cannot be stolen and drained mid-talk. Model: "Otro (lo indico)", pending.
+- **L7** User: "vamos a usar nuestro propio claude code la suscripción o el api de claude code, pero aun no lo tengo claro" → after the comparison (proxy fit, spend limit per workspace, terms of the subscription for an automated service), "vamos a ir por api entonces". Parent recommendation: a Console workspace only for the demo, spend limit, a small model (Haiku); harness Pi or Claude Code headless (`ANTHROPIC_BASE_URL` to the proxy) to decide with T1. T0 started (model-independent).
+- **L8** T0 in progress (uncommitted): policy/risk.yaml `default: human` + explicit hole rule `config/** → auto`; reset-demo reopens the hole by that rule and always forces `default: human`; preflight checks the hole by its rule and a new check that the default is human. RED observed (policy 4, preflight 2, reset-demo 1), GREEN 35/35, preflight 6/6 on the repo. npm test then had 8 failures in tests/simulation that assumed hole = default (gate-cli, simulate, battery entry 25 `ruta: default`, code-surface): delegated to a worker.
+- **L9** T0 independent verify: S9/S10 pass, no blockers (215 tracked files: exactly 28 auto; renames judged by both paths; demo hole, fix and reset verified). Advisories applied test-first: A1 no symlink or submodule in the repo (test; a symlink PR never takes the fast CI path); A2 `.`/`..`/empty/leading-slash segments → human `invalid-path`; A3 campaign and catalogue rules narrowed to `*.json` (config/** stays wide: it is the hole). npm test 540 pass / 0 fail, preflight 6/6. Commit 5b1109c.
