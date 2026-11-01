@@ -17,7 +17,9 @@
     "test:src": "node --test \"src/domain/*.test.mjs\" \"src/features/*/index.test.mjs\"",
     "reset-demo": "node scripts/reset-demo.mjs",
     "carga": "node scripts/carga.mjs",
-    "rebuild": "node scripts/rebuild.mjs"
+    "rebuild": "node scripts/rebuild.mjs",
+    "agente:imagen": "docker build -f factory/agente/Dockerfile -t limonia-agente:dev .",
+    "agente:medir": "node scripts/agente-medir.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.1"

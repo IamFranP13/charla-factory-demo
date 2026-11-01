@@ -76,6 +76,15 @@ Pages: the home, the catalogue, the quote calculator and `/tarea/` are the LIMON
 
 `/api/estado` returns `vueltas` (0-2) per task, so the board knows when a request went back to Build; a state written before the field existed derives `0`. On a retry the state shows Builder `en_curso` and the reviewers and the approver `pendiente`.
 
+## The agent image
+
+Each agent works one task in a throwaway container (`factory/agente/Dockerfile`): Node 26, git, Chromium (for the screenshots), Claude Code at an exact version and the repository's npm dependencies, installed once in `/opt/limonia/node_modules`. It runs as a non-root user and holds **no credential**: the model key never goes in the image; it is added from outside (a proxy, `ANTHROPIC_BASE_URL`). The entry point links the dependencies into the mounted copy of the repo (`/work`) and runs the command it is given.
+
+```bash
+npm run agente:imagen   # builds limonia-agente:dev
+npm run agente:medir    # start-up times: 5 bare starts, claude --version, node --version, npm run build
+```
+
 ## Run it locally (free, offline)
 
 ```bash
