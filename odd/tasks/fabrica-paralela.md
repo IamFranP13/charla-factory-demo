@@ -21,11 +21,12 @@ Maintainer changes go straight to `main`.
 | T1 | S1 (before) | parent: enable `Factory`, run carga N=9, reset | a4a4f26 (carga clock fix), b64f818 (reset) |
 | T8 | S7 | parent (Risk: item 5 CI, required check) + independent verify | 41e1386, fix after verify (see L11) |
 | T2 | S2 | parent: revert runner + agent lane | 8201346 |
-| T3 | S3 | parent; owner switches off Cloudflare git deploys and adds `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` | parked: branch `park/deploy-agrupado` (dbb76e8) |
+| T3 | S3 | parent; owner switches off Cloudflare git deploys and adds `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` | f963f06 (pushed; first live deploy running) |
 | T4 | S4 | parent | already true: lib/estado.js:335-366 (compare merge...deployed) |
 | T5 | S5 | dropped (L7) | |
 | T6 | S6 | gentle-ai-worker (background, context backstop) (Risk: item 5 CI) | ea750bb |
-| T7 | S1 (after) | parent: carga N=9 again, compare | |
+| T7 | S1 (after) | parent: carga N=9 again, compare | L13 |
+| T9 | S1, S3 | parent: carga N=9 with grouped deploys | |
 
 ## Log
 
@@ -44,3 +45,6 @@ Maintainer changes go straight to `main`.
 - **L13** After T8 (Actions, replay, N=9, all deployed): arranque 22 s; PR opened 33 s; merged median 81 s (was 212), p90 156 s (was 293); deployed median 387 s (was 340), max 390 s (was 418). All nine reached production together ~230 s after the last merge: with faster merges, Cloudflare's single build queue (production + one preview per PR) is now the bottleneck, so T3 (parked on `park/deploy-agrupado`) becomes the next lever. Demo reset and pushed.
 - **L14** Independent verify of T6: S6 FAIL. D1 (blocker) gate.mjs --closed of the old PR overwrites the rebuilt task's state (no check that state.pr is the closed PR); D2 (blocker) a PR already conflicting when it opens after the last push is never rebuilt; D3 (low) a failed step after closing leaves the task behind; advisories: App token without permission-* inputs, null updateIssueState still closes. Sent back to the worker (mvxmwiev-4-8rww).
 - **L15** Re-verify of T6: D1 and D2 fixed; new blocker B1: the D3 fix (`stranded()`) could restart the factory after a person refused the rebuilt PR (breaks at most once). Two verification rounds used, so the parent simplified instead of a third round: `stranded()` removed (D3 stays covered by 404/422 tolerance; a failed step after the flag is reported, never retried) and `updateIssueState` writes nothing when the change returns the same state (removes the lost-update window of `--closed`). RED observed (8 failing), GREEN 92/92 focused, npm test 530 pass / 0 fail. Accepted advisory: after a rebuild the board can show the old run as refused for ~20-60 s until the factory restarts. Not run live yet.
+- **L16** User (ask_user_question): T6 "Push + prueba en vivo (recomendado)"; T3 "T3 completa". Pushed ea750bb and 22299c2; live conflict test filed #74 and #75 (two estilo hero fixes on global.css, replay); first live `Rebuild` runs succeeded, a queued one was replaced as designed.
+- **L17** Owner: Cloudflare preview deployments set to None; parent set variable TURNSTILE_SITE_KEY (from the live form) and secret CLOUDFLARE_ACCOUNT_ID; owner set CLOUDFLARE_API_TOKEN (Pages: Edit). T3 fast-forwarded to main (f963f06), npm test 532 pass / 0 fail; first deploy.yml run watched with Cloudflare's git production deploy still on.
+- **L18** Pre-existing defect found by the live T6 test (#74/#75, PRs #76/#77): an estilo PR that fixes the planted hero always fails CI, because test/estilo.test.mjs ("legit changes pass…", "the estilo surface of the seed … carries the planted hero bug") asserts the live global.css equals the seed with the bug. So the hero fix demo can never merge and the T6 live conflict never happens. Not caused by T8 (estilo PRs always ran the full suite). Needs a decision.
