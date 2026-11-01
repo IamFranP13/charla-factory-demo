@@ -271,3 +271,27 @@ test('--closed never judges the PR: it does not read files or reviews', () => {
   run(['--closed', '7'], env)
   assert.doesNotMatch(calls(env), /files|reviews/)
 })
+
+// A rebuilt task: the old pull request (7) was closed, the task already points at the new one (20).
+const BLOCK = 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"hola"}\n```\n'
+const stateBody = (extra) => replaceState(BLOCK, { ...initialState('marketing'), resultado: 'ok', fase: 'merge', ...extra })
+
+test('--closed: the old pull request of a rebuilt task does not overwrite the state of the new one', () => {
+  const ok = { puerta: 'ok', merge: 'ok' }
+  const base = initialState('marketing').estaciones
+  const env = fakeGh({ files: [{ filename: 'content/campanas/a.json' }], reviews: [], merged: false, issueBody: stateBody({ pr: 20, reconstruida: true, estaciones: { ...base, ...ok } }) })
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  const state = issueState(env)
+  assert.equal(state.estaciones.merge, 'ok')
+  assert.equal(state.pr, 20)
+  // Nothing to record: no write at all, so a concurrent write of the new run can never be undone.
+  assert.doesNotMatch(calls(env), /PATCH/)
+})
+
+test('--closed: a task whose state has no pull request yet, or this very one, records the refusal as before', () => {
+  for (const pr of [null, 7]) {
+    const env = fakeGh({ files: [{ filename: 'data/precios.json' }], reviews: [], merged: false, issueBody: stateBody({ pr }) })
+    assert.equal(run(['--closed', '7'], env).status, 0)
+    assert.equal(issueState(env).estaciones.puerta, 'rechazada')
+  }
+})

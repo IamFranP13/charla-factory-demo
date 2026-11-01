@@ -84,6 +84,8 @@ function judgePullRequest(policy, number) {
 function markClosed(number) {
   const pr = pullRequest(number)
   markTask(pr, (state) => {
+    // A task rebuilt after a conflict points at its new pull request: the closing of the old one says nothing about it.
+    if (state.pr !== null && state.pr !== Number(number)) return state
     const estaciones = { ...state.estaciones }
     if (pr.merged) {
       estaciones.merge = 'ok'

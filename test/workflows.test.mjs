@@ -77,7 +77,7 @@ test('gate.yml: never checks out or runs the pull request head', () => {
 })
 
 test('no workflow interpolates expressions into run scripts (untrusted text goes through env)', () => {
-  for (const name of ['gate', 'factory', 'ci']) {
+  for (const name of ['gate', 'factory', 'ci', 'rebuild']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps) {
         if (s.run) assert.doesNotMatch(s.run, /\$\{\{/, `${name}: run script interpolates an expression`)
@@ -133,7 +133,7 @@ test('ci.yml: pull_request and push to main run install, test and build in job "
 })
 
 test('every action is pinned to a major version', () => {
-  for (const name of ['factory', 'gate', 'ci']) {
+  for (const name of ['factory', 'gate', 'ci', 'rebuild']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses)) {
         assert.match(s.uses, /^[\w-]+\/[\w-]+@v\d+$/, `${name}: ${s.uses}`)
@@ -211,7 +211,7 @@ test('every workflow takes Node from .node-version, and that version satisfies A
   const have = version.split('.').map(Number)
   const ok = have[0] > min[0] || (have[0] === min[0] && have.length >= 3 && (have[1] > min[1] || (have[1] === min[1] && have[2] >= min[2])))
   assert.ok(ok, `.node-version ${version} does not satisfy astro ${astro}`)
-  for (const name of ['ci', 'gate', 'factory']) {
+  for (const name of ['ci', 'gate', 'factory', 'rebuild']) {
     for (const job of Object.values(load(name).jobs)) {
       for (const s of job.steps.filter((s) => s.uses?.startsWith('actions/setup-node@'))) {
         assert.equal(s.with['node-version-file'], '.node-version', `${name}: setup-node must read .node-version`)
@@ -261,4 +261,39 @@ test('gate.yml: a draft pull request is judged but never merged; marking it read
   const notDraft = "steps.gate.outputs.merge == 'true' && github.event.pull_request.draft != true"
   assert.equal(list.find((s) => s.id === 'app').if, notDraft, 'no App token for a draft')
   assert.equal(list.find((s) => s.run?.includes('gh pr merge')).if, notDraft, 'no auto-merge for a draft')
+})
+
+test('rebuild.yml: after a push to main only, minimal permissions, one queue, the App token only in the script step', () => {
+  const wf = load('rebuild')
+  assert.deepEqual(wf.on.push, { branches: ['main'] })
+  assert.deepEqual(Object.keys(wf.on).sort(), ['push', 'workflow_run'])
+  assert.deepEqual(wf.permissions, { contents: 'read' })
+  assert.deepEqual(wf.concurrency, { group: 'rebuild', 'cancel-in-progress': false })
+  const list = steps(wf, 'rebuild')
+  const checkout = list.find((s) => s.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkout.with.ref, undefined, 'the pushed commit of main, never a pull request')
+  assert.equal(checkout.with['persist-credentials'], false)
+  const run = list.filter((s) => s.run)
+  assert.deepEqual(run.map((s) => s.run), ['node scripts/rebuild.mjs'])
+  assert.equal(run[0].env.GH_TOKEN, '${{ steps.app.outputs.token }}')
+  assert.deepEqual(list.filter((s) => s.env?.GH_TOKEN).map((s) => s.run), ['node scripts/rebuild.mjs'])
+  assert.equal(list.find((s) => s.id === 'app').with['private-key'], '${{ secrets.FACTORY_APP_PRIVATE_KEY }}')
+  assert.equal(JSON.stringify(wf).includes('pull_request'.concat('_target')), false, 'no pull_request_target')
+  assert.deepEqual(Object.keys(wf.on).filter((k) => k.startsWith('pull_request')), [], 'no pull request event')
+})
+
+test('rebuild.yml: also after the Factory workflow completes (a pull request that opens already conflicting), same queue', () => {
+  const wf = load('rebuild')
+  assert.deepEqual(wf.on.workflow_run, { workflows: ['Factory'], types: ['completed'] })
+  assert.deepEqual(wf.on.push, { branches: ['main'] })
+  assert.equal(wf.concurrency.group, 'rebuild')
+  const checkout = steps(wf, 'rebuild').find((s) => s.uses?.startsWith('actions/checkout@'))
+  assert.equal(checkout.with.ref, undefined, 'main\'s code, never the head of the triggering run')
+})
+
+test('rebuild.yml: the App token is scoped to what the script writes', () => {
+  const app = steps(load('rebuild'), 'rebuild').find((s) => s.uses?.startsWith('actions/create-github-app-token@'))
+  assert.equal(app.with['permission-contents'], 'write')
+  assert.equal(app.with['permission-pull-requests'], 'write')
+  assert.equal(app.with['permission-issues'], 'write')
 })
