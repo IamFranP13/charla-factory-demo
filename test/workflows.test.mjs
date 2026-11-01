@@ -116,14 +116,20 @@ test('gate.yml: auto-merge is enabled as the factory App, so the merge closes th
   assert.equal(list[mergeIndex].env.GH_TOKEN, '${{ steps.app.outputs.token }}')
 })
 
-test('ci.yml: pull_request and push to main run install, test and build in job "build"', () => {
+test('ci.yml: pull_request and push to main run install, test and build in job "build"; a data-only PR skips the full suite', () => {
   const wf = load('ci')
   assert.ok('pull_request' in wf.on)
   assert.deepEqual(wf.on.push.branches, ['main'])
   assert.deepEqual(wf.permissions, { contents: 'read' })
   assert.deepEqual(Object.keys(wf.jobs), ['build'])
-  const runs = steps(wf, 'build').filter((s) => s.run).map((s) => s.run)
-  assert.deepEqual(runs, ['npm ci', 'npm test', 'npm run build'])
+  // A burst of merges: a newer push to main (or to the same PR) cancels the run in progress.
+  assert.deepEqual(wf.concurrency, { group: 'ci-${{ github.ref }}', 'cancel-in-progress': true })
+  const all = steps(wf, 'build')
+  assert.equal(all.find((s) => s.uses?.startsWith('actions/checkout@')).with['fetch-depth'], 2, 'the merge ref and its base')
+  assert.deepEqual(all.filter((s) => s.run).map((s) => s.run), ['npm ci', 'node scripts/ci-scope.mjs', 'npm test', 'npm run build'])
+  assert.equal(all.find((s) => s.run === 'node scripts/ci-scope.mjs').id, 'scope')
+  assert.equal(all.find((s) => s.run === 'npm test').if, "steps.scope.outputs.scope != 'datos'", 'fails closed: only an explicit datos skips it')
+  assert.equal(all.find((s) => s.run === 'npm run build').if, undefined, 'the site is always validated and built')
 })
 
 test('every action is pinned to a major version', () => {

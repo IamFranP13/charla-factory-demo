@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# A burst of merges: a newer push to main (or to the same pull request) cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Stable job name: "build" is a required status check on main.
   build:
@@ -16,12 +21,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          # The merge ref and its base: scripts/ci-scope.mjs reads what the pull request changes.
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
+      # A pull request that only adds or changes campaign, product or destination files skips the full suite;
+      # the build below still validates them. Anything else, every push to main, or any doubt: the full CI.
+      - id: scope
+        run: node scripts/ci-scope.mjs
       # The tests of src/domain/ and src/features/ are code a model can write: test/sandbox.test.mjs runs them in the
       # isolation (`npm run test:src` runs them by hand, outside it, for the people who write them).
-      - run: npm test
+      - if: steps.scope.outputs.scope != 'datos'
+        run: npm test
       - run: npm run build
