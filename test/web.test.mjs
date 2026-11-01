@@ -367,14 +367,16 @@ needsSandbox('every page has the "Pedir un cambio" button, in the header and the
 test('the estilo surface of the seed passes the static check against the live site, and the seed carries the planted hero bug', () => {
   const surface = ['src/styles/global.css', 'src/components/Paisaje.astro', 'src/components/CampanaCard.astro', 'src/components/ProductoCard.astro', 'src/components/Header.astro', 'src/components/Footer.astro']
   const live = Object.fromEntries(surface.map((f) => [f, readFileSync(join(repo, f), 'utf8')]))
+  const CSS = 'src/styles/global.css'
   for (const f of surface.filter((x) => existsSync(join(repo, 'factory/seed', x)))) {
     const seed = readFileSync(join(repo, 'factory/seed', f), 'utf8')
-    assert.equal(seed, live[f], `${f}: the live site and the seed carry the same (broken) hero`)
+    // Only the stylesheet may differ: a request that fixed the hero is live until reset-demo puts the seed back.
+    if (f !== CSS) assert.equal(seed, live[f], `${f}: the live site and the seed are the same`)
     assert.deepEqual(checkEstilo([{ path: f, content: seed }], live), { ok: true, errors: [] }, f)
   }
-  const css = live['src/styles/global.css']
-  assert.match(css, /\.hero\{position:relative;/)
-  assert.doesNotMatch(css, /\.hero\{display:grid/)
-  assert.match(css, /\.hero__campo\{position:absolute;inset:0;[^}]*overflow:visible/)
-  assert.doesNotMatch(css, /url\(/, 'the stylesheet loads nothing: the fonts are in fuentes.css')
+  const seedCss = readFileSync(join(repo, 'factory/seed', CSS), 'utf8')
+  assert.match(seedCss, /\.hero\{position:relative;/)
+  assert.doesNotMatch(seedCss, /\.hero\{display:grid/)
+  assert.match(seedCss, /\.hero__campo\{position:absolute;inset:0;[^}]*overflow:visible/)
+  for (const css of [seedCss, live[CSS]]) assert.doesNotMatch(css, /url\(/, 'the stylesheet loads nothing: the fonts are in fuentes.css')
 })

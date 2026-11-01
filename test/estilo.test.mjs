@@ -42,7 +42,8 @@ test('the kind estilo exists, with the stylesheet and the five visual components
 })
 
 test('legit changes pass: a CSS rule and a literal attribute of the landscape', () => {
-  const css = current[CSS].replace('.hero__disco{position:absolute;top:50%;left:12%;width:150%;', '.hero__disco{position:absolute;top:50%;left:12%;width:140%;')
+  // A rule that is the same with and without the planted hero bug, so the test holds once a request has fixed it.
+  const css = current[CSS].replace('.tira{display:flex;height:40px;', '.tira{display:flex;height:36px;')
   assert.notEqual(css, current[CSS])
   assert.deepEqual(check(CSS, css), { ok: true, errors: [] })
   const svg = current[PAISAJE].replace('width="800" height="800"', 'width="640" height="640"')
