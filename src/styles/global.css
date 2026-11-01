@@ -76,8 +76,8 @@ a:hover{color:var(--oliva)}
 .campo-oliva h2,.campo-oliva p{color:#fff}
 
 /* Hero */
-.hero{position:relative;isolation:auto;padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px);overflow:hidden}
-.hero__tarjeta{display:flex;flex-direction:column;background:var(--crema);border-top-right-radius:var(--cuarto);overflow:hidden}
+.hero{position:relative;padding:0 var(--margen) var(--margen);min-height:clamp(560px,calc(100svh - 84px),840px);overflow:hidden}
+.hero__tarjeta{position:relative;z-index:1;display:flex;flex-direction:column;background:transparent;border-top-right-radius:var(--cuarto);overflow:hidden}
 .tira{display:flex;height:40px;flex:none;overflow:hidden}
 .tira i{flex:none;width:28px;height:100%;background:var(--oliva-oscuro)}
 .tira i:nth-child(even){background:var(--limon)}
@@ -91,8 +91,8 @@ a:hover{color:var(--oliva)}
 .hero__origen p{margin:0 0 8px;font-weight:600}
 .hero__origen li{font-size:var(--t-cuerpo)}
 .hero__origen ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:4px 28px}
-.hero__campo{position:relative;background:var(--limon);overflow:hidden;min-height:420px;border-top-left-radius:0}
-.hero__disco{position:absolute;top:50%;right:-24%;width:min(118%,calc(100svh + 120px));aspect-ratio:1;translate:0 -50%;border-radius:50%;overflow:hidden;z-index:0}
+.hero__campo{position:absolute;inset:0;background:transparent;overflow:visible;z-index:0}
+.hero__disco{position:absolute;top:50%;left:12%;width:150%;aspect-ratio:1;translate:0 -50%;border-radius:50%;overflow:hidden;z-index:0}
 .hero__disco img{width:100%;height:100%;object-fit:cover;scale:1.32;animation:gira 160s linear infinite}
 .hero__vega{position:absolute;left:clamp(16px,2.4vw,36px);bottom:clamp(16px,2.4vw,36px);width:min(46%,320px);border-top-right-radius:calc(var(--cuarto) * .5);overflow:hidden;background:var(--blanco);z-index:1}
 .hero__vega img{aspect-ratio:4/3;height:auto}
