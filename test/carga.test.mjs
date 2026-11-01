@@ -103,7 +103,7 @@ test('observar: a request deployed gets every timestamp, and nothing is lost bet
 })
 
 test('observar: final states that never reach production', () => {
-  const at = (i, pulls = [], extra = {}) => observar(newTrack(i), { issue: i, pulls, repo: REPO, desplegada: false }, T0 + 9000)
+  const at = (i, pulls = [], extra = {}) => observar(newTrack(i), { issue: i, pulls, repo: REPO, desplegada: false }, T0 + 29_000)
   const rejected = at(issue(2, { state: finishState(running(), 'rejected', undefined, 'no') }))
   assert.equal(rejected.estado, 'rechazada')
   assert.equal(rejected.final, true)
@@ -235,4 +235,12 @@ test('--help documents the options; bad arguments fail', () => {
     const r = spawnSync(process.execPath, [script, ...args, '--dry-run'], { encoding: 'utf8' })
     assert.notEqual(r.status, 0, args.join(' '))
   }
+})
+
+test('observar: a PR timestamp ahead of the poll (a skewed GitHub clock) is taken as the poll time', () => {
+  let track = newTrack(issue(1))
+  const done = { ...finishState(running(), 'ok'), pr: 7, ruta: 'auto' }
+  const skewed = pull(7, 1, { created_at: new Date(T0 + 3_600_000 + 20_000).toISOString() })
+  track = observar(track, { issue: issue(1, { state: done }), pulls: [skewed], repo: REPO, desplegada: false }, T0 + 25_000)
+  assert.equal(track.prAbierta, T0 + 25_000)
 })
