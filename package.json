@@ -15,8 +15,6 @@
     "simulate": "node scripts/simulate.mjs",
     "preflight": "node scripts/preflight.mjs",
     "numbers": "node scripts/numbers.mjs",
-    "runner": "node scripts/runner.mjs",
-    "agente": "node scripts/agente.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "test:src": "node --test \"src/domain/*.test.mjs\" \"src/features/*/index.test.mjs\"",
     "reset-demo": "node scripts/reset-demo.mjs",

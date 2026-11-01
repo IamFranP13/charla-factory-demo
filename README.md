@@ -153,48 +153,6 @@ Repository variables: `FACTORY_PROVIDER=openai`, `FACTORY_API_URL` (e.g. `https:
 
 Issues are created with your token, so the factory only accepts issues authored by the repository owner.
 
-## Local runner (optional)
-
-The same pipeline as `factory.yml`, run on your own Linux PC: it starts in seconds and handles several requests at once. Actions stays as the fallback. **One mode at a time**: the runner refuses to start while the workflow is enabled, and a lock allows a single runner.
-
-```bash
-gh workflow disable factory.yml     # once, before starting the runner
-npm run runner -- --paralelo 6      # default 6 requests at once; --intervalo S (default 5), --repo, --config DIR
-# fallback: Ctrl+C (the running requests finish), then
-gh workflow enable factory.yml
-```
-
-- **What it does.** Every few seconds it lists (one API call) the open issues labelled `entrada` filed by the repository owner that the factory has not started (no `factory:state` marker, no `tarea/N` branch). Issues filed while it was stopped are picked up when it starts. Each request runs in its own `git worktree add --detach` of a freshly fetched `origin/main` in a temp directory (removed afterwards, also on failure) and does what the workflow does: `node scripts/factory.mjs --issue N`; on `ok`, a commit with **only the reported files**, push of `tarea/N`, `gh pr create` ("Closes #N", label `perfil:<perfil>`) and `--issue N --pr M`; on anything but `ok`/`ignored`, the issue is closed as "not planned" with the workflow's comment. `node_modules` of the main checkout is linked into each worktree (run `npm ci` there once).
-- **Secrets stay on the PC**, outside the repositories, every file mode 600 (the runner refuses looser ones), in `~/.config/charla-factory-demo/` (or `--config` / `CHARLA_FACTORY_CONFIG`): `app-id`, `app-key.pem` (the App's private key) and an optional `modelo.env` with `KEY=VALUE` lines for `FACTORY_PROVIDER`, `FACTORY_API_URL`, `FACTORY_MODEL`, `FACTORY_CODE_MODEL`, `FACTORY_REVIEW_MODEL`, `FACTORY_REVIEW_API_URL`, `FACTORY_API_KEY`, `FACTORY_REVIEW_API_KEY` and `FACTORY_BROWSER` (the Chrome/Chromium for the screenshots of a visual change; otherwise the first of `google-chrome`, `chromium`... on the `PATH`; the replay model needs none). It also needs `gh` logged in as the owner, to read the requests.
-- **Tokens.** The runner signs a JWT (RS256, `node:crypto`) and mints installation tokens limited to this repository. At start it checks that the installation grants contents, pull requests and issues write, and **fails closed** otherwise. The `factory.mjs` child gets a *narrow* token (issues write, contents read), not the user's `gh` login: its comments are then written by the App bot, and the closing numbers trust only `github-actions[bot]` and the `factory:` login of `policy/risk.yaml`, so a request run locally counts in them and in the board. The full token (push, PR) is minted only when there is something to push, goes to `git` through `GIT_CONFIG_*` environment variables (never the command line, never a `.git/config`) and is forgotten afterwards. Git hooks are disabled in the worktrees.
-- **The child's environment is an allowlist**: `PATH`, a throwaway `HOME`/`TMPDIR`, `GH_TOKEN`, `GITHUB_REPOSITORY`, the output file and the model settings above. The model's code still only runs in the existing sandbox (`lib/sandbox.js`).
-
-## Agent lane (Linear + Pi, optional)
-
-For the two or three real tasks the speaker sends on stage, next to the audience's form: a full coding agent ([Pi](https://pi.dev), `pi -p --mode json`) per Linear ticket, in a throwaway git worktree of a freshly fetched `origin/main`, on the branch `agente/<KEY>`. It is a **separate process** from `npm run runner` (they can run together; each has its own lock) and it is fed only by your own Linear team, never by the audience.
-
-```bash
-npm run agente -- --paralelo 2     # default 2 tickets at once; --intervalo S (default 5), --repo, --config DIR
-```
-
-- **Config**, in `~/.config/charla-factory-demo/linear.env` (mode 600, like the runner's files): `LINEAR_API_KEY` (a personal API key), `LINEAR_TEAM` (the team key, e.g. `LIM`), optional `LINEAR_LABEL` (default `factory`) and `AGENTE_MODEL` (passed to `pi --model`). It also uses the runner's `app-id` and `app-key.pem`, and needs `pi` logged in.
-- **Intake.** Every few seconds it asks Linear for the team's issues with the label in an *unstarted* state. Claiming one moves it to In Progress and posts **one comment that is then edited**: stage, elapsed time, tokens and cost.
-- **The agent** gets the playbook `factory/agente.md` appended to its system prompt (adapted from marshal-factory's) and the ticket as its prompt. It reports its stage by writing a file the runner gave it (outside the worktree): triage, investigating, implementing, verifying, pr; off the path: `waiting` (one question with 2-3 options) or `failed`. It writes a failing test first, runs `npm test` and `npm run build`, commits, writes a merge assessment (interpretation, "Assumptions I made", confident yes/no) and stops. It never pushes and never opens a PR. Limits: 30 minutes per run, and 10 minutes without a stage change fails it.
-- **Waiting.** The question is posted as a comment on the ticket. When you answer with a new comment, the run resumes on the same worktree and branch with the question and your answer in the prompt. (Questions pending when the process stops are lost: the ticket stays In Progress and has to be moved back by hand.)
-- **After the agent**, this process (not the agent) re-runs `npm test` on its final commit; if it fails nothing is pushed. Then it pushes exactly that commit as `agente/<KEY>` and opens the PR with the App token (title `<KEY> <ticket title>`, body: the Linear link and the assessment), as a **draft** when the agent was not confident. The same risk gate and CI judge it: the diff decides auto or person. Linear moves to In Review; when the PR is merged, to Done (on a later poll).
-- **Failure** (timeout, watchdog, `failed`, no commit, red tests): the ticket goes back to Todo with the reason in the progress comment and the label swapped to `factory-fallida` (so it is not taken again).
-- **Safety.** The agent's environment is an allowlist: no `GH_TOKEN`, no App key, no Linear key (its own Pi credentials stay: `~/.pi/agent` or the provider key variables), and a throwaway `HOME`. Unlike the model code of the audience's factory, the agent is **not sandboxed**: it has a shell on your PC, which is why only your own Linear team feeds it. Test: `test/agente.test.mjs`, `test/linear.test.mjs`.
-
-## Load test
-
-```bash
-npm run carga -- --n 30 --dry-run    # what it would file, creates nothing
-npm run carga -- --n 30 [--json] [--timeout-min M]
-npm run reset-demo -- --apply        # afterwards
-```
-
-Files N issues exactly as the form would (replay battery requests, profiles in equal parts) with your `gh` login, follows them, and reports per request and in aggregate (median, p90, max): issue → factory started, → PR, → merged, → deployed. The factory must be running (the runner or the workflow): run it once per mode to compare them. Use the replay model: it costs nothing.
-
 ## On the day
 
 ```bash
@@ -205,7 +163,7 @@ prints the closing numbers: requests, in production, waiting for a person, rejec
 
 ## Spending and switches
 
-The repository is public, but no key is in it: they live in GitHub Actions secrets and Cloudflare environment variables. Only one place can spend money on the model: the factory, run by the workflow or by the local runner (which needs the model key in its own config, and stops with Ctrl+C). So there are two switches:
+The repository is public, but no key is in it: they live in GitHub Actions secrets and Cloudflare environment variables. Only one place can spend money on the model: the factory workflow. So there are two switches:
 
 | Switch | Turns off | How | Takes effect |
 |--------|-----------|-----|--------------|
@@ -225,6 +183,8 @@ With `INTAKE_OPEN=0` the form answers "La factory está cerrada" to everyone exc
 Keep the factory workflow **disabled** whenever a real model key is configured and you are not rehearsing or presenting. Issues created while it is disabled are not processed later.
 
 Before the talk: `npm run reset-demo -- --apply` (removes the audience's content and features, restores the seed data and the planted bugs, reopens the hole, closes factory PRs and frees the board), then `npm run preflight`, enable the factory workflow, set `INTAKE_OPEN=1`.
+
+Load test (with the factory workflow on and the replay model): `npm run carga -- --n 9 --dry-run` shows what it would file; `npm run carga -- --n 9 [--json] [--timeout-min M]` files the requests and reports, per stage (start, PR opened, merged, deployed), the median, p90 and max. Run `npm run reset-demo -- --apply` afterwards.
 
 After the talk: set `INTAKE_OPEN=0`, disable the factory workflow, revoke the intake's GitHub token and the model key, and delete `INTAKE_TEST_KEY`.
 

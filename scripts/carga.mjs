@@ -3,7 +3,7 @@
 //
 //   node scripts/carga.mjs --n N [--json] [--timeout-min M] [--repo owner/repo] [--site URL] [--dry-run]
 //
-// Needs the factory running (the local runner or the workflow) and the owner's `gh` logged in.
+// Needs the Factory workflow on and the owner's `gh` logged in.
 // Exit codes: 0 done (or dry run) · 1 bad arguments or GitHub failure.
 
 import { readFileSync } from 'node:fs'
@@ -31,7 +31,7 @@ Uso: node scripts/carga.mjs --n N [opciones]
 Crea las issues con tu \`gh\` en el formato exacto de la entrada, con peticiones de la batería
 que el replay convierte en cambio, y las sigue hasta que cada una termina o se agota el tiempo:
 issue → arranque → PR abierta → fusionada → desplegada (mediana, p90, max).
-Necesita la factory en marcha (runner local o workflow). Al terminar, ejecuta
+Necesita el workflow Factory activo. Al terminar, ejecuta
 \`npm run reset-demo -- --apply\` para dejar la demo como estaba.
 `
 

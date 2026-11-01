@@ -111,7 +111,7 @@ test('observar: final states that never reach production', () => {
 
   assert.equal(at(issue(3, { state: finishState(running(), 'failed') })).estado, 'fallida')
   assert.equal(at(issue(4, { state: finishState(running(), 'unchanged') })).estado, 'sin_cambios')
-  // The runner closes an issue the factory could not start without leaving a marker.
+  // The workflow closes an issue the factory could not start without leaving a marker.
   assert.equal(at(issue(5, { closed: true })).estado, 'fallida')
 
   const human = { ...finishState(running(), 'ok'), pr: 9, ruta: 'human' }
