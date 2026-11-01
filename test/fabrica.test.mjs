@@ -953,3 +953,22 @@ test('the reviewers\' prompt files exist, are short, English, and ask for the st
     assert.match(text, /Spanish/)
   }
 })
+
+test('--una-vez does not stop on the first empty look: GitHub lists a new issue a few seconds late', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  const real = w.deps.github.list
+  let calls = 0
+  w.deps.github.list = async () => (++calls === 1 ? [] : real())
+  await w.fabrica.start()
+  assert.ok(w.runs.length >= 1, 'the late issue was worked')
+  assert.ok(calls >= 2)
+})
+
+test('--una-vez stops after two empty looks in a row', async () => {
+  const w = world({ issues: [] })
+  let calls = 0
+  const real = w.deps.github.list
+  w.deps.github.list = async () => { calls++; return real() }
+  await w.fabrica.start()
+  assert.equal(calls, 2)
+})

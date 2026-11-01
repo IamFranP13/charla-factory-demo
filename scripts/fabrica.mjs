@@ -28,7 +28,7 @@ const USAGE = `Usage: npm run fabrica -- [options]
   --turnos N     max turns per agent (default 30)
   --sondeo S     seconds between queue checks (default 10)
   --conservar    keep each task's copy and clean clone when it ends (for debugging; removed by default)
-  --una-vez      stop when the queue is empty and nothing is running`
+  --una-vez      stop when the queue is empty on two looks in a row and nothing is running`
 
 let options
 try {
