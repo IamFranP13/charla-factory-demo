@@ -1,0 +1,55 @@
+name: Open pull request
+
+# The orchestrator on the maintainer's PC pushes the branch tarea/<n> and starts this workflow by hand
+# (`gh workflow run abrir-pr.yml --ref main -f tarea=<n>`). The pull request is opened by the factory App, so the
+# risk gate recognises it. A dispatch is always read from a ref the maintainer chooses; the job refuses any ref but main.
+# SECURITY: the code of the branch is never checked out or run here: only data about it is read through the API.
+on:
+  workflow_dispatch:
+    inputs:
+      tarea:
+        description: Task number (the issue) whose branch tarea/<n> becomes a pull request
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: abrir-pr-${{ inputs.tarea }}
+  cancel-in-progress: false
+
+jobs:
+  abrir:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TAREA: ${{ inputs.tarea }}
+    steps:
+      # The code of main only, never the branch. No credential stays in .git/config.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      # The input is checked before the App key is touched.
+      - run: node scripts/publicar-pr.mjs --comprobar "$TAREA"
+
+      - id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FACTORY_APP_ID }}
+          private-key: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          permission-contents: read
+          permission-pull-requests: write
+          permission-issues: write
+
+      # No dependencies to install: the script only uses the Node standard library and the gh CLI.
+      - run: node scripts/publicar-pr.mjs "$TAREA"
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
