@@ -373,3 +373,16 @@ test('resetState: back to the queue from scratch; only who asked and the rebuilt
   assert.deepEqual(back, { ...initialState('negocio', '2026-10-27T11:00:00.000Z'), reconstruida: true })
   assert.equal(resetState(initialState('marketing', NOW), NOW).reconstruida, undefined)
 })
+
+test('/api/estado exposes the activity line as safe text; a task without it gets null and still works', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const live = setActividad(withState('marketing', { fase: 'build', estaciones: { spec: 'ok', build: 'en_curso' } }), 'Edita src/x.js', NOW)
+  const old = withState('negocio', { fase: 'build', estaciones: { spec: 'ok', build: 'en_curso' } })
+  const evil = replaceState(requestBlock('p', 'producto'), initialState('producto', NOW)).replace(/<!-- factory:state (.*) -->/, (_m, json) => `<!-- factory:state ${JSON.stringify({ ...JSON.parse(json), actividad: '<script>alert(1)</script>\u202E' + 'z'.repeat(400) })} -->`)
+  const { body } = await call(fakeFetch({ issues: [issue(1, 'marketing', live), issue(2, 'negocio', old), issue(3, 'producto', null, { body: evil })] }))
+  const by = Object.fromEntries(body.tareas.map((t) => [t.numero, t]))
+  assert.equal(by[1].actividad, 'Edita src/x.js')
+  assert.equal(by[2].actividad, null)
+  assert.ok(!/[<>\u202e]/.test(by[3].actividad ?? '') && Array.from(by[3].actividad ?? '').length <= 160)
+  assert.ok(!JSON.stringify(body).includes('<script>'))
+})

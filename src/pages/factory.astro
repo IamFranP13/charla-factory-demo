@@ -112,10 +112,11 @@ const totales = [
   import { geometria, slotsDe, NODOS, IDS_NODOS } from '../lib/geometria.js'
   import {
     CLASE_MARCA, GLIFOS, aristasEncendidas, claseFicha, marcaFicha, marcaNodo, nombreAccesible, ordenFichas, panelEstacion,
-    lineaViva, panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
+    actividadViva, lineaViva, panelPeticion, registrarVistas, siguiendo, totales, ubica, visibles,
   } from '../lib/tablero.js'
   import { esDemo, sondearDemo } from '../components/demo-datos.js'
   import { sondear } from '../lib/sondeo.js'
+  import { crearReproductor } from '../lib/secuencia.js'
 
   const $ = (selector, raiz = document) => raiz.querySelector(selector)
   const nodoHtml = (tag, clase, texto) => {
@@ -168,7 +169,9 @@ const totales = [
   const tip = $('#tip')
 
   let datos = null
-  let tareas = new Map() // number → task, every one the API lists
+  let tareas = new Map() // number → task as shown now (a station that went by between two reads is shown en curso for a moment)
+  const jugadores = new Map() // number → the player that paces what is shown of that task
+  const mostradas = new Map() // number → the task each player showed last
   let visiblesAhora = []
   let primera = true
   let SEL = null // the request whose panel is open (and which is followed)
@@ -336,6 +339,7 @@ const totales = [
           h('p', { class: 'fd-narra__texto', text: p.narrativa.texto }),
           p.narrativa.vueltas ? h('p', { class: 'fd-vacio', text: p.narrativa.vueltas }) : null,
         ),
+        p.actividad ? h('p', { class: 'fd-narra__texto', text: `Ahora: ${p.actividad}` }) : null,
         p.motivo ? h('div', { class: 'fd-motivo' }, h('b', { text: 'Motivo del rechazo' }), `${p.motivo.titulo} ${p.motivo.motivo}`.trim()) : null,
         p.pr ? (p.pr.url ? h('a', { class: 'fd-enlace', href: p.pr.url, text: `Ver el PR #${p.pr.numero} →` }) : h('p', { class: 'fd-vacio', text: `PR #${p.pr.numero}` })) : null,
         p.enlace ? h('a', { class: 'fd-enlace', href: p.enlace, text: 'Ver el cambio en la web →' }) : null,
@@ -528,7 +532,8 @@ const totales = [
   function muestraTip(b) {
     const t = tareas.get(Number(b.dataset.n))
     if (!t) return
-    tip.replaceChildren(h('b', { text: `#${t.numero} · ` }), t.titulo ?? '')
+    const ahora = actividadViva(t)
+    tip.replaceChildren(h('b', { text: `#${t.numero} · ` }), t.titulo ?? '', ahora ? h('span', { class: 'tip-ahora', text: ` — ${ahora}` }) : null)
     tip.hidden = false
     const r = b.getBoundingClientRect()
     const w = tip.offsetWidth
@@ -549,13 +554,38 @@ const totales = [
   // --- one repaint per data: tokens, counters, queue, panel; the board itself is never rebuilt ---
   function repinta() {
     if (!datos) return
-    visiblesAhora = visibles([...datos.tareas ?? []].sort((a, b) => b.numero - a.numero), vistas, seguida, Date.now())
+    visiblesAhora = visibles([...tareas.values()].sort((a, b) => b.numero - a.numero), vistas, seguida, Date.now())
     sincroniza()
+  }
+
+  // Every read goes to the player of its task, which paints it at once or, if a station went by unseen, step by step.
+  let sincrono = false
+  function reproduce(lista) {
+    const vivas = new Set(lista.map((t) => t.numero))
+    for (const [n, jugador] of jugadores) {
+      if (vivas.has(n)) continue
+      jugador.detener()
+      jugadores.delete(n)
+      mostradas.delete(n)
+    }
+    sincrono = true
+    for (const t of lista) {
+      if (!jugadores.has(t.numero)) jugadores.set(t.numero, crearReproductor((x) => { mostradas.set(x.numero, x); if (!sincrono) pinta() }))
+      jugadores.get(t.numero).recibir(t)
+    }
+    sincrono = false
   }
 
   function pintar(nuevos) {
     datos = nuevos
-    const lista = datos.tareas ?? []
+    reproduce(datos.tareas ?? [])
+    pinta()
+    return false
+  }
+
+  // Paints what is on screen now: the tasks as their players last showed them, the counters and the queue as the API said.
+  function pinta() {
+    const lista = (datos.tareas ?? []).map((t) => mostradas.get(t.numero) ?? t)
     tareas = new Map(lista.map((t) => [t.numero, t]))
     registrarVistas(vistas, lista, Date.now(), { alAbrir: primera, demo })
     const c = totales(datos.contadores)
@@ -582,7 +612,6 @@ const totales = [
       const linea = lineaViva(SEL, tareas.get(SEL))
       if (lineaSigue.textContent !== linea) lineaSigue.textContent = linea
     }
-    return false
   }
 
   // --- layout: horizontal on a wide screen, vertical below; the tokens change stage without travelling ---

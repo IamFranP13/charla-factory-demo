@@ -142,6 +142,13 @@ export function filas(t) {
 const urlSegura = (url) => (typeof url === 'string' && /^https:\/\/github\.com\//.test(url) ? url : null)
 const rutaDelSitio = (ruta) => (typeof ruta === 'string' && /^\/(?!\/)/.test(ruta) ? ruta : null)
 
+// What the task is doing now, for a request still in progress: the line the factory wrote (already plain text and at most 160
+// characters; checked again here because the page is the last stop before the screen).
+export function actividadViva(t) {
+  if (t.resultadoFinal !== 'en_curso' || typeof t.actividad !== 'string') return ''
+  return Array.from(t.actividad.replace(/[\p{Cc}\p{Cf}\u2028\u2029\s]+/gu, ' ').trim()).slice(0, 160).join('')
+}
+
 // What the side panel shows for a tapped request. `cola`: the pull requests waiting for a person (they carry the address).
 export function panelPeticion(t, cola = []) {
   const nodo = ubica(t)
@@ -155,6 +162,7 @@ export function panelPeticion(t, cola = []) {
     pr,
     enlace: rutaDelSitio(t.enlace),
     vueltas: t.vueltas ?? 0,
+    actividad: actividadViva(t),
     narrativa: narrativa(t),
     filas: filas(t),
   }

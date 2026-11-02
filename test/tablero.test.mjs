@@ -324,3 +324,119 @@ test('in both layouts the token slots of every node sit below its last descripti
     }
   }
 })
+
+// --- S3: a station that jumped between two reads is seen en curso, in the diagram's order ---------------------------------
+
+import { secuencia, crearReproductor, ENCURSO_MS } from '../src/lib/secuencia.js'
+
+const marcas = (t) => STATIONS.filter((s) => t.estaciones[s] !== 'pendiente').map((s) => `${s}:${t.estaciones[s]}`)
+const enCurso = (t) => STATIONS.filter((s) => t.estaciones[s] === 'en_curso')
+
+test('S3: nothing skipped (or nothing seen before) means nothing to replay', () => {
+  const antes = tarea({ ok: ['entrada'], estaciones: { spec: 'en_curso' } })
+  assert.deepEqual(secuencia(null, antes), [])
+  assert.deepEqual(secuencia(antes, antes), [])
+  assert.deepEqual(secuencia(antes, tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' } })), [], 'spec was seen en curso; build is en curso now')
+  assert.deepEqual(secuencia(tarea({ ok: ['entrada', 'spec', 'build'] }), tarea({ ok: ['entrada'] })), [], 'a task sent back to the start is not replayed')
+})
+
+test('S3: a station that went from pendiente to ok between two reads is shown en curso first, with the earlier ones done and the later ones waiting', () => {
+  const antes = tarea({ ok: ['entrada'], estaciones: { spec: 'en_curso' } })
+  const despues = tarea({ ok: ['entrada', 'spec', 'build'], estaciones: { seguridad: 'en_curso', ux: 'en_curso', ui: 'en_curso', codigo: 'en_curso' } })
+  const frames = secuencia(antes, despues)
+  assert.equal(frames.length, 1)
+  assert.deepEqual(marcas(frames[0]), ['entrada:ok', 'spec:ok', 'build:en_curso'])
+  assert.deepEqual(marcas(antes), ['entrada:ok', 'spec:en_curso'], 'the input is not touched')
+})
+
+test('S3: several skipped stations come one by one in the diagram\'s order; the four reviewers share one frame', () => {
+  const antes = tarea({ ok: ['entrada'] })
+  const despues = tarea({ ok: ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui', 'codigo', 'approver'], estaciones: { puerta: 'en_curso' } })
+  const frames = secuencia(antes, despues)
+  assert.deepEqual(frames.map(enCurso), [['spec'], ['build'], ['seguridad', 'ux', 'ui', 'codigo'], ['approver']])
+  assert.deepEqual(marcas(frames[2]), ['entrada:ok', 'spec:ok', 'build:ok', 'seguridad:en_curso', 'ux:en_curso', 'ui:en_curso', 'codigo:en_curso'])
+  assert.deepEqual(marcas(frames[3]), ['entrada:ok', 'spec:ok', 'build:ok', 'seguridad:ok', 'ux:ok', 'ui:ok', 'codigo:ok', 'approver:en_curso'])
+})
+
+test('S3: a station that refused or failed between two reads is first shown en curso, then ends as it ended', () => {
+  const antes = tarea({ ok: ['entrada', 'spec', 'build'] })
+  const despues = tarea({ ok: ['entrada', 'spec', 'build', 'ux', 'ui', 'codigo'], estaciones: { seguridad: 'rechazada' }, resultadoFinal: 'rechazada', motivo: 'Lleva un enlace', estacion: 'seguridad' })
+  const frames = secuencia(antes, despues)
+  assert.deepEqual(frames.map(enCurso), [['seguridad', 'ux', 'ui', 'codigo']])
+  const error = secuencia(antes, tarea({ ok: ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui'], estaciones: { codigo: 'error' }, resultadoFinal: 'fallida' }))
+  assert.deepEqual(error.map(enCurso), [['seguridad', 'ux', 'ui', 'codigo']])
+})
+
+test('S3: a replay frame is a task in progress: no final result, reason or link yet', () => {
+  const antes = tarea({ ok: ['entrada'] })
+  const despues = tarea({ ok: ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui', 'codigo', 'approver', 'puerta', 'merge', 'produccion'], resultadoFinal: 'desplegada', mensaje: 'Ya está en la web', enlace: '/', ruta: 'auto', pr: 9, motivo: null, resultado: 'ok' })
+  const frames = secuencia(antes, despues)
+  assert.deepEqual(frames.map(enCurso), [['spec'], ['build'], ['seguridad', 'ux', 'ui', 'codigo'], ['approver'], ['puerta'], ['merge'], ['produccion']])
+  for (const f of frames) {
+    assert.equal(f.resultadoFinal, 'en_curso')
+    assert.equal(f.resultado, null)
+    assert.equal(f.enlace, null)
+    assert.equal(f.motivo, null)
+    assert.equal(f.estacion, enCurso(f)[0], 'the token sits at the station that is en curso')
+    assert.equal(f.numero, despues.numero)
+  }
+  assert.equal(frames[0].ruta, null, 'the route is not known before the gate')
+  assert.equal(frames[5].ruta, 'auto')
+})
+
+test('S3: the player shows each frame for about 1.5 s, in order, and the final state last, without delaying anything else', () => {
+  assert.equal(ENCURSO_MS, 1500)
+  const timers = []
+  const shown = []
+  const player = crearReproductor((t) => shown.push(t), { poner: (fn, ms) => { timers.push({ fn, ms }); return timers.length }, quitar: (id) => { timers[id - 1].off = true } })
+  const antes = tarea({ ok: ['entrada'], estaciones: { spec: 'en_curso' } })
+  player.recibir(antes)
+  assert.equal(shown.length, 1, 'the first read is shown at once')
+  const despues = tarea({ ok: ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui', 'codigo'], estaciones: { approver: 'en_curso' } })
+  player.recibir(despues)
+  assert.deepEqual(shown.slice(1).map(enCurso), [['build']], 'the first frame is shown at once')
+  assert.deepEqual(timers.map((t) => t.ms), [1500])
+  timers.at(-1).fn()
+  assert.deepEqual(shown.slice(2).map(enCurso), [['seguridad', 'ux', 'ui', 'codigo']])
+  timers.at(-1).fn()
+  assert.equal(shown.at(-1), despues, 'the final state is exactly the last read')
+  assert.equal(timers.length, 2, 'no timer after the final state')
+})
+
+test('S3: a new read in the middle of a replay goes on from what is on screen; the final read is never lost', () => {
+  const timers = []
+  const shown = []
+  const player = crearReproductor((t) => shown.push(t), { poner: (fn, ms) => { timers.push({ fn, ms }); return timers.length }, quitar: (id) => { timers[id - 1].off = true } })
+  player.recibir(tarea({ ok: ['entrada'] }))
+  const uno = tarea({ ok: ['entrada', 'spec', 'build'], estaciones: { seguridad: 'en_curso' } })
+  player.recibir(uno)
+  assert.deepEqual(enCurso(shown.at(-1)), ['spec'])
+  const dos = tarea({ ok: ['entrada', 'spec', 'build', 'seguridad', 'ux', 'ui', 'codigo', 'approver'], resultadoFinal: 'rechazada', resultado: 'rejected' })
+  player.recibir(dos)
+  assert.ok(timers[0].off, 'the pending step of the old replay is cancelled')
+  assert.deepEqual(enCurso(shown.at(-1)), ['build'], 'spec is on screen as en curso; it is not skipped, build is')
+  while (timers.some((t) => !t.off && !t.done)) {
+    const next = timers.find((t) => !t.off && !t.done)
+    next.done = true
+    next.fn()
+  }
+  assert.equal(shown.at(-1), dos)
+  player.detener()
+})
+
+// --- S4 on the board: the activity line of a task in progress ---------------------------------------------------------------
+
+test('S4: the board shows the activity line only for a task in progress, as short plain text', async () => {
+  const { actividadViva, panelPeticion } = await import('../src/lib/tablero.js')
+  const viva = tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' }, estacion: 'build', actividad: 'Edita src/a.js' })
+  assert.equal(actividadViva(viva), 'Edita src/a.js')
+  assert.equal(panelPeticion(viva).actividad, 'Edita src/a.js')
+  assert.equal(actividadViva(tarea({ actividad: null })), '')
+  assert.equal(actividadViva(tarea({})), '', 'an old state without the field renders fine')
+  assert.equal(panelPeticion(tarea({})).actividad, '')
+  assert.equal(actividadViva({ ...viva, resultadoFinal: 'rechazada' }), '', 'a finished task has no "now"')
+  assert.equal(actividadViva({ ...viva, resultadoFinal: 'esperando_persona' }), '')
+  assert.equal(actividadViva({ ...viva, actividad: 42 }), '')
+  const largo = actividadViva({ ...viva, actividad: 'x'.repeat(500) })
+  assert.ok(Array.from(largo).length <= 160)
+})

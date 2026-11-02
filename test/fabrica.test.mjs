@@ -8,7 +8,7 @@ import { issueFor } from '../lib/intake.js'
 import { initialState, replaceState, parseState, applyEvent } from '../lib/estado.js'
 import {
   parseArgs, acquireLock, pendingTasks, requestOf, eligible, buildPrompt, containerArgs, presenterLine, validateResultado,
-  createFabrica, gitNode, readResultado, claimState, outcomeState,
+  createFabrica, gitNode, readResultado, claimState, outcomeState, ACTIVITY_MS,
 } from '../lib/fabrica.js'
 
 const NOW = '2026-10-27T10:00:00.000Z'
@@ -52,6 +52,8 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
   const live = new Map() // container name -> resolve exit
   const tokens = new Map()
   const released = []
+  const activities = [] // every distinct activity line the state carried, in order
+  const violations = [] // writes that broke "the approver is never ok before codigo is"
   const deps = {
     owner: OWNER,
     ids: { uid: 1000, gid: 1000 },
@@ -65,6 +67,8 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
         const next = change(current)
         if (next !== current) {
           i.body = replaceState(i.body, next)
+          if (next.actividad !== current.actividad) activities.push(next.actividad ?? null)
+          if (next.estaciones.approver === 'ok' && next.estaciones.codigo !== 'ok') violations.push(`approver ok with codigo ${next.estaciones.codigo}`)
           const line = `state:${n}:${next.estaciones.spec}/${next.estaciones.build}/${next.resultado}${next.estaciones.codigo === 'pendiente' ? '' : `/codigo:${next.estaciones.codigo}`}${next.pr ? `/pr:${next.pr}` : ''}`
           if (lastSeen.get(`line${n}`) !== line) events.push(line)
           lastSeen.set(`line${n}`, line)
@@ -149,7 +153,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
     log: (line) => logs.push(line),
   }
   const fabrica = createFabrica(deps, { paralelo: 3, modelo: 'claude-haiku-4-5', tiempoMin: 10, turnos: 30, conservar: false, unaVez: true, sondeoS: 10, ...options })
-  const w = { fabrica, events, runs, reviews, fotosRuns, rechecks, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
+  const w = { fabrica, activities, violations, events, runs, reviews, fotosRuns, rechecks, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
   return w
 }
 const ok = (resumen = 'Hecho') => JSON.stringify({ estado: 'ok', resumen })
@@ -453,10 +457,10 @@ test('a full task: claim first, then copy, network, token, container; success re
   assert.deepEqual(w.events, [
     'lock', 'state:1:en_curso/en_curso/null', 'copy:1', 'net+limonia-t1', 'connect:limonia-t1:limonia-proxy', 'token:1', 'run:1',
     'revoke:1', 'tomar:1', 'state:1:ok/ok/null',
-    'rev:0:seguridad=en_curso,ux=en_curso,ui=en_curso', 'token:1', 'review:seguridad', 'review:ux', 'review:ui',
-    'rev:0:seguridad=ok,ux=en_curso,ui=en_curso', 'rev:0:seguridad=ok,ux=ok,ui=en_curso', 'rev:0:seguridad=ok,ux=ok,ui=ok', 'revoke:1',
-    'rev:0:seguridad=ok,ux=ok,ui=ok,approver=ok', 'net-limonia-t1',
-    'state:1:ok/ok/null/codigo:en_curso', 'verif:1', 'state:1:ok/ok/null/codigo:ok',
+    // The four start together (S2): codigo is en_curso with the reviewers and the re-check container runs beside them.
+    'state:1:ok/ok/null/codigo:en_curso', 'rev:0:seguridad=en_curso,ux=en_curso,ui=en_curso', 'verif:1', 'token:1', 'review:seguridad', 'review:ux', 'review:ui',
+    'state:1:ok/ok/null/codigo:ok', 'rev:0:seguridad=ok,ux=en_curso,ui=en_curso', 'rev:0:seguridad=ok,ux=ok,ui=en_curso', 'rev:0:seguridad=ok,ux=ok,ui=ok', 'revoke:1',
+    'net-limonia-t1', 'rev:0:seguridad=ok,ux=ok,ui=ok,approver=ok',
     'push:1', 'state:1:ok/ok/null/codigo:ok/pr:41', 'rm:/copias/t1', 'rm:/copias/t1.limpio', 'unlock',
   ])
   const run = w.runs[0]
@@ -699,8 +703,8 @@ test('re-check timeout: the verification container is killed and the task fails'
   const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: () => undefined })
   const done = w.fabrica.start()
   await until(() => w.events.includes('verif:1'), 'the re-check')
-  const timer = w.timers.at(-1)
-  assert.equal(timer.ms, 10 * 60_000)
+  const timer = w.timers.find((t) => t.ms === 10 * 60_000 && !t.cancelled)
+  assert.ok(timer, 'the re-check has its own 10 minute limit')
   timer.fn()
   await done
   assert.deepEqual(w.kills, ['limonia-verif-t1'])
@@ -749,7 +753,7 @@ const refuse = (who, motivo = 'No me gusta') => (nombre) => (nombre === who ? JS
 const resultAt = (text) => JSON.stringify({ type: 'result', is_error: false, result: text, num_turns: 1, duration_ms: 500 })
 const agentRuns = (w) => w.runs.length
 
-test('reviewers: three single calls in parallel, each in its own container, token by name only, then the approver, then the re-check', async () => {
+test('reviewers: three single calls in parallel, each in its own container, token by name only, and the re-check beside them, then the approver', async () => {
   const w = world({
     issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0,
     review: async (nombre, _r, world) => { await until(() => world.reviews.length === 3, 'the three reviewers started together'); return undefined },
@@ -766,15 +770,15 @@ test('reviewers: three single calls in parallel, each in its own container, toke
   assert.ok(at('tomar:1') < at('rev:0:seguridad=en_curso,ux=en_curso,ui=en_curso'), w.events.join('\n'))
   assert.ok(at('rev:0:seguridad=en_curso,ux=en_curso,ui=en_curso') < at('review:seguridad'))
   const approverAt = w.events.findIndex((e) => /^rev:0:.*approver=ok/.test(e))
-  assert.ok(approverAt > -1 && approverAt < at('verif:1') && at('verif:1') < at('push:1'), w.events.join('\n'))
+  assert.ok(at('verif:1') < at('review:seguridad') && at('review:ui') < approverAt && approverAt < at('push:1'), w.events.join('\n'))
   const state = w.stateOf(1)
   assert.deepEqual(REV3.map((s) => state.estaciones[s]), ['ok', 'ok', 'ok'])
   assert.equal(state.estaciones.approver, 'ok')
   assert.equal(state.vueltas, undefined)
   assert.equal(agentRuns(w), 1)
   assert.ok(w.logs.some((l) => /#1 seguridad .*aprobado.*seguridad ve bien/.test(l)), w.logs.join('\n'))
-  assert.ok(w.logs.some((l) => /#1 approver ok.*3\/3/.test(l)), w.logs.join('\n'))
-  assert.ok(at('net-limonia-t1') > at('review:ui') && at('net-limonia-t1') < at('verif:1'), 'the network is gone before the re-check')
+  assert.ok(w.logs.some((l) => /#1 approver ok.*4\/4/.test(l)), w.logs.join('\n'))
+  assert.ok(at('net-limonia-t1') > at('review:ui') && at('net-limonia-t1') < at('push:1'), 'the network is gone once the four have finished, before the publication')
 })
 
 test('reviewer answers are validated: missing, malformed, extra text, oversized, empty motive => not approved with a fixed motive; bidi is stripped', async () => {
@@ -828,11 +832,12 @@ test('one reviewer refuses: the agent runs once more with the motives as data, t
   assert.ok(w.events.some((e) => /^rev:0:seguridad=rechazada/.test(e)), 'the refusing station was shown as refused')
 })
 
-test('refused twice: the task ends rechazada with the motives, the approver is refused, nothing is re-checked or published', async () => {
+test('refused twice: the task ends rechazada with the motives, the approver is refused, nothing is published', async () => {
   const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, review: (nombre) => (nombre === 'ux' ? JSON.stringify(verdict(false, 'No se entiende el texto')) : nombre === 'ui' ? JSON.stringify(verdict(false, 'Rompe el diseño')) : undefined) })
   await w.fabrica.start()
   assert.equal(agentRuns(w), 2)
-  assert.ok(!w.events.some((e) => /^(verif|push)/.test(e)))
+  assert.ok(!w.events.some((e) => /^push/.test(e)))
+  assert.equal(w.rechecks.length, 2, 'the re-check ran with the reviewers in both rounds')
   const state = w.stateOf(1)
   assert.equal(state.resultado, 'rejected')
   assert.equal(state.estaciones.approver, 'rechazada')
@@ -971,4 +976,193 @@ test('--una-vez stops after two empty looks in a row', async () => {
   w.deps.github.list = async () => { calls++; return real() }
   await w.fabrica.start()
   assert.equal(calls, 2)
+})
+
+// --- S2: codigo runs in parallel with the reviewers; the approver decides after the four ---------------------------------
+
+test('S2: codigo and the three reviewers all start before any of them finishes; the approver is never ok before codigo', async () => {
+  const w = world({
+    issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0,
+    verif: async () => { await until(() => w.reviews.length === 3, 'the reviewers started with the re-check'); return 0 },
+    review: async (_nombre, _r, world) => { await until(() => world.rechecks.length === 1, 'the re-check started with the reviewers'); return undefined },
+  })
+  await w.fabrica.start()
+  assert.deepEqual(w.violations, [])
+  assert.equal(w.rechecks.length, 1)
+  const state = w.stateOf(1)
+  assert.deepEqual([state.estaciones.seguridad, state.estaciones.ux, state.estaciones.ui, state.estaciones.codigo, state.estaciones.approver, state.pr], ['ok', 'ok', 'ok', 'ok', 'ok', 41])
+  assert.ok(w.events.indexOf('push:1') > w.events.indexOf('verif:1'))
+})
+
+test('S2: slow codigo — the three reviewers approve, the approver still waits for the re-check', async () => {
+  let release
+  const gate = new Promise((resolve) => { release = resolve })
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: async () => { await gate; return 0 } })
+  const done = w.fabrica.start()
+  await until(() => ['seguridad', 'ux', 'ui'].every((s) => parseState(w.states.get(1).body)?.estaciones[s] === 'ok'), 'the reviewers')
+  for (let i = 0; i < 20; i++) await tick()
+  const waiting = w.stateOf(1)
+  assert.equal(waiting.estaciones.codigo, 'en_curso')
+  assert.equal(waiting.estaciones.approver, 'pendiente', 'the approver waits for codigo')
+  assert.ok(!w.events.includes('push:1'))
+  release()
+  await done
+  assert.equal(w.stateOf(1).estaciones.approver, 'ok')
+  assert.deepEqual(w.violations, [])
+})
+
+test('S2: the re-check also runs when a reviewer refuses, and a retry round runs the four again', async () => {
+  const w = world({
+    issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0,
+    review: (nombre, _r, world) => (world.reviews.length <= 3 && nombre === 'ux' ? JSON.stringify(verdict(false, 'No se entiende')) : undefined),
+  })
+  await w.fabrica.start()
+  assert.equal(agentRuns(w), 2)
+  assert.equal(w.reviews.length, 6)
+  assert.equal(w.rechecks.length, 2, 'the re-check runs in both rounds')
+  assert.deepEqual(w.violations, [])
+  const state = w.stateOf(1)
+  assert.deepEqual([state.vueltas, state.estaciones.codigo, state.estaciones.approver, state.pr], [1, 'ok', 'ok', 41])
+  assert.equal(w.events.filter((e) => e === 'push:1').length, 1)
+})
+
+test('S2: codigo error ends the task fallida with the fixed reason, no second round, even if the reviewers approve or refuse', async () => {
+  for (const [name, review] of [['all approve', undefined], ['one refuses', refuse('ui')]]) {
+    const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, review, verif: (_r, { onLine }) => { onLine('FALLO SECRETO'); return 1 } })
+    await w.fabrica.start()
+    const state = w.stateOf(1)
+    assert.equal(state.resultado, 'failed', name)
+    assert.equal(state.estaciones.codigo, 'error', name)
+    assert.equal(state.estaciones.approver, 'pendiente', name)
+    assert.equal(state.motivo, 'las pruebas o la compilación fallaron fuera del agente', name)
+    assert.equal(agentRuns(w), 1, `${name}: no extra round`)
+    assert.equal(w.reviews.length, 3, name)
+    assert.ok(!w.events.includes('push:1'), name)
+    assert.ok(w.events.includes('net-limonia-t1') && w.events.includes('revoke:1'), `${name}: network and token are gone`)
+    assert.deepEqual(w.violations, [], name)
+  }
+})
+
+test('S2: a codigo timeout is fallida too, with its own fixed reason, and the reviewers still finish', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, verif: () => undefined })
+  const done = w.fabrica.start()
+  await until(() => w.events.includes('verif:1') && w.reviews.length === 3, 'the re-check and the reviewers')
+  w.timers.find((t) => t.ms === 10 * 60_000 && !t.cancelled && w.kills.length === 0)?.fn()
+  await done
+  assert.deepEqual(w.kills, ['limonia-verif-t1'])
+  assert.match(w.stateOf(1).motivo, /tardó demasiado/)
+  assert.equal(w.stateOf(1).resultado, 'failed')
+})
+
+test('S2: a re-check that breaks (docker error) sends the task back to the queue like any platform error', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  const run = w.deps.docker.run
+  w.deps.docker.run = (args, tools) => { if (args.includes('limonia-verif-t1')) throw new Error('docker caído'); return run(args, tools) }
+  await w.fabrica.start()
+  assert.equal(w.stateOf(1).resultado, null)
+  assert.equal(w.stateOf(1).estaciones.spec, 'pendiente', 'back to the queue')
+  assert.ok(w.logs.some((l) => /vuelve a la cola/.test(l)))
+})
+
+// --- S4: the activity line in the task state -------------------------------------------------------------------------------
+
+const readOf = (file) => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: `/work/${file}` } }] } })
+
+test('S4: the state carries the activity of the agent, the verdicts, the re-check and the end; finished states carry none', async () => {
+  const w = world({
+    issues: [issue(1)], resultados: { '/copias/t1': ok('Campaña añadida') },
+    behavior: async (_r, { onLine }) => {
+      onLine(JSON.stringify({ type: 'system', subtype: 'init', model: 'm' }))
+      await until(() => w.activities.includes('Empieza a trabajar'), 'the first line')
+      onLine(readOf('AGENTS.md'))
+      await until(() => w.activities.includes('Lee AGENTS.md'), 'the second line')
+      onLine('Bash: echo SECRETO')
+      return 0
+    },
+  })
+  await w.fabrica.start()
+  const seen = w.activities
+  for (const expected of ['Empieza a trabajar', 'Lee AGENTS.md', 'Campaña añadida', 'seguridad ✓ seguridad ve bien el cambio', 'ux ✓ ux ve bien el cambio', 'Pruebas y build ok']) assert.ok(seen.includes(expected), `${expected} in ${JSON.stringify(seen)}`)
+  assert.ok(!seen.some((a) => /SECRETO/.test(a ?? '')))
+  assert.ok(seen.every((a) => a === null || Array.from(a).length <= 160))
+  assert.ok(w.stateOf(1).actividad, 'a task that waits at the gate says where it is')
+})
+
+test('S4: failed and rejected tasks end without an activity line', async () => {
+  const failed = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: (_r, { onLine }) => { onLine(readOf('a.js')); return 0 }, verif: () => 1 })
+  await failed.fabrica.start()
+  assert.equal('actividad' in failed.stateOf(1), false)
+  const rejected = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, review: (nombre) => (nombre !== 'seguridad' ? JSON.stringify(verdict(false, 'no')) : undefined) })
+  await rejected.fabrica.start()
+  assert.equal(rejected.stateOf(1).resultado, 'rejected')
+  assert.equal('actividad' in rejected.stateOf(1), false)
+})
+
+test('S4: reviewer text reaches the activity as plain text — markup, bidi and control characters are gone, 160 characters at most', async () => {
+  const w = world({
+    issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0,
+    review: (nombre) => (nombre === 'ui' ? JSON.stringify(verdict(true, `<script>alert(1)</script> <img src=x onerror=1> \u202Emal ${'z'.repeat(400)}`)) : undefined),
+  })
+  await w.fabrica.start()
+  const line = w.activities.find((a) => /^ui ✓/.test(a ?? ''))
+  assert.ok(line, JSON.stringify(w.activities))
+  assert.ok(!/[<>\u202e]/.test(line))
+  assert.ok(Array.from(line).length <= 160)
+})
+
+// A clock whose 3 s activity pause is opened by hand; every other sleep (the polling loop) passes at once.
+function gated(w) {
+  const pauses = []
+  const sleep = w.deps.clock.sleep
+  w.deps.clock.sleep = (ms) => (ms === ACTIVITY_MS ? new Promise((resolve) => pauses.push(resolve)) : sleep(ms))
+  return { pauses, open: () => pauses.splice(0).forEach((resolve) => resolve()) }
+}
+
+test('S4: several fast events are one write; the latest line wins once the pause is over', async () => {
+  let proceed
+  const hold = new Promise((resolve) => { proceed = resolve })
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: async (_r, { onLine }) => {
+      onLine(readOf('a1.js'))
+      await until(() => w.activities.includes('Lee a1.js'), 'the first line')
+      for (const f of ['a2', 'a3', 'a4', 'a5']) onLine(readOf(`${f}.js`))
+      await hold
+      return 0
+    } })
+  const clock = gated(w)
+  const done = w.fabrica.start()
+  await until(() => w.activities.includes('Lee a1.js'), 'the first line')
+  for (let i = 0; i < 40; i++) await tick()
+  assert.deepEqual(w.activities.filter((a) => /^Lee a\d/.test(a ?? '')), ['Lee a1.js'], 'a2-a4 are not written, the pause is not over')
+  clock.open()
+  await until(() => w.activities.includes('Lee a5.js'), 'the latest line')
+  assert.ok(!w.activities.some((a) => ['Lee a2.js', 'Lee a3.js', 'Lee a4.js'].includes(a)), 'coalesced: the middle lines are never written')
+  proceed()
+  clock.open()
+  await done
+})
+
+test('S4: the final state is never lost to a pending line: stations take it along, finishing clears it, nothing is written after the end', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: (_r, { onLine }) => { onLine(readOf('x1.js')); onLine(readOf('x2.js')); onLine(readOf('x3.js')); return 0 }, verif: () => 1 })
+  const clock = gated(w) // the pause never opens by itself
+  await w.fabrica.start()
+  assert.equal(w.stateOf(1).resultado, 'failed')
+  assert.equal(w.stateOf(1).estaciones.codigo, 'error')
+  assert.equal('actividad' in w.stateOf(1), false)
+  const before = JSON.stringify(w.states.get(1).body)
+  clock.open()
+  for (let i = 0; i < 20; i++) await tick()
+  assert.equal(JSON.stringify(w.states.get(1).body), before, 'a late pause never writes again')
+  assert.deepEqual(w.violations, [])
+})
+
+test('S4: at most one activity write per pause, however many events; writes of one task never overlap', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: (_r, { onLine }) => { for (let i = 0; i < 50; i++) onLine(readOf(`f${i}.js`)); return 0 } })
+  gated(w)
+  let open = 0
+  let overlapped = false
+  const update = w.deps.github.update
+  w.deps.github.update = async (n, change) => { open++; if (open > 1) overlapped = true; await tick(); try { return await update(n, change) } finally { open-- } }
+  await w.fabrica.start()
+  assert.equal(overlapped, false, 'the task state is read-modify-written one write at a time')
+  assert.equal(w.activities.filter((a) => /^Lee f\d+\.js$/.test(a ?? '')).length, 1, 'one write for 50 events inside one pause')
 })

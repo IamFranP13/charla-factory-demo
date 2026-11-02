@@ -196,3 +196,44 @@ test('the state helpers live in a module with no Node imports', async () => {
   const source = readFileSync(new URL('../lib/estado.js', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /from 'node:|require\(/)
 })
+
+// --- actividad: the "what is happening now" line (S4) ---
+
+test('actividad: plain text, one line, at most 160 characters; control, bidi and markup characters are removed', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const base = initialState('marketing', NOW)
+  const dirty = setActividad(base, '  Lee\u202E <b>src/x.js</b>\n\u0007\u200b<script>alert(1)</script>  ', NOW)
+  assert.equal(dirty.actividad, 'Lee b src/x.js /b script alert(1) /script')
+  assert.ok(!/[<>\u202e\u200b\u0007\n]/.test(dirty.actividad))
+  const long = setActividad(base, 'x'.repeat(500), NOW)
+  assert.equal(Array.from(long.actividad).length, 160)
+  assert.equal(setActividad(base, '\u202E\u0007  ', NOW), base, 'an empty line changes nothing')
+  assert.equal(setActividad(base, 42, NOW), base)
+})
+
+test('actividad: the same text is no change (same object, so no write); a finished task keeps none', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const a = setActividad(initialState('marketing', NOW), 'Edita src/x.js', NOW)
+  assert.equal(setActividad(a, 'Edita src/x.js', NOW), a)
+  const done = finishState(a, 'failed', NOW, 'no')
+  assert.equal('actividad' in done, false, 'finishing clears the line')
+  assert.equal(setActividad(done, 'Lee algo', NOW), done, 'a finished task is not touched by a late activity')
+})
+
+test('actividad survives the marker round trip, is sanitised again on read, and old markers without it still parse', () => {
+  const body = replaceState(requestBlock('x'), { ...initialState('marketing', NOW), actividad: 'Lee src/a.js' })
+  assert.equal(parseState(body).actividad, 'Lee src/a.js')
+  const forged = body.replace('"Lee src/a.js"', JSON.stringify('Hola\u202E<img src=x onerror=1>' + 'y'.repeat(300)))
+  const read = parseState(forged).actividad
+  assert.ok(!/[<>\u202e]/.test(read) && Array.from(read).length <= 160)
+  const old = replaceState(requestBlock('x'), initialState('marketing', NOW))
+  assert.equal('actividad' in parseState(old), false)
+  assert.equal(parseState(forged.replace(/"actividad":"[^"]*"/, '"actividad":{"a":1}')).actividad, undefined)
+})
+
+test('a station event keeps the activity; a reset (back to the queue) drops it', async () => {
+  const { setActividad, resetState } = await import('../lib/estado.js')
+  const a = setActividad(initialState('marketing', NOW), 'Lee src/a.js', NOW)
+  assert.equal(applyEvent(a, { station: 'spec', status: 'en_curso' }, NOW).actividad, 'Lee src/a.js')
+  assert.equal('actividad' in resetState(a, NOW), false)
+})
