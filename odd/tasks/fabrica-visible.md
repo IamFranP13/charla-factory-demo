@@ -20,7 +20,7 @@ Builds on `odd/tasks/fabrica-agentes.md` (the agent factory, `npm run fabrica`).
 
 | ID | Specs | What | Route | Commit |
 |----|-------|------|-------|--------|
-| T1 | S2-S4 | Station order, visible `en curso`, activity line | worker + independent verify (Risk 2: model text on the public web; 3: the task state read by the board) | |
+| T1 ✅ | S2-S4 | Station order, visible `en curso`, activity line | worker + independent verify (Risk 2: model text on the public web; 3: the task state read by the board) | 9279859, follow-up below |
 | T2 | S1 | Real rehearsal after T1: one request per kind of change, watched on the web | parent | |
 | T3 | S5 | Design directions for `/tarea/`, user choice, implementation | parent (gentle-design) + worker | |
 | T4 | S6 | WSL2 package, install script, `npm run demo`, guide | worker | |
@@ -30,3 +30,4 @@ Builds on `odd/tasks/fabrica-agentes.md` (the agent factory, `npm run fabrica`).
 
 - **L1** User request: see S1.
 - **L2** Evidence (rehearsal #113, 2026-11-02, Sonnet low, `--una-vez`): picked up 11:42:46, agent 10 s (3 turns), reviewers 5/7/9 s, approver 11:43:12, re-check 23 s (ok 11:43:40), PR #114 at 79 s, merged, deployed 11:45:43 (about 3 min end to end). Polling `/api/estado` every 5 s, the web showed `seguridad`/`ux`/`ui` jump from `pendiente` to `ok` (never `en_curso`) and `approver: ok` while `codigo: en_curso`. The presenter's terminal shows the agent's steps and the reviewers' reasons; the web shows none of it.
+- **L3** T1 by worker (RED per rule) 9279859, one commit of ~800 lines on purpose: state, factory and pages depend on each other (slice boundary recorded here). Independent verify (mvz5jz8d-2-9nwf): S2/S3/S4 met, contract additive, 17 mutations all caught, no blockers. Advisory 1 fixed by the parent test-first: the activity line names only files of the base commit (`git ls-files` at prepare, `knownPaths`) or a new file in an existing folder, so an agent cannot put made-up names (text of its choosing) on the public page. Verifier's regression tests added. Left for T3 (design): during a replay every frame shows the latest activity, not the frame's; "Cambio enviado: ahora decide la puerta" stays while merging; reviewer reasons may contain markdown-looking text (shown as plain text). Known, unchanged: station writes are not throttled (only activity writes); one reviewer container failing to start rejects early (pre-existing). 550 pass / 0 fail / 2 skipped, build ok, real `git ls-files` prepare: 224 files.
