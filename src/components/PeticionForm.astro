@@ -1,13 +1,27 @@
 ---
 import { MAX_LENGTH } from '../../lib/intake.js'
+import { PERFILES, ACCION } from '../../lib/perfiles.js'
 
 const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
 ---
-<form id="peticion" class="pide__form" novalidate data-sube>
-  <h2 id="pide-titulo">Pide un cambio</h2>
-  <p>Tu petición entra en una pequeña fábrica de agentes de IA. El perfil con el que la pides (Marketing, Producto o Negocio) se sortea al azar, así que no puedes elegirlo.</p>
+<form id="peticion" class="pide__form" data-sube>
+  <h1 id="pide-titulo">Pide un cambio</h1>
+  <p>Tu petición entra en una pequeña fábrica de agentes de IA. Primero elige con qué perfil la pides y después cuéntala.</p>
+  <fieldset class="perfiles">
+    <legend>1. ¿Con qué perfil la pides?</legend>
+    <p class="perfiles__nota">El perfil limita lo que la factory hará por ti: si tu petición se sale de él, se rechaza y te decimos el motivo.</p>
+    {Object.entries(PERFILES).map(([clave, perfil]) => (
+      <label class="perfil">
+        <input type="radio" name="perfil" value={clave} required />
+        <span class="perfil__texto">
+          <strong>{perfil.nombre}</strong>
+          <span>Puede {perfil.tipos.map((tipo) => ACCION[tipo]).join(' · ')}</span>
+        </span>
+      </label>
+    ))}
+  </fieldset>
   <div class="campo">
-    <label for="texto">¿Qué quieres cambiar en LIMONIA?</label>
+    <label for="texto">2. ¿Qué quieres cambiar en LIMONIA?</label>
     <textarea id="texto" name="peticion" maxlength={MAX_LENGTH} rows="3" required placeholder="Ej.: una campaña verde sobre el limón de temporada" aria-describedby="contador-texto"></textarea>
     <p class="contador" id="contador-texto" aria-hidden="true"><span>Máximo {MAX_LENGTH} caracteres</span><span><strong id="contador">0</strong> / {MAX_LENGTH}</span></p>
   </div>
@@ -35,20 +49,24 @@ const siteKey = process.env.TURNSTILE_SITE_KEY ?? ''
     event.preventDefault()
     const button = form.querySelector('button')
     const data = new FormData(form)
+    if (!data.get('perfil')) {
+      estado.replaceChildren('Elige con qué perfil haces la petición.')
+      return
+    }
     button.disabled = true
     estado.replaceChildren('Enviando…')
     try {
       const response = await fetch('/api/peticion', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ peticion: data.get('peticion'), turnstile: data.get('cf-turnstile-response') ?? '' }),
+        body: JSON.stringify({ perfil: data.get('perfil'), peticion: data.get('peticion'), turnstile: data.get('cf-turnstile-response') ?? '' }),
       })
       const body = await response.json().catch(() => ({}))
       if (response.ok) {
         const link = document.createElement('a')
         link.href = `/tarea/?n=${encodeURIComponent(body.tarea)}`
         link.textContent = 'Sigue tu petición'
-        estado.replaceChildren(`Recibida: tarea #${body.tarea}. Te ha tocado pedirlo como ${PERFILES[body.perfil] ?? body.perfil}. `, link)
+        estado.replaceChildren(`Recibida: tarea #${body.tarea}, pedida como ${PERFILES[body.perfil] ?? body.perfil}. `, link)
         guardar(body.tarea)
         window.dispatchEvent(new Event('limonia:tareas'))
         form.reset()

@@ -15,12 +15,15 @@ Branch `feat/perfil-elegido`, tests first, one commit per task.
 
 | ID | Specs | What | Route | Commit |
 |----|-------|------|-------|--------|
-| T1 | S1, S3 | `lib/perfiles.js` (the profiles, their kinds, the kinds of a change from its paths); intake takes the chosen profile and refuses a missing or unknown one | inline | |
-| T2 | S3, S4 | Factory: the agent's prompt names the kinds of its profile; after the agent, the kinds of the diff are checked against the profile in code and a change outside it is rejected with the reason | inline | |
-| T3 | S2 | `/pide/` page (profile choice + form + "Tus peticiones"); `/factory/` board only; links to `/pide/`; styles in both stylesheets; docs | inline | |
+| T1 | S1, S3 | `lib/perfiles.js` (the profiles, their kinds, the kinds of a change from its paths); intake takes the chosen profile and refuses a missing or unknown one | inline | 448bc9f |
+| T2 | S3, S4 | Factory: the agent's prompt names the kinds of its profile; after the agent, the kinds of the diff are checked against the profile in code and a change outside it is rejected with the reason | worker (background) | af1f311 |
+| T3 | S2 | `/pide/` page (profile choice + form + "Tus peticiones"); `/factory/` board only; links to `/pide/`; styles in both stylesheets; docs | worker (background) | see L6 |
 
 ## Log
 
 - **L1** User, verbatim: "vale, entonces nuestra factory ya funciona como quiero, ahora quiero mejorarla un poco pero primero quiero cambiar que los perfiles se asignen aleatoriamente en cada petición, quiero darles a elegir que puedan elegir la petición desde que perfil la mandan y para ello habría que separar en la web donde mandan lo que quieren hacer y que ahí elijan el perfil, pero tenemos que pensar que va a poder hacer cada perfil"
 - **L2** Answers: profiles "Por áreas, y 'bug' para todos (Recomendado)"; outside the profile "Se rechaza con motivo (Recomendado)"; web "Página propia /pide/ (Recomendado)". Write access to this repository granted for the session.
 - **L3** Parent decisions. (a) A chosen profile proves nothing (anyone can pick Negocio), so it only restricts: `policy/risk.yaml` still decides by the diff, never by who asked. (b) The agent does not declare a kind (resultado.json has only `estado` and `resumen`, S9 of `fabrica-agentes.md`), so the kinds of a change are derived from its paths in code, like the gate. `src/features/<id>/index.js` added → `feature`, changed → `bug`; `src/domain/**` → `bug` or `cambio` (allowed when the profile has either). (c) Files outside every kind's surface (platform, pages…) are not limited by the profile: the gate sends them to a person, as today.
+- **L4** T1 done inline: RED (lib/perfiles.js missing; the intake still drew the profile), GREEN npm test 637/0. Commit 448bc9f. The Engram mirror could not be written (the session belongs to another Engram project); this file is the only record.
+- **L5** T2 done by a worker: RED 3 (tomar had no `added`; the prompt did not name the kinds; a Marketing change to data/precios.json went through), GREEN 91/0 focused, npm test 641/0. Parent reviewed the diff. Commit af1f311.
+- **L6** T3 done by a worker: RED (the build had no `pide/index.html`), GREEN web/reset-demo/estilo 47/0, build ok. The worker also changed `src/pages/index.astro` (outside its list: the home's own `/factory/#pide` link). Parent fixes: the stale "form lives on /factory/" comment in both stylesheets (still byte-identical) and the success sentence ("Recibida: tarea #N, pedida como X."). npm test 641/0. Screenshots /tmp/pide-shots/ (taken during the entrance fade). Commit: the T3 commit of this branch.

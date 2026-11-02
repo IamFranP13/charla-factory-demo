@@ -451,7 +451,7 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .revisores [data-estado] .rev__m:empty{display:none}
 .rev__m{font-weight:700}
 
-/* The request form lives on /factory/; the home only points to it */
+/* The request form lives on /pide/; the other pages only point to it */
 .pide{scroll-margin-top:72px}
 .fd-pedir{display:inline-flex;align-items:center;min-height:44px;font-weight:600;color:var(--oliva-oscuro);text-underline-offset:4px}
 
@@ -774,3 +774,15 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 @keyframes t-onda-m{from{transform:scale(1);opacity:.7}to{transform:scale(1.7);opacity:0}}
 @keyframes t-entra{from{transform:translateY(-12px);opacity:0}to{transform:none;opacity:1}}
 .t-todos .t-mkw{align-self:center}
+
+/* /pide: the profile choice (radios inside labels; the chosen one also gets an outline, never colour alone) */
+.pide__form h1{font-size:var(--t-titulo);margin-bottom:16px}
+.perfiles{border:0;margin:20px 0;padding:0;min-width:0;display:grid;gap:8px}
+.perfiles legend{padding:0;margin-bottom:8px;font-weight:600;font-size:var(--t-cuerpo)}
+.perfiles__nota{font-size:var(--t-peq);margin:0 0 8px}
+.perfil{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;background:var(--crema);cursor:pointer}
+.perfil input{flex:none;width:24px;height:24px;margin:2px 0 0;padding:0;accent-color:var(--oliva-oscuro)}
+.perfil__texto{display:flex;flex-direction:column;gap:2px;font-size:var(--t-peq)}
+.perfil__texto strong{font-family:var(--fuente-titulo);font-size:var(--t-cuerpo);letter-spacing:-.02em}
+.perfil:hover{background:var(--limon-suave)}
+.perfil:has(input:checked){background:var(--limon-suave);outline:3px solid var(--oliva-oscuro)}

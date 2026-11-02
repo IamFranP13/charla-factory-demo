@@ -31,7 +31,7 @@ before(() => {
   })
   assert.equal(build.status, 0, build.stdout + build.stderr)
   const read = (path) => readFileSync(join(out, path), 'utf8')
-  pages = { home: read('index.html'), catalogo: read('catalogo/index.html'), presupuesto: read('presupuesto/index.html'), tarea: read('tarea/index.html'), factory: read('factory/index.html') }
+  pages = { home: read('index.html'), catalogo: read('catalogo/index.html'), presupuesto: read('presupuesto/index.html'), tarea: read('tarea/index.html'), factory: read('factory/index.html'), pide: read('pide/index.html') }
 })
 
 after(() => out && rmSync(out, { recursive: true, force: true }))
@@ -51,24 +51,42 @@ needsSandbox('home lists every campaign with its colour class and call to action
   }
 })
 
-needsSandbox('the request form allows exactly the characters the intake accepts and lets nobody choose a profile', () => {
-  assert.match(pages.factory, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
-  assert.doesNotMatch(pages.factory, /name="perfil"/)
-  assert.match(pages.factory, /<h2[^>]*>Pide un cambio<\/h2>/)
-  assert.match(pages.factory, /id="pide"/)
-  assert.match(pages.factory, /al azar/)
+needsSandbox('/pide/ is the page for asking: the requester chooses one of the three profiles (required radios), then writes the request', () => {
+  const html = pages.pide
+  assert.match(html, new RegExp(`<textarea[^>]*maxlength="${MAX_LENGTH}"`))
+  assert.match(html, /<h1[^>]*>Pide un cambio<\/h1>/)
+  assert.match(html, /id="peticion"/)
+  assert.doesNotMatch(html, /al azar|Te ha tocado/)
+  for (const [clave, nombre] of [['marketing', 'Marketing'], ['producto', 'Producto'], ['negocio', 'Negocio']]) {
+    assert.match(html, new RegExp(`<label[^>]*>\\s*<input[^>]*type="radio"[^>]*name="perfil"[^>]*value="${clave}"[^>]*required|<label[^>]*>\\s*<input[^>]*name="perfil"[^>]*value="${clave}"[^>]*required`), clave)
+    assert.ok(html.includes(nombre), nombre)
+  }
+  assert.equal((html.match(/name="perfil"/g) ?? []).length, 3)
+  assert.match(html, /crear campañas/)
+  assert.match(html, /añadir productos/)
+  assert.match(html, /cambiar precios/)
+  assert.match(html, /id="mis-peticiones"/)
+  assert.match(html, /Tus peticiones/)
+  assert.match(clientCode(html), /perfil:/, 'the body carries the profile')
 })
 
-needsSandbox('the home has no request form: it points to the one on /factory/ (S11)', () => {
+needsSandbox('/factory/ is only the board: no request form, no Turnstile, no "Tus peticiones"', () => {
+  assert.doesNotMatch(pages.factory, /<textarea|id="peticion"|id="pide"|cf-turnstile|challenges\.cloudflare\.com|Tus peticiones|mis-peticiones|name="perfil"/)
+  assert.match(pages.factory, /href="\/pide\/"/)
+})
+
+needsSandbox('the home has no request form: it points to /pide/ (S11)', () => {
   assert.doesNotMatch(pages.home, /<textarea|<form|id="peticion"|cf-turnstile|challenges\.cloudflare\.com|Tus peticiones|mis-peticiones/)
-  assert.match(pages.home, /href="\/factory\/#pide"/)
+  assert.match(pages.home, /href="\/pide\/"/)
   assert.match(pages.home, /href="\/factory\/"/)
   assert.doesNotMatch(pages.home, /name="perfil"/)
 })
 
 needsSandbox('the site copy names the three profiles, and the follow-up page shows the kind the spec writer gave the request', () => {
-  assert.match(pages.factory, /Marketing, Producto o Negocio/)
-  assert.doesNotMatch(pages.factory, /Desarrollo/)
+  assert.match(pages.pide, /Marketing/)
+  assert.match(pages.pide, /Producto/)
+  assert.match(pages.pide, /Negocio/)
+  assert.doesNotMatch(pages.pide, /Desarrollo/)
   assert.doesNotMatch(pages.home, /Marketing, Producto o Negocio/)
   assert.match(clientCode(pages.tarea), /\.tipo\b/, 'the kind of the request (campana, precios, bug, feature...)')
 })
@@ -81,17 +99,18 @@ needsSandbox('features written by the factory are painted by one generic compone
   assert.doesNotMatch(pages.presupuesto, /data-feature="ordenar-catalogo"/)
 })
 
-needsSandbox('the Turnstile site key is read at build time, and its script is only on /factory/', () => {
-  assert.match(pages.factory, /data-sitekey="sitekey-de-prueba"/)
-  assert.match(pages.factory, /<script[^>]*src="https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js"/)
-  for (const nombre of ['home', 'catalogo', 'presupuesto', 'tarea']) assert.doesNotMatch(pages[nombre], /turnstile/i, nombre)
+needsSandbox('the Turnstile site key is read at build time, and its script is only on /pide/', () => {
+  assert.match(pages.pide, /data-sitekey="sitekey-de-prueba"/)
+  assert.match(pages.pide, /<script[^>]*src="https:\/\/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js"/)
+  for (const nombre of ['home', 'catalogo', 'presupuesto', 'tarea', 'factory']) assert.doesNotMatch(pages[nombre], /turnstile/i, nombre)
 })
 
 needsSandbox('the form posts to the intake endpoint and links to the task page', () => {
-  const bundle = clientCode(pages.factory)
+  const bundle = clientCode(pages.pide)
   assert.ok(bundle.includes('/api/peticion'))
   assert.ok(bundle.includes('/tarea/?n='))
-  assert.ok(bundle.includes('Te ha tocado pedirlo como'))
+  assert.ok(bundle.includes('pedida como'))
+  assert.ok(!bundle.includes('Te ha tocado'))
 })
 
 needsSandbox('the catalogue shows a price for priced products and "Precio a consultar" for the rest', () => {
@@ -147,10 +166,10 @@ needsSandbox('the form remembers the submitted task numbers (max 20) and links t
   assert.match(bundle, /slice\(-?20|MAX_GUARDADAS|20/)
 })
 
-needsSandbox('/factory/ lists "Tus peticiones" from localStorage, with a link to each task', () => {
-  assert.match(pages.factory, /Tus peticiones/)
-  assert.match(pages.factory, /id="mis-peticiones"/)
-  const bundle = clientCode(pages.factory)
+needsSandbox('/pide/ lists "Tus peticiones" from localStorage, with a link to each task', () => {
+  assert.match(pages.pide, /Tus peticiones/)
+  assert.match(pages.pide, /id="mis-peticiones"/)
+  const bundle = clientCode(pages.pide)
   assert.ok(bundle.includes('limonia:tareas'))
   assert.ok(bundle.includes('/tarea/?n='))
 })
@@ -335,7 +354,7 @@ needsSandbox('no licence, credit or photograph source is shown or served anywher
   assert.deepEqual(everyFile(join(repo, 'public')).map((f) => f.split('/').pop()).filter((f) => /credit|licen[sc]e|^OFL/i.test(f)), [])
 })
 
-needsSandbox('fonts and photographs are local; the only other server is Turnstile, on /factory/', () => {
+needsSandbox('fonts and photographs are local; the only other server is Turnstile, on /pide/', () => {
   const css = textFiles().filter(([f]) => f.endsWith('.css')).map(([, t]) => t).join('\n')
   assert.match(css, /font-family:\s*League Spartan/)
   assert.match(css, /font-family:\s*Figtree/)
@@ -346,7 +365,7 @@ needsSandbox('fonts and photographs are local; the only other server is Turnstil
   assert.doesNotMatch(css, /@import|url\(\s*["']?(?:https?:)?\/\//)
   const foreign = []
   for (const [name, html] of Object.entries(pages)) {
-    for (const m of html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)) if (!(name === 'factory' && m[1] === 'https://challenges.cloudflare.com/turnstile/v0/api.js')) foreign.push(`${name}: ${m[1]}`)
+    for (const m of html.matchAll(/\b(?:src|href)="(https?:\/\/[^"]+)"/g)) if (!(name === 'pide' && m[1] === 'https://challenges.cloudflare.com/turnstile/v0/api.js')) foreign.push(`${name}: ${m[1]}`)
     for (const m of html.matchAll(/\bsrc="(\/fotos\/[^"]+)"/g)) assert.ok(existsSync(join(out, m[1])), `${name}: ${m[1]} is served`)
   }
   assert.deepEqual(foreign, [])
@@ -370,9 +389,10 @@ needsSandbox('the emoji of the data are not painted (S11), and the campaign card
   assert.deepEqual([...new Set([...css.matchAll(/\.campana--(\w+)\{/g)].map((m) => m[1]))].sort(), Object.keys(fondos).sort())
 })
 
-needsSandbox('every page has the "Pedir un cambio" button, in the header and the footer, pointing at the form on /factory/', () => {
+needsSandbox('every page has the "Pedir un cambio" button, in the header and the footer, pointing at /pide/', () => {
   for (const [name, html] of Object.entries(pages)) {
-    assert.ok((html.match(/<a class="btn[^"]*" href="\/factory\/#pide">Pedir un cambio<\/a>/g) ?? []).length >= 2, name)
+    assert.ok((html.match(/<a class="btn[^"]*" href="\/pide\/">Pedir un cambio<\/a>/g) ?? []).length >= 2, name)
+    assert.doesNotMatch(html, /\/factory\/#pide/, name)
   }
 })
 

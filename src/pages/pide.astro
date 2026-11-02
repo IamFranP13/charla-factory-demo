@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro'
+import PeticionForm from '../components/PeticionForm.astro'
+import MisPeticiones from '../components/MisPeticiones.astro'
+---
+<Base title="Pide un cambio" description="Elige tu perfil y cuéntale a la factory de LIMONIA qué quieres cambiar en la web.">
+  <script slot="head" is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+  <section class="pide" aria-labelledby="pide-titulo">
+    <div class="pide__disco" aria-hidden="true"><img src="/fotos/limon-cortado.webp" width="800" height="800" alt="" /></div>
+    <PeticionForm />
+  </section>
+
+  <MisPeticiones />
+</Base>
