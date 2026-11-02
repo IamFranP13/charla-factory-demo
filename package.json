@@ -23,7 +23,9 @@
     "agente:medir": "node scripts/agente-medir.mjs",
     "proxy": "node scripts/proxy-red.mjs up",
     "proxy:red": "node scripts/proxy-red.mjs",
-    "tarea": "node scripts/tarea.mjs"
+    "tarea": "node scripts/tarea.mjs",
+    "comprobar": "node scripts/comprobar.mjs",
+    "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
     "yaml": "^2.9.1"
