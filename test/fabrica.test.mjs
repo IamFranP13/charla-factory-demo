@@ -1276,3 +1276,34 @@ test('S5: a new agent run starts the action list again, with or without an init 
     assert.ok(second.every((x) => !x.acciones.some((a) => /ronda1/.test(a.texto))), `withInit=${withInit}: ${JSON.stringify(second.map((x) => x.acciones))}`)
   }
 })
+
+test('the proxy client never reuses a kept-alive connection (the proxy closes idle ones: write EPIPE on the first task)', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const http = await import('node:http')
+  const { proxyNode } = await import('../lib/fabrica.js')
+  const dir = mkdtempSync(join(tmpdir(), 'proxy-sock-'))
+  const socket = join(dir, 'admin.sock')
+  let connections = 0
+  const server = http.createServer((req, res) => {
+    req.resume()
+    req.on('end', () => {
+      res.setHeader('content-type', 'application/json')
+      res.end(req.method === 'POST' ? JSON.stringify({ token: 't' }) : '{}')
+    })
+  })
+  server.on('connection', () => { connections++ })
+  await new Promise((resolve) => server.listen(socket, resolve))
+  try {
+    const proxy = proxyNode({ socket })
+    assert.equal(await proxy.alive(), true)
+    assert.equal(await proxy.issue(1, 60, 5), 't')
+    await proxy.revoke(1)
+    assert.equal(connections, 3, 'one connection per call: nothing is kept for later')
+  } finally {
+    server.closeAllConnections?.()
+    await new Promise((resolve) => server.close(resolve))
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
