@@ -1166,3 +1166,31 @@ test('S4: at most one activity write per pause, however many events; writes of o
   assert.equal(overlapped, false, 'the task state is read-modify-written one write at a time')
   assert.equal(w.activities.filter((a) => /^Lee f\d+\.js$/.test(a ?? '')).length, 1, 'one write for 50 events inside one pause')
 })
+
+test('a platform error once (write EPIPE starting the agent) is retried in the same run, not left in the queue', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  const run = w.deps.docker.run
+  let agentStarts = 0
+  w.deps.docker.run = (args, tools) => {
+    if (args.includes('limonia-agente-t1') && ++agentStarts === 1) throw new Error('write EPIPE')
+    return run(args, tools)
+  }
+  await w.fabrica.start()
+  assert.equal(agentStarts, 2, 'the agent was started again')
+  assert.equal(w.stateOf(1).estaciones.spec, 'ok')
+  assert.ok(w.logs.some((l) => /vuelve a la cola/.test(l)))
+})
+
+test('a platform error that repeats stops after two tries, so the run still ends', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  const run = w.deps.docker.run
+  let agentStarts = 0
+  w.deps.docker.run = (args, tools) => {
+    if (args.includes('limonia-agente-t1')) { agentStarts++; throw new Error('write EPIPE') }
+    return run(args, tools)
+  }
+  await w.fabrica.start()
+  assert.equal(agentStarts, 2)
+  assert.equal(w.stateOf(1).estaciones.spec, 'pendiente', 'left in the queue for the next run')
+  assert.ok(w.logs.some((l) => /se deja en la cola/.test(l)))
+})
