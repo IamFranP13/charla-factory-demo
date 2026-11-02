@@ -237,3 +237,13 @@ test('a station event keeps the activity; a reset (back to the queue) drops it',
   assert.equal(applyEvent(a, { station: 'spec', status: 'en_curso' }, NOW).actividad, 'Lee src/a.js')
   assert.equal('actividad' in resetState(a, NOW), false)
 })
+
+test('S4: every format character is removed and the marker cannot be closed from the line', async () => {
+  const { setActividad, cleanActividad } = await import('../lib/estado.js')
+  for (const ch of ['\u061C', '\u200E', '\u2066', '\u2069', '\uFEFF', '\u00AD', '\u{E0041}', '\u0085']) {
+    assert.equal(cleanActividad(`a${ch}b`), 'a b', JSON.stringify(ch))
+  }
+  const state = setActividad(initialState('marketing', NOW), 'x --> y <!-- z', NOW)
+  const marker = renderState(state)
+  assert.equal(marker.indexOf('-->'), marker.length - 3, 'the only --> closes the marker')
+})

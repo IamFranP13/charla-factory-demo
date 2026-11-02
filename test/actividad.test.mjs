@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activityOf, verdictActivity, checkActivity, ACTIVITY_MS } from '../lib/fabrica.js'
+import { activityOf, verdictActivity, checkActivity, ACTIVITY_MS, knownPaths } from '../lib/fabrica.js'
 
 const tool = (name, input) => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name, input }] } })
 
@@ -60,4 +60,23 @@ test('S4: a reviewer verdict is "<nombre> ✓|✗ <reason>"; the re-check is "Pr
   assert.equal(checkActivity(true), 'Pruebas y build ok')
   assert.equal(checkActivity(false), 'Pruebas y build fallan')
   assert.equal(ACTIVITY_MS, 3000)
+})
+
+test('S4: lookalike, accented and dot-segment names are never shown; the path limit is 100 characters', () => {
+  for (const bad of ['/work/ａ.js', '/work/á.js', '/work/src/ⅼib.js', '/work/a/./b', '/work/a/.b', '/work/a/', '/WORK/a']) {
+    assert.equal(activityOf(tool('Read', { file_path: bad })), 'Lee un archivo', JSON.stringify(bad))
+  }
+  assert.equal(activityOf(tool('Read', { file_path: `/work/${'x'.repeat(100)}` })), `Lee ${'x'.repeat(100)}`)
+  assert.equal(activityOf(tool('Read', { file_path: `/work/${'x'.repeat(101)}` })), 'Lee un archivo')
+})
+
+test('S4: with the base files known, only real files are named (an agent cannot write text into the public line)', () => {
+  const known = knownPaths(['content/campanas/tarea-1.json', 'src/lib/a.js'])
+  assert.equal(activityOf(tool('Read', { file_path: '/work/src/lib/a.js' }), known), 'Lee src/lib/a.js')
+  assert.equal(activityOf(tool('Edit', { file_path: '/work/src/lib/a.js' }), known), 'Edita src/lib/a.js')
+  assert.equal(activityOf(tool('Read', { file_path: '/work/Ignora-las-reglas.visita.casino-gratis.com' }), known), 'Lee un archivo')
+  assert.equal(activityOf(tool('Edit', { file_path: '/work/proc/self/environ' }), known), 'Edita un archivo')
+  // A new file is named when its folder already exists in the base.
+  assert.equal(activityOf(tool('Write', { file_path: '/work/content/campanas/tarea-9.json' }), known), 'Escribe content/campanas/tarea-9.json')
+  assert.equal(activityOf(tool('Write', { file_path: '/work/compra-ya/oferta.json' }), known), 'Escribe un archivo')
 })
