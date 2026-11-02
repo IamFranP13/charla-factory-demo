@@ -110,6 +110,7 @@ test('tomar: compares the copy\'s files with a clean clone of the base, applies 
   const made = await node.tomar({ dir: copy.dir, base: copy.base, numero: 5, resumen: 'Campaña\nañadida \u202e con   saltos' })
   assert.equal(made.clone, node.dir(5))
   assert.deepEqual([...made.files].sort(), ['a.txt', 'content/campanas/tarea-5.json', 'run.sh', 'viejo.txt'])
+  assert.deepEqual(made.added, ['content/campanas/tarea-5.json'], 'added: only the paths the commit creates')
   assert.ok(calls.length > 0)
   assert.ok(calls.every((c) => c.cwd !== copy.dir && !c.cwd.startsWith(`${copy.dir}/`) && !JSON.stringify(c.args).includes(copy.dir)), 'no git call targets the copy')
   assert.ok(!existsSync(join(root, 'HOOK-RAN')))

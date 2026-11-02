@@ -8,7 +8,7 @@ LIMONIA, a fictional fruit and vegetable exporter from Murcia (a web app: home, 
 
 ## Where things live
 
-Every request is a **kind** (`factory/kinds.yaml`); the kind, not the profile, decides what may be written. The profile (Marketing, Producto, Negocio) is only who asked.
+Every request is a **kind** (`factory/kinds.yaml`); the kind decides what may be written. The profile (Marketing, Producto, Negocio) is the one the requester chose and limits which kinds may be asked for (`lib/perfiles.js`; the factory checks it from the diff paths and rejects a change outside it). It never grants anything: the gate still decides what merges by the diff, never by who asked.
 
 | Kind | Path | What | Gate |
 |------|------|------|------|

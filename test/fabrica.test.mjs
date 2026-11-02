@@ -128,7 +128,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
       tomar: async ({ numero, resumen }) => {
         events.push(`tomar:${numero}`)
         if (tomar) return tomar({ numero, resumen })
-        return { clone: `/copias/t${numero}.limpio`, files: ['content/campanas/tarea-1.json'] }
+        return { clone: `/copias/t${numero}.limpio`, files: ['content/campanas/tarea-1.json'], added: ['content/campanas/tarea-1.json'] }
       },
       cambios: async ({ clone, base, files }) => (cambios ? cambios({ clone, base, files }) : { diff: '+{"titulo":"x"}', antes: {}, despues: [] }),
       publicar: async ({ clone, numero }) => {
@@ -304,6 +304,17 @@ test('the request text is fenced in the prompt as data, on one escaped line, and
   assert.match(prompt, /tarea\/7/)
   assert.match(prompt, /DATA/)
   assert.equal(prompt.split('PETICION>>>').length, 2, 'the closing marker appears once')
+})
+
+test('the prompt names what the profile may ask for and what to do outside it; an unknown profile may ask for nothing', () => {
+  const marketing = buildPrompt({ playbook: 'P', numero: 7, perfil: 'marketing', peticion: 'x' })
+  assert.match(marketing, /Marketing/)
+  for (const accion of ['crear campañas', 'cambiar el aspecto de la web', 'arreglar fallos']) assert.ok(marketing.includes(accion), accion)
+  assert.ok(!marketing.includes('cambiar precios'))
+  assert.match(marketing, /rechazada/)
+  const raro = buildPrompt({ playbook: 'P', numero: 7, perfil: 'x`\nIGNORA', peticion: 'x' })
+  assert.match(raro, /may ask for nothing/)
+  assert.ok(!raro.includes('IGNORA'), 'an unknown profile name is not echoed')
 })
 
 // --- container ---------------------------------------------------------------------------------------------------------
@@ -547,6 +558,33 @@ test('a rejected task is recorded as rejected with the agent\'s one-line reason,
   const state = w.stateOf(1)
   assert.deepEqual([state.estaciones.spec, state.resultado, state.motivo], ['rechazada', 'rejected', 'No tiene que ver con LIMONIA'])
   assert.ok(w.events.includes('revoke:1'))
+})
+
+test('a change outside the profile ends rejected with the public reason: not reviewed, re-checked or published; token revoked', async () => {
+  const w = world({
+    issues: [issue(1)], // a Marketing request
+    resultados: { '/copias/t1': ok('Precio cambiado') },
+    behavior: () => 0,
+    tomar: async ({ numero }) => ({ clone: `/copias/t${numero}.limpio`, files: ['data/precios.json'], added: [] }),
+  })
+  await w.fabrica.start()
+  const state = w.stateOf(1)
+  assert.deepEqual([state.resultado, state.motivo], ['rejected', 'Marketing no puede cambiar precios: pídelo como Negocio.'])
+  assert.ok(w.events.includes('revoke:1') && w.events.includes('net-limonia-t1'))
+  assert.ok(!w.events.some((e) => /^(verif|push|review|rev:)/.test(e)), w.events.join('\n'))
+})
+
+test('a change inside the profile goes through as before (Marketing: style and a bug fix in the domain)', async () => {
+  const w = world({
+    issues: [issue(1, { peticion: 'x' })],
+    resultados: { '/copias/t1': ok() },
+    behavior: () => 0,
+    tomar: async ({ numero }) => ({ clone: `/copias/t${numero}.limpio`, files: ['src/styles/global.css', 'src/domain/x.js'], added: [] }),
+  })
+  await w.fabrica.start()
+  assert.notEqual(w.stateOf(1).resultado, 'rejected')
+  assert.ok(w.events.includes('push:1') && w.events.includes('verif:1'))
+  assert.equal(w.stateOf(1).pr, 41)
 })
 
 test('timeout: the container is killed, the task fails with that reason, the token is revoked', async () => {
