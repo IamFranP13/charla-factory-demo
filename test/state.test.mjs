@@ -348,3 +348,17 @@ test('acciones: the agent finishing its turn (build ok, error) drops them', asyn
   for (const status of ['ok', 'error']) assert.equal('acciones' in applyEvent(a, { station: 'build', status }, NOW), false, status)
   assert.equal('acciones' in applyEvent(a, { station: 'build', status: 'en_curso' }, NOW), true)
 })
+
+test('a forged marker with own __proto__/constructor keys and non-string texts is cleaned; the prototype stays Object.prototype', () => {
+  const body = replaceState(requestBlock('x'), { ...initialState('marketing', NOW), motivos: { seguridad: 'Bien' }, acciones: [ACC('lee', 'Lee src/a.js')] })
+  const motivos = '{"__proto__":{"polluted":"si"},"constructor":{"prototype":{"polluted2":"si"}},"seguridad":{"a":1},"ux":["x"],"ui":null,"codigo":"ok"}'
+  const forged = body.replace(/"motivos":\{.*?\}/, `"motivos":${motivos}`).replace(/"acciones":\[.*?\]/, '"acciones":[{"tipo":"lee","texto":{"a":1}},{"tipo":{"x":1},"texto":"Lee x"},{"__proto__":{"p":1},"tipo":"lee","texto":"Lee ok.js"}]')
+  const read = parseState(forged)
+  assert.equal(Object.getPrototypeOf(read.motivos), Object.prototype)
+  assert.equal({}.polluted, undefined)
+  assert.equal({}.polluted2, undefined)
+  assert.deepEqual(Object.keys(read.motivos), ['codigo'])
+  assert.deepEqual(read.acciones.map((a) => a.texto), ['Lee ok.js'])
+  assert.equal(Object.getPrototypeOf(read.acciones[0]), Object.prototype)
+  assert.equal(Object.hasOwn(read.acciones[0], '__proto__'), false)
+})

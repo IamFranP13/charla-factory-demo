@@ -585,3 +585,51 @@ test('the live light: "actualizado hace n s", then "Terminada", and no connectio
   assert.equal(frescura({ ultima: 0, ahora: 180_000, terminada: true }).texto, 'Terminada · última lectura hace 3 min')
   assert.equal(frescura({ ultima: null, ahora: 5000, terminada: false }).texto, 'Buscando tu petición…')
 })
+
+test('A1: a deployed task links only to the site\'s own paths; a browser-foreign address is no link at all', () => {
+  const propias = ['/', '/catalogo/', '/presupuesto/']
+  for (const enlace of ['/\\evil.com', '/\t/evil.com', '//evil', '/\\/evil.com', 'https://evil.com', '/otra/']) {
+    const v = vistaAhora(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', enlace }))
+    assert.ok(v.enlace === null || propias.includes(v.enlace.href), `${JSON.stringify(enlace)} -> ${JSON.stringify(v.enlace)}`)
+  }
+  assert.equal(vistaAhora(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', enlace: '/catalogo/' })).enlace.href, '/catalogo/')
+})
+
+test('A1: the PR link is exactly https://github.com/<owner>/<repo>/pull/<n>', () => {
+  const t = tarea({ ok: HASTA_APPROVER, ruta: 'human', pr: 42, resultadoFinal: 'esperando_persona', estacion: 'puerta' })
+  for (const url of ['https://github.com/evil', 'https://github.com/o/r/pull/42/../../x', 'https://github.com/o/r/pull/42?x=1', 'https://github.com/o/r/pull/42#x', 'https://github.com@evil.com/o/r/pull/42', 'https://github.com/o/r/issues/42', 'https://github.com/\\evil.com/r/pull/42']) {
+    assert.equal(vistaAhora(t, { cola: [{ pr: 42, url }] }).enlace, null, url)
+  }
+  assert.equal(vistaAhora(t, { cola: [{ pr: 42, url: 'https://github.com/o-1/r.x_y/pull/42' }] }).enlace.href, 'https://github.com/o-1/r.x_y/pull/42')
+})
+
+test('A3: while the task runs, an objection is not a stop: the approver may still send it back', () => {
+  const t = tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'rechazada', ux: 'ok', ui: 'ok', codigo: 'en_curso' }, motivos: { seguridad: 'Toca algo raro' } })
+  const v = vistaAhora(t)
+  assert.ok(!/Se detuvo/.test(v.donde), v.donde)
+  assert.equal(v.donde, 'Paso 3 de 7: Revisión')
+  assert.equal(v.segmentos[2].estado, 'en_curso')
+  assert.ok(!v.segmentos.some((s) => s.palabra === 'Se detuvo aquí'))
+  const todas = vistaAhora(tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'rechazada', ux: 'ok', ui: 'ok', codigo: 'ok' } }))
+  assert.equal(todas.linea, 'Hay objeciones: el approver decidirá')
+  assert.ok(!/Se detuvo/.test(JSON.stringify(todas)))
+  assert.equal(todas.revisores[0].palabra, 'Rechaza', 'the reviewer\'s own verdict is still shown')
+  // Once final, it is a stop.
+  assert.match(vistaAhora({ ...t, resultadoFinal: 'rechazada', estaciones: { ...t.estaciones, codigo: 'ok' } }).donde, /^Se detuvo en el paso 3/)
+})
+
+test('A3: when the agent refuses the request the four reviewers were never reached, not "Espera" forever', () => {
+  const v = vistaAhora(tarea({ ok: ['entrada'], estaciones: { spec: 'rechazada' }, resultadoFinal: 'rechazada', estacion: 'spec', motivo: 'No es de LIMONIA' }))
+  assert.equal(v.revisores.length, 4)
+  assert.ok(v.revisores.every((r) => r.palabra !== 'Espera' && /no llegó/i.test(r.palabra)), JSON.stringify(v.revisores))
+})
+
+test('A1: the site\'s own paths mirrored in the page are every address the server can give', async () => {
+  const { enlaceFor } = await import('../lib/estado.js')
+  for (const perfil of ['marketing', 'producto', 'negocio', 'otro', undefined]) {
+    for (const tipo of ['campana', 'producto', 'destino', 'precios', 'descuentos', 'transporte', 'estilo', 'bug', 'feature', 'cambio', undefined, 'x']) {
+      const href = enlaceFor(perfil, tipo)
+      assert.equal(vistaAhora(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', enlace: href })).enlace.href, href)
+    }
+  }
+})

@@ -31,9 +31,10 @@ const SEGMENTOS = [['entrada', 'Entrada'], ['agente', 'Agente'], ['revision', 'R
 const limpio = (valor) => (typeof valor === 'string' ? Array.from(valor.replace(/[\p{Cc}\p{Cf}\u2028\u2029<>\s]+/gu, ' ').trim()).slice(0, 160).join('') : '')
 
 // A group of stations as one: a refusal or an error wins, then work in progress.
-function agrupar(estados) {
+function agrupar(estados, enCurso = false) {
   if (estados.includes('error')) return 'error'
-  if (estados.includes('rechazada')) return 'rechazada'
+  // While the task runs a refusal is an objection: the approver may still send it back.
+  if (estados.includes('rechazada') && !enCurso) return 'rechazada'
   if (estados.every((e) => e === 'ok')) return 'ok'
   if (estados.every((e) => e === 'pendiente')) return 'pendiente'
   return 'en_curso'
@@ -47,7 +48,7 @@ function segmentosDe(tarea, final) {
   const estados = {
     entrada: valor('entrada'),
     agente: agrupar([valor('spec'), valor('build')]),
-    revision: agrupar(REVISORES.map(([id]) => valor(id))),
+    revision: agrupar(REVISORES.map(([id]) => valor(id)), final === 'en_curso'),
     approver: valor('approver'),
     puerta: final === 'esperando_persona' ? 'espera' : puerta,
     // Merged, waiting for the deploy to be confirmed; the gate let it through, the merge has not started.
@@ -57,13 +58,15 @@ function segmentosDe(tarea, final) {
   return SEGMENTOS.map(([id, nombre]) => ({ id, nombre, estado: estados[id], palabra: PALABRAS[estados[id]] }))
 }
 
-function revisoresDe(tarea) {
+function revisoresDe(tarea, final = 'en_curso') {
   const motivos = tarea?.motivos && typeof tarea.motivos === 'object' ? tarea.motivos : {}
   return REVISORES.map(([id, nombre]) => {
     const estado = ['pendiente', 'en_curso', 'ok', 'rechazada', 'error'].includes(tarea?.estaciones?.[id]) ? tarea.estaciones[id] : 'pendiente'
     // A working reviewer has no reason yet: whatever is stored belongs to an earlier round.
     const texto = estado === 'en_curso' ? TRABAJANDO[id] : estado === 'pendiente' ? '' : limpio(Object.hasOwn(motivos, id) ? motivos[id] : '')
-    return { id, nombre, estado, palabra: PALABRA_REVISOR[estado], texto }
+    // A finished task that never got to ask this reviewer: it was not reached, it is not waiting.
+    const sinLlegar = estado === 'pendiente' && final !== 'en_curso'
+    return { id, nombre, estado, palabra: sinLlegar ? 'No llegó a revisar' : PALABRA_REVISOR[estado], texto }
   })
 }
 
@@ -102,7 +105,8 @@ function faseActiva(tarea, segmentos) {
       const trabajando = REVISORES.filter(([id]) => estaciones[id] === 'en_curso')
       const linea = trabajando.length === 1 ? QUE_HACE[trabajando[0][0]]
         : trabajando.length > 1 ? `Trabajando: ${listaY(trabajando.map(([, nombre]) => nombre))}`
-          : segmento.estado === 'pendiente' ? 'Preparando las revisiones' : 'Las cuatro revisiones han terminado'
+          : estaciones && REVISORES.some(([id]) => estaciones[id] === 'rechazada') ? 'Hay objeciones: el approver decidirá'
+            : segmento.estado === 'pendiente' ? 'Preparando las revisiones' : 'Las cuatro revisiones han terminado'
       return { titulo: 'Cuatro revisiones a la vez', linea, revisores: true }
     }
     case 'approver':
@@ -116,8 +120,10 @@ function faseActiva(tarea, segmentos) {
   }
 }
 
-const GITHUB = /^https:\/\/github\.com\//
-const rutaDelSitio = (ruta) => (typeof ruta === 'string' && /^\/(?!\/)/.test(ruta) ? ruta : null)
+const GITHUB = /^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]*)\/[A-Za-z0-9._-]+\/pull\/\d+$/
+// Only the exact paths enlaceFor (lib/estado.js) can give; a browser reads `/\evil.com` as another site.
+const ENLACES_DEL_SITIO = ['/', '/catalogo/', '/presupuesto/']
+const rutaDelSitio = (ruta) => (typeof ruta === 'string' && ENLACES_DEL_SITIO.includes(ruta) ? ruta : null)
 
 // `tarea`: one entry of /api/estado. `cola`: the pull requests waiting for a person (they carry the address).
 export function vistaAhora(tarea, { cola = [] } = {}) {
@@ -148,7 +154,7 @@ export function vistaAhora(tarea, { cola = [] } = {}) {
     if (typeof url === 'string' && GITHUB.test(url)) vista.enlace = { texto: `Ver el PR #${pr}`, href: url }
   } else if (final === 'rechazada' || final === 'fallida') {
     vista.detalle = `${detenida.replace(/\.?$/, '.')} Nadie ha tocado la web.`
-    if (final === 'rechazada') vista.revisores = revisoresDe(tarea)
+    if (final === 'rechazada') vista.revisores = revisoresDe(tarea, final)
   } else if (final === 'bloqueada_tests' || final === 'cerrada') {
     vista.detalle = detenida
   }

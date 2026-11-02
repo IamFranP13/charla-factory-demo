@@ -419,57 +419,22 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .t-intro .rej{align-items:center;row-gap:32px}
 .t-intro__texto{grid-column:1 / span 6;display:flex;flex-direction:column;gap:20px}
 .t-detalle{font-size:var(--t-lead);line-height:1.35;margin:0;max-width:34ch}
-.final{display:flex;align-items:flex-start;gap:16px;margin:0;padding:clamp(20px,2.4vw,32px);background:var(--limon-suave);color:var(--tinta);border-top-right-radius:56px}
-.final p{margin:0}
-.final__marca{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--oliva);color:#fff;font-weight:700;font-size:var(--t-cuerpo);line-height:1;margin-top:4px}
-.final__marca:empty{display:none}
-.final__t,#final-texto{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);letter-spacing:-.02em;line-height:1.1}
-.final--desplegada{background:var(--oliva);color:#fff}
-.final--desplegada a{color:#fff}
-.final--desplegada .final__marca{background:var(--limon);color:var(--tinta)}
-.final--esperando_persona .final__marca{background:var(--limon);color:var(--tinta)}
-.final--rechazada,.final--fallida,.final--cerrada,.final--bloqueada_tests{background:var(--error-fondo);color:var(--error-texto)}
-.final--rechazada .final__marca,.final--fallida .final__marca,.final--cerrada .final__marca,.final--bloqueada_tests .final__marca{background:var(--error-texto);color:#fff}
-.final__x{margin-top:8px;font-weight:600}
 .t-motivo{margin:0;font-weight:600;max-width:46ch}
 .t-motivo:empty{display:none}
 .t-acciones{display:flex;flex-wrap:wrap;gap:12px;margin:0}
-.dial{grid-column:8 / span 5;margin:0;justify-self:center;width:100%;max-width:540px}
-.dial svg{display:block;width:100%;height:auto;overflow:visible}
-.dial .seg path{transition:fill var(--motion-step) var(--ease)}
-.dial text{font-family:var(--fuente-titulo);font-weight:700}
 .ruta{align-items:start}
 .ruta h2{grid-column:1 / span 4;position:sticky;top:96px}
 .ruta__lista{grid-column:6 / span 7;list-style:none;margin:0;padding:0;display:grid;gap:0}
-.estacion{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:20px;align-items:start;padding:20px 0;position:relative}
-.estacion::before{content:'';position:absolute;left:21px;top:68px;bottom:-20px;width:6px;background:var(--crema)}
-.estacion:last-child::before{display:none}
-.estacion[data-estado=hecha]::before{background:var(--oliva)}
-.estacion__marca{display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--crema);color:var(--tinta);font-weight:700;font-size:var(--t-cuerpo);line-height:1;position:relative;z-index:1}
-.estacion[data-estado=hecha] .estacion__marca{background:var(--oliva);color:#fff}
-.estacion[data-estado=actual] .estacion__marca{background:var(--limon);color:var(--tinta)}
-.estacion[data-estado=parada] .estacion__marca{background:var(--error-texto);color:#fff}
-.estacion h3{margin-bottom:6px}
-.estacion p{margin:0;max-width:44ch}
-.estacion__estado{font-weight:600;white-space:nowrap;padding-top:6px}
 .revisores{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:14px 0 0;padding:0}
 .revisores li{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:999px;background:var(--crema);font-weight:600;font-size:var(--t-peq)}
 .revisores svg{width:16px;height:16px}
 .revisores [data-estado=ok]{background:var(--ok-fondo);color:var(--ok-texto)}
 .revisores [data-estado=en_curso]{background:var(--limon);color:var(--tinta)}
 .revisores [data-estado=rechazada],.revisores [data-estado=error]{background:var(--error-fondo);color:var(--error-texto)}
-.finales{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--hueco)}
-.finales .final{min-height:160px;align-items:flex-start}
 @media (max-width:1000px){
-  .t-intro__texto,.dial{grid-column:1 / -1}
-  .dial{max-width:420px}
+  .t-intro__texto{grid-column:1 / -1}
   .ruta h2,.ruta__lista{grid-column:1 / -1;position:static}
   .ruta__lista{margin-top:28px}
-  .finales{grid-template-columns:1fr}
-}
-@media (max-width:560px){
-  .estacion{grid-template-columns:48px minmax(0,1fr)}
-  .estacion__estado{grid-column:2;padding-top:0}
 }
 
 /* Features written by the factory (code kinds): painted by components/Features.astro */
@@ -483,21 +448,6 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
 .feature__tabla td{padding:16px 16px 16px 0;border-top:1px solid var(--borde)}
 .feature__texto{margin:0;font-size:var(--t-lead);line-height:1.35;max-width:34ch}
 
-/* /tarea: the dial and the stations take their look from the state the page sets (data-estado) */
-.dial .rind{fill:var(--limon)}
-.dial .hub{fill:var(--blanco)}
-.dial .seg path{fill:var(--limon-suave)}
-.dial .seg text{fill:var(--tinta);font-size:30px;text-anchor:middle}
-.dial .seg[data-estado=hecha] path{fill:var(--oliva)}
-.dial .seg[data-estado=hecha] text{fill:#fff}
-.dial .seg[data-estado=actual] path{fill:#fff}
-.dial .seg[data-estado=parada] path{fill:var(--error-texto)}
-.dial .seg[data-estado=parada] text{fill:#fff}
-.dial .centro{fill:var(--tinta);font-size:52px;text-anchor:middle}
-.dial .centro-de{fill:var(--tinta);font-family:var(--fuente);font-size:17px;font-weight:600;text-anchor:middle}
-.estacion__etiqueta{margin-top:6px;font-size:var(--t-peq);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-.estacion__etiqueta[hidden]{display:none}
-.estacion__nota{font-size:var(--t-peq);color:var(--tinta);margin-top:6px}
 .revisores [data-estado] .rev__m:empty{display:none}
 .rev__m{font-weight:700}
 

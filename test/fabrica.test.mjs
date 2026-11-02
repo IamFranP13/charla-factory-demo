@@ -1253,3 +1253,26 @@ test('S5: each reviewer\'s reason and the re-check\'s result are written with th
   // Every write that moved a reviewer to its final value carries its reason already: no write without it.
   for (const x of w.writes) for (const r of ['seguridad', 'ux', 'ui', 'codigo']) if (['ok', 'rechazada', 'error'].includes(x.estaciones[r])) assert.ok(x.motivos[r], `${r} final without its reason`)
 })
+
+test('S5: a new agent run starts the action list again, with or without an init line', async () => {
+  for (const withInit of [true, false]) {
+    let run = 0
+    const w = world({
+      issues: [issue(1)], resultados: { '/copias/t1': ok() },
+      behavior: async (_r, { onLine }) => {
+        run++
+        const mine = run
+        if (mine === 1 || withInit) onLine(JSON.stringify({ type: 'system', subtype: 'init', model: 'm' }))
+        onLine(readOf(`ronda${mine}.js`))
+        await until(() => w.activities.includes(`Lee ronda${mine}.js`), `round ${mine}`)
+        return 0
+      },
+      review: (nombre, _r, world) => (world.reviews.length <= 3 && nombre === 'ux' ? JSON.stringify(verdict(false, 'No se entiende')) : undefined),
+    })
+    await w.fabrica.start()
+    assert.equal(run, 2, 'the approver sent it back once')
+    const second = w.writes.filter((x) => x.acciones.some((a) => a.texto === 'Lee ronda2.js'))
+    assert.ok(second.length > 0)
+    assert.ok(second.every((x) => !x.acciones.some((a) => /ronda1/.test(a.texto))), `withInit=${withInit}: ${JSON.stringify(second.map((x) => x.acciones))}`)
+  }
+})
