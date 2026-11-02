@@ -8,6 +8,10 @@ export const esDemo = () => new URLSearchParams(location.search).get('demo') ===
 const REV = ['seguridad', 'ux', 'ui', 'codigo']
 const trabajando = (...estaciones) => estaciones.map((station) => ({ station, status: 'en_curso' }))
 const hechas = (...estaciones) => estaciones.map((station) => ({ station, status: 'ok' }))
+// A reviewer or the re-check done, with its own one-line reason (as the factory writes it).
+const revisadas = (...estaciones) => estaciones.map((station) => ({ station, status: 'ok', motivo: station === 'codigo' ? 'Pruebas y build ok' : `${station} ve bien el cambio` }))
+// The agent's last actions while it writes (newest first).
+const escribiendo = [{ set: { acciones: [{ tipo: 'edita', texto: 'Edita data/precios.json' }, { tipo: 'busca', texto: 'Busca en el repositorio' }, { tipo: 'lee', texto: 'Lee data/precios.json' }] } }]
 
 // One array of events per step. Between two stations there is a step where the first is done and the next has not
 // started: the token then shows its ✓ and stays where it is (the real factory has those gaps too, and they last).
@@ -15,9 +19,10 @@ const hastaRevision = [
   trabajando('spec'),
   hechas('spec'),
   trabajando('build'),
+  escribiendo,
   hechas('build'),
   trabajando(...REV),
-  hechas(...REV),
+  revisadas(...REV),
 ]
 const hastaApprover = [
   ...hastaRevision,
@@ -41,9 +46,10 @@ const GUIONES = [
       trabajando('spec'),
       hechas('spec'),
       trabajando('build'),
+      escribiendo,
       hechas('build'),
       trabajando(...REV),
-      [...hechas('ux', 'ui', 'codigo'), { station: 'seguridad', status: 'rejected' }, { finish: 'rejected', motivo: 'Lleva un enlace a una web externa' }],
+      [...revisadas('ux', 'ui', 'codigo'), { station: 'seguridad', status: 'rejected', motivo: 'Lleva un enlace a una web externa' }, { finish: 'rejected', motivo: 'Lleva un enlace a una web externa' }],
     ],
   },
   {
@@ -54,7 +60,7 @@ const GUIONES = [
       [{ station: 'approver', status: 'retry' }],
       hechas('build'),
       trabajando(...REV),
-      hechas(...REV),
+      revisadas(...REV),
       trabajando('approver'),
       hechas('approver'),
       [{ finish: 'ok' }],

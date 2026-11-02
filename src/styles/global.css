@@ -734,3 +734,93 @@ textarea:focus-visible,select:focus-visible,input:focus-visible{outline:3px soli
   .fd .tk.llega { animation: none; }
 }
 
+
+/* ===tarea: tarjeta «ahora» y tira=== (design/tarea-seguimiento/02-ahora-y-tira.html) */
+.t-seg{padding-block:clamp(16px,3vw,40px) clamp(56px,7vw,104px)}
+.t-seg__cuerpo{max-width:1100px;margin-inline:auto}
+.t-seg h1{font-size:var(--t-titulo);margin-bottom:14px}
+.t-quien{font-size:var(--t-peq);margin:0 0 6px}
+.t-chip{display:inline-flex;align-items:center;min-height:28px;padding:0 14px;border-radius:999px;background:var(--limon);color:var(--tinta);font-weight:600;margin-right:8px}
+.t-texto{font-family:var(--fuente-titulo);font-weight:700;font-size:var(--t-lead);line-height:1.2;letter-spacing:-.02em;margin:0}
+.t-texto:empty{display:none}
+.t-seg [hidden]{display:none!important}
+
+/* freshness: a small honest "updated n s ago" and a quiet live light */
+.t-vivo{display:flex;align-items:center;gap:8px;margin:12px 0 18px;font-size:var(--t-peq)}
+.t-luz{position:relative;flex:none;width:10px;height:10px;border-radius:50%;background:var(--oliva)}
+.t-luz::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--oliva);opacity:0}
+.t-vivo[data-luz=apagada] .t-luz{background:var(--tinta-suave)}
+.t-vivo[data-luz=apagada] .t-luz::after{display:none}
+
+/* the strip: seven segments, where it is */
+.t-tira{display:flex;gap:4px;margin:4px 0 8px;padding:0;list-style:none}
+.t-tira li{flex:1;height:12px;background:var(--limon-suave)}
+.t-tira [data-estado=ok]{background:var(--oliva)}
+.t-tira [data-estado=en_curso],.t-tira [data-estado=espera]{background:var(--limon)}
+.t-tira [data-estado=rechazada],.t-tira [data-estado=error]{background:var(--error-texto)}
+.t-tira li:first-child{border-radius:999px 0 0 999px}
+.t-tira li:last-child{border-radius:0 999px 999px 0}
+.t-donde{font-size:var(--t-peq);font-weight:600;margin:0 0 16px}
+
+/* the card: one field with the one quarter-circle corner */
+.t-ahora{padding:22px var(--margen) 24px;border-top-right-radius:var(--cuarto);background:var(--limon);color:var(--tinta);margin-bottom:var(--hueco)}
+.t-ahora[data-final=esperando_persona]{background:var(--limon-suave)}
+.t-ahora[data-final=desplegada],.t-ahora[data-final=sin_cambios]{background:var(--oliva);color:#fff}
+.t-ahora[data-final=rechazada],.t-ahora[data-final=fallida],.t-ahora[data-final=cerrada],.t-ahora[data-final=bloqueada_tests]{background:var(--error-fondo);color:var(--error-texto)}
+.t-ahora h2{font-size:var(--t-titulo);line-height:.98;margin-bottom:12px;color:inherit}
+.t-ahora p{margin:0 0 16px}
+.t-ahora p:empty{display:none}
+.t-ahora__act{font-size:var(--t-cuerpo);font-weight:600}
+.t-ahora__x{font-size:var(--t-cuerpo)}
+.t-ahora__enlace .btn{margin-top:4px}
+.t-ahora__der{margin-top:4px}
+
+/* the agent's last three actions */
+.t-acciones{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.t-acciones li{display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 12px;background:#fff;color:var(--tinta);font-size:var(--t-cuerpo)}
+.t-acciones li:nth-child(2){opacity:.88}
+.t-acciones li:nth-child(3){opacity:.78}
+.t-acciones svg{flex:none;width:22px;height:22px;color:var(--oliva-oscuro)}
+.t-acciones b{font-weight:700}
+.t-acciones li>span{min-width:0;overflow-wrap:anywhere}
+
+/* the four reviews, side by side, each ending on its own */
+.t-revs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:0;list-style:none}
+.t-rev{display:flex;flex-direction:column;gap:8px;padding:10px 12px;background:#fff;color:var(--tinta);border-top-right-radius:14px;min-height:44px}
+.t-rev p{margin:0}
+.t-rev__n{font-size:var(--t-cuerpo);line-height:1.3}
+.t-rev .t-palabra{display:block;font-size:var(--t-peq)}
+.t-rev__t{font-size:var(--t-peq);line-height:1.35;margin-top:2px}
+.t-rev[data-estado=rechazada],.t-rev[data-estado=error]{background:var(--error-fondo);color:var(--error-texto)}
+.t-rev[data-estado=rechazada] .t-palabra,.t-rev[data-estado=error] .t-palabra{color:var(--error-texto)}
+.t-rev[data-estado=pendiente]{background:var(--crema)}
+
+/* markers (drawn on the server, cloned by the page) and the folded seven steps */
+.t-mkw{position:relative;display:inline-flex;flex:none;align-self:flex-start;width:24px;height:24px}
+.t-revs .t-mkw{width:28px;height:28px}
+.t-mkw svg{display:block;width:100%;height:100%}
+.t-mkw--vivo::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--limon);z-index:-1}
+.t-palabra{font-weight:600;font-size:var(--t-peq);color:inherit}
+.t-todos{margin-top:20px}
+.t-todos summary{display:flex;align-items:center;min-height:44px;padding:0 20px;border-radius:999px;background:var(--crema);font-weight:600;cursor:pointer;width:fit-content}
+.t-todos ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:4px}
+.t-todos li{display:flex;align-items:center;gap:12px;min-height:44px}
+.t-todos li span:nth-child(2){flex:1}
+.t-pie{margin:28px 0 0}
+
+@media (min-width:900px){
+  .t-ahora{display:grid;grid-template-columns:5fr 6fr;column-gap:36px;align-items:start}
+  .t-ahora[data-solo]{grid-template-columns:1fr}
+  .t-ahora__der{margin-top:0}
+}
+
+/* motion: only transform and opacity, and only when allowed */
+@media (prefers-reduced-motion:no-preference){
+  .t-luz::after{animation:t-onda 2s var(--ease) infinite}
+  .t-mkw--vivo::after{animation:t-onda-m 1.8s var(--ease) infinite}
+  .t-nuevo{animation:t-entra var(--motion-step) var(--ease) both}
+}
+@keyframes t-onda{from{transform:scale(1);opacity:.55}to{transform:scale(2.6);opacity:0}}
+@keyframes t-onda-m{from{transform:scale(1);opacity:.7}to{transform:scale(1.7);opacity:0}}
+@keyframes t-entra{from{transform:translateY(-12px);opacity:0}to{transform:none;opacity:1}}
+.t-todos .t-mkw{align-self:center}

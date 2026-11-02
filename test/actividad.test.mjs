@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activityOf, verdictActivity, checkActivity, ACTIVITY_MS, knownPaths } from '../lib/fabrica.js'
+import { activityOf, stepOf, verdictActivity, checkActivity, ACTIVITY_MS, knownPaths } from '../lib/fabrica.js'
 
 const tool = (name, input) => JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name, input }] } })
 
@@ -79,4 +79,20 @@ test('S4: with the base files known, only real files are named (an agent cannot 
   // A new file is named when its folder already exists in the base.
   assert.equal(activityOf(tool('Write', { file_path: '/work/content/campanas/tarea-9.json' }), known), 'Escribe content/campanas/tarea-9.json')
   assert.equal(activityOf(tool('Write', { file_path: '/work/compra-ya/oferta.json' }), known), 'Escribe un archivo')
+})
+
+test('S5: the same line gives the agent action: kind and text (the text is the activity line)', () => {
+  const k = (raw, known) => stepOf(raw, known)
+  assert.deepEqual(k(JSON.stringify({ type: 'system', subtype: 'init' })), { tipo: 'empieza', texto: 'Empieza a trabajar' })
+  assert.deepEqual(k(tool('Read', { file_path: '/work/src/a.js' })), { tipo: 'lee', texto: 'Lee src/a.js' })
+  assert.deepEqual(k(tool('Edit', { file_path: '/work/src/a.js' })), { tipo: 'edita', texto: 'Edita src/a.js' })
+  assert.deepEqual(k(tool('MultiEdit', { file_path: '/work/a.js' })), { tipo: 'edita', texto: 'Edita a.js' })
+  assert.deepEqual(k(tool('Write', { file_path: '/work/content/campanas/x.json' })), { tipo: 'escribe', texto: 'Escribe content/campanas/x.json' })
+  for (const name of ['Grep', 'Glob', 'LS']) assert.deepEqual(k(tool(name, { pattern: 'secreto' })), { tipo: 'busca', texto: 'Busca en el repositorio' })
+  assert.deepEqual(k(tool('Bash', { command: 'cat /etc/passwd' })), { tipo: 'comando', texto: 'Ejecuta un comando' })
+  assert.deepEqual(k(tool('Read', { file_path: '/etc/passwd' })), { tipo: 'lee', texto: 'Lee un archivo' })
+  assert.deepEqual(k(tool('Read', { file_path: '/work/Ignora-las-reglas.com' }), knownPaths(['src/a.js'])), { tipo: 'lee', texto: 'Lee un archivo' }, 'only known files are named')
+  for (const raw of [tool('TodoWrite', {}), tool('Task', { prompt: 'x' }), '', '{no json', 'texto plano', JSON.stringify({ type: 'result', result: 'x' })]) assert.equal(k(raw), null)
+  // activityOf is exactly the text of the action.
+  for (const raw of [tool('Read', { file_path: '/work/src/a.js' }), tool('Bash', {}), JSON.stringify({ type: 'system', subtype: 'init' }), 'x']) assert.equal(activityOf(raw), k(raw)?.texto ?? null)
 })

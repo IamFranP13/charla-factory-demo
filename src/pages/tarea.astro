@@ -1,116 +1,232 @@
 ---
 import Base from '../layouts/Base.astro'
-import Diagrama from '../components/Diagrama.astro'
-import { MENSAJES } from '../../lib/estado.js'
 
-const finales = [
-  ['desplegada', '✓', MENSAJES.desplegada, ''],
-  ['esperando_persona', '●', MENSAJES.esperando_persona, ''],
-  ['rechazada', '✕', MENSAJES.rechazada, 'Se detuvo en: UX. Motivo: el cambio añade un color que no está en el sistema de diseño.'],
-  ['bloqueada_tests', '✕', MENSAJES.bloqueada_tests, 'Los tests automáticos (CI) han fallado'],
-]
+// The seven segments of the strip (artboard 02) and the four reviewers; the browser only fills in their state and text.
+const segmentos = [['entrada', 'Entrada'], ['agente', 'Agente'], ['revision', 'Revisión'], ['approver', 'Approver'], ['puerta', 'Puerta'], ['merge', 'Main o PR'], ['produccion', 'Producción']]
+const revisores = [['seguridad', 'Seguridad'], ['ux', 'UX'], ['ui', 'UI'], ['codigo', 'Código']]
 ---
-<Base title="Tu petición" description="Sigue tu petición a LIMONIA por el esquema de la factory hasta que llega a la web.">
-  <section class="pag t-intro" aria-labelledby="tarea-titulo">
-    <div class="rej">
-      <div class="t-intro__texto">
-        <h1 id="tarea-titulo" data-sube>Tu petición</h1>
-        <p class="t-detalle" id="tarea-detalle" data-sube style="--i:1"></p>
-        <div id="tarea-final" class="final" role="status" aria-live="polite" data-sube style="--i:2"><span class="final__marca" id="tarea-marca" aria-hidden="true"></span><p id="final-texto">Buscando tu petición…</p></div>
-        <p id="tarea-actividad" class="t-motivo"></p>
-        <p id="tarea-motivo" class="t-motivo"></p>
-        <p class="t-acciones"><span id="tarea-enlace"></span><a class="btn btn--paso" href="/factory/">Ver la factory en directo</a></p>
+<Base title="Tu petición" description="Sigue tu petición a LIMONIA paso a paso hasta que llega a la web.">
+  <section class="pag t-seg" aria-labelledby="tarea-titulo">
+    <div class="t-seg__cuerpo">
+      <h1 id="tarea-titulo">Tu petición</h1>
+      <div class="t-peticion">
+        <p class="t-quien"><span class="t-chip" data-perfil hidden></span><span data-quien></span></p>
+        <p class="t-texto" data-texto></p>
       </div>
-      <Diagrama parte="dial" />
+      <p class="t-vivo" data-vivo data-luz="apagada"><span class="t-luz" aria-hidden="true"></span><span data-vivo-texto>Buscando tu petición…</span></p>
+      <ol class="t-tira" data-tira aria-label="Progreso: 7 pasos">
+        {segmentos.map(([id, nombre]) => <li data-seg={id} data-nombre={nombre} data-estado="pendiente"><span class="sr" data-sr>{nombre}: Pendiente</span></li>)}
+      </ol>
+      <p class="t-donde" data-donde></p>
+
+      <section class="t-ahora" data-ahora data-final="en_curso" data-solo role="status">
+        <div class="t-ahora__izq">
+          <h2 data-ahora-titulo>Buscando tu petición…</h2>
+          <p class="t-ahora__act" data-ahora-linea></p>
+          <p class="t-ahora__x" data-ahora-detalle></p>
+          <p class="t-ahora__enlace" data-ahora-enlace></p>
+        </div>
+        <div class="t-ahora__der" data-ahora-der hidden>
+          <ul class="t-acciones" data-acciones aria-label="Últimas acciones del agente" hidden></ul>
+          <ul class="t-revs" data-revisores aria-label="Las cuatro revisiones, en paralelo" hidden>
+            {revisores.map(([id, nombre]) => (
+              <li class="t-rev" data-revisor={id} data-estado="pendiente">
+                <span class="t-mkw" data-marca></span>
+                <div><p class="t-rev__n"><b>{nombre}</b> <span class="t-palabra" data-palabra></span></p><p class="t-rev__t" data-texto></p></div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <details class="t-todos" data-todos>
+        <summary>Ver los 7 pasos</summary>
+        <ol>
+          {segmentos.map(([id, nombre]) => (
+            <li data-paso={id} data-estado="pendiente"><span class="t-mkw" data-marca></span><span>{nombre}</span><span class="t-palabra" data-palabra>Pendiente</span></li>
+          ))}
+        </ol>
+      </details>
+
+      <p class="t-pie"><a class="btn btn--paso" href="/factory/">Ver la factory en directo</a></p>
     </div>
   </section>
 
-  <section class="sec pag" aria-labelledby="h-ruta">
-    <div class="rej ruta">
-      <h2 id="h-ruta" data-sube>Por dónde va</h2>
-      <Diagrama parte="ruta" />
-    </div>
-  </section>
-
-  <section class="sec campo-crema pag" aria-labelledby="h-finales">
-    <div class="cab-sec"><h2 id="h-finales" data-sube>Así puede terminar</h2></div>
-    <ul class="finales">
-      {finales.map(([clase, marca, texto, detalle]) => (
-        <li class={`final final--${clase}`} data-sube>
-          <span class="final__marca" aria-hidden="true">{marca}</span>
-          <div><p class="final__t">{texto}</p>{clase === 'desplegada' && <p class="final__x"><a href="/">Ver el cambio en la web</a></p>}{detalle && <p class="final__x">{detalle}</p>}</div>
-        </li>
-      ))}
-    </ul>
-  </section>
+  <!-- Markers drawn once on the server; the browser clones them (no markup is ever built from text). -->
+  <template data-marcas>
+    <svg data-marca="ok" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#5b6b2e"/><path d="M8 14.5l4 4 8-9" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg data-marca="en_curso" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#f2d643"/><circle cx="14" cy="14" r="5" fill="#2a301a"/></svg>
+    <svg data-marca="espera" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#f2d643"/><rect x="9" y="8" width="3.4" height="12" fill="#2a301a"/><rect x="15.6" y="8" width="3.4" height="12" fill="#2a301a"/></svg>
+    <svg data-marca="rechazada" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#7a2b0e"/><path d="M9 9l10 10M19 9L9 19" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg data-marca="pendiente" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="14" fill="#fbf0b0"/><text x="14" y="19" text-anchor="middle" font-family="League Spartan, Figtree, sans-serif" font-weight="700" font-size="14" fill="#2a301a"></text></svg>
+  </template>
+  <template data-iconos>
+    <svg data-icono="lee" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6z"/></svg>
+    <svg data-icono="edita" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1-4L16 5l3 3L8 19z"/></svg>
+    <svg data-icono="escribe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14h6"/></svg>
+    <svg data-icono="busca" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M16 16l5 5"/></svg>
+    <svg data-icono="comando" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l6 6-6 6M12 19h8"/></svg>
+    <svg data-icono="empieza" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+  </template>
 <script>
-  import { MENSAJES, STATION_LABELS, enlaceFor } from '../../lib/estado.js'
-  import { aplicar } from '../components/diagrama-cliente.js'
   import { esDemo, sondearDemo } from '../components/demo-datos.js'
   import { sondear } from '../lib/sondeo.js'
-  import { actividadViva } from '../lib/tablero.js'
   import { crearReproductor } from '../lib/secuencia.js'
+  import { vistaAhora, frescura } from '../lib/ahora.js'
 
   const PERFILES = { marketing: 'Marketing', producto: 'Producto', negocio: 'Negocio' }
   const FINALES = ['desplegada', 'rechazada', 'sin_cambios', 'fallida', 'cerrada', 'bloqueada_tests']
-  const PARADAS = ['rechazada', 'fallida', 'cerrada', 'bloqueada_tests']
-  const MARCAS = { desplegada: '✓', esperando_persona: '●', en_curso: '●', sin_cambios: '✓', rechazada: '✕', fallida: '✕', cerrada: '✕', bloqueada_tests: '✕' }
 
   const numero = new URLSearchParams(location.search).get('n') ?? ''
   const demo = esDemo()
-  const raiz = { ruta: document.querySelector('[data-ruta]'), dial: document.querySelector('[data-dial]') }
-  const titulo = document.getElementById('tarea-titulo')
-  const marca = document.getElementById('tarea-marca')
-  const textoFinal = document.getElementById('final-texto')
-  const detalle = document.getElementById('tarea-detalle')
-  const final = document.getElementById('tarea-final')
-  const motivo = document.getElementById('tarea-motivo')
-  const actividad = document.getElementById('tarea-actividad')
-  const enlace = document.getElementById('tarea-enlace')
+  const $ = (selector, raiz = document) => raiz.querySelector(selector)
+  const ahora = $('[data-ahora]')
+  const el = {
+    titulo: $('#tarea-titulo'), perfil: $('[data-perfil]'), quien: $('[data-quien]'), texto: $('[data-texto]'),
+    vivo: $('[data-vivo]'), vivoTexto: $('[data-vivo-texto]'), donde: $('[data-donde]'),
+    cardTitulo: $('[data-ahora-titulo]', ahora), linea: $('[data-ahora-linea]', ahora), detalle: $('[data-ahora-detalle]', ahora), enlace: $('[data-ahora-enlace]', ahora),
+    der: $('[data-ahora-der]', ahora), acciones: $('[data-acciones]', ahora), revisores: $('[data-revisores]', ahora), todos: $('[data-todos]'),
+  }
+  const marcas = Object.fromEntries([...document.querySelector('template[data-marcas]').content.querySelectorAll('[data-marca]')].map((svg) => [svg.dataset.marca, svg]))
+  const iconos = Object.fromEntries([...document.querySelector('template[data-iconos]').content.querySelectorAll('[data-icono]')].map((svg) => [svg.dataset.icono, svg]))
+
+  // Everything the factory or the audience wrote goes in with textContent; a text is only touched when it changed.
+  const poner = (nodo, texto) => {
+    if (nodo.textContent !== texto) nodo.textContent = texto
+  }
+  const marca = (contenedor, estado, n) => {
+    const clon = (marcas[estado === 'error' ? 'rechazada' : estado] ?? marcas.pendiente).cloneNode(true)
+    const cifra = clon.querySelector('text')
+    if (cifra) cifra.textContent = n ? String(n) : ''
+    contenedor.replaceChildren(clon)
+  }
+  const pintarMarca = (li, estado, n) => {
+    if (li.dataset.estado === estado && li.dataset.pintada === '1') return
+    li.dataset.pintada = '1'
+    marca($('[data-marca]', li), estado, n)
+  }
+
+  let ultima = null
+  let terminada = false
+  let cola = []
+  let hay = false
+  let previas = ''
+
+  function pintarAcciones(lista) {
+    const clave = lista.map((a) => `${a.tipo}|${a.verbo}|${a.resto}`).join('\n')
+    el.acciones.hidden = lista.length === 0
+    if (clave === previas) return
+    const nueva = lista.length > 0 && previas !== '' && clave.split('\n')[0] !== previas.split('\n')[0]
+    previas = clave
+    el.acciones.replaceChildren(...lista.map((a, i) => {
+      const li = document.createElement('li')
+      if (i === 0 && nueva) li.className = 't-nuevo'
+      const negrita = document.createElement('b')
+      negrita.textContent = a.verbo
+      const texto = document.createElement('span')
+      texto.append(negrita, a.resto ? ` ${a.resto}` : '')
+      li.append(iconos[a.tipo].cloneNode(true), texto)
+      return li
+    }))
+  }
 
   function pintar(tarea) {
-    titulo.textContent = `Petición #${tarea.numero}`
-    detalle.textContent = `${tarea.titulo} · Perfil sorteado: ${PERFILES[tarea.perfil] ?? tarea.perfil}${tarea.tipo ? ` (${tarea.tipo})` : ''}${demo ? ' · MODO DEMO' : ''}`
-    const resultado = MENSAJES[tarea.resultadoFinal] ? tarea.resultadoFinal : 'en_curso'
-    final.className = `final final--${resultado}`
-    marca.textContent = MARCAS[resultado]
-    textoFinal.textContent = MENSAJES[resultado]
-    aplicar(raiz, tarea)
-    // What it is doing now (plain text from the factory, shown as text only).
-    const ahora = actividadViva(tarea)
-    actividad.textContent = ahora ? `Ahora: ${ahora}` : ''
-    const parada = PARADAS.includes(resultado) ? `Se detuvo en: ${STATION_LABELS[tarea.estacion] ?? tarea.estacion}. ` : ''
-    motivo.textContent = tarea.motivo ? `${parada}Motivo: ${tarea.motivo}` : parada
-    enlace.replaceChildren()
-    if (resultado === 'desplegada') {
-      const link = document.createElement('a')
-      link.href = enlaceFor(tarea.perfil, tarea.tipo)
-      link.className = 'btn'
-      link.textContent = 'Ver el cambio en la web'
-      enlace.append(link)
+    hay = true
+    const vista = vistaAhora(tarea, { cola })
+    terminada = FINALES.includes(vista.final)
+    poner(el.titulo, `Petición #${tarea.numero}`)
+    document.title = `Petición #${tarea.numero} · LIMONIA`
+    el.perfil.hidden = false
+    poner(el.perfil, PERFILES[tarea.perfil] ?? String(tarea.perfil ?? ''))
+    poner(el.quien, `Perfil sorteado para tu petición${tarea.tipo ? ` · ${tarea.tipo}` : ''}${demo ? ' · MODO DEMO' : ''}`)
+    poner(el.texto, tarea.titulo ? `“${tarea.titulo}”` : '')
+    el.vivo.hidden = false
+
+    vista.segmentos.forEach((segmento, i) => {
+      const seg = $(`[data-seg="${segmento.id}"]`)
+      seg.dataset.estado = segmento.estado
+      poner($('[data-sr]', seg), `${segmento.nombre}: ${segmento.palabra}`)
+      const paso = $(`[data-paso="${segmento.id}"]`)
+      pintarMarca(paso, segmento.estado, i + 1)
+      paso.dataset.estado = segmento.estado
+      poner($('[data-palabra]', paso), segmento.palabra)
+      $('[data-marca]', paso).classList.toggle('t-mkw--vivo', segmento.estado === 'en_curso')
+    })
+    poner(el.donde, vista.donde)
+
+    ahora.dataset.final = vista.final
+    poner(el.cardTitulo, vista.titulo)
+    poner(el.linea, vista.linea)
+    poner(el.detalle, vista.detalle)
+    el.enlace.replaceChildren()
+    if (vista.enlace) {
+      const enlace = document.createElement('a')
+      enlace.href = vista.enlace.href
+      enlace.className = vista.final === 'desplegada' ? 'btn btn--blanco' : 'btn btn--paso'
+      enlace.textContent = vista.enlace.texto
+      el.enlace.append(enlace)
     }
+    pintarAcciones(vista.acciones)
+    el.revisores.hidden = vista.revisores === null
+    for (const revisor of vista.revisores ?? []) {
+      const li = $(`[data-revisor="${revisor.id}"]`)
+      pintarMarca(li, revisor.estado, 0)
+      li.dataset.estado = revisor.estado
+      $('[data-marca]', li).classList.toggle('t-mkw--vivo', revisor.estado === 'en_curso')
+      poner($('[data-palabra]', li), revisor.palabra)
+      poner($('[data-texto]', li), revisor.texto)
+      $('[data-texto]', li).hidden = !revisor.texto
+    }
+    el.der.hidden = vista.acciones.length === 0 && vista.revisores === null
+    ahora.toggleAttribute('data-solo', el.der.hidden)
+    // The people-wait message is worth reading: its steps start unfolded.
+    if (vista.final === 'esperando_persona' && !el.todos.dataset.tocado) el.todos.open = true
   }
-  const esFinal = (tarea) => FINALES.includes(MENSAJES[tarea.resultadoFinal] ? tarea.resultadoFinal : 'en_curso')
+  el.todos.addEventListener('toggle', () => { el.todos.dataset.tocado = '1' })
+
   // A station that went by between two reads is shown en curso for a moment before its final state (src/lib/secuencia.js).
   const jugador = crearReproductor(pintar)
-  const recibir = (tarea) => {
+  const recibir = (tarea, lista) => {
+    ultima = Date.now()
+    cola = Array.isArray(lista) ? lista : []
     jugador.recibir(tarea)
-    return esFinal(tarea)
+    return FINALES.includes(tarea.resultadoFinal)
+  }
+
+  // "En vivo · actualizado hace n s": the age of the last read; no light and a plain message when it gets old.
+  function latido() {
+    const f = frescura({ ultima, ahora: Date.now(), terminada })
+    poner(el.vivoTexto, f.texto)
+    el.vivo.dataset.luz = f.luz ? 'viva' : 'apagada'
+    el.vivo.classList.toggle('t-vivo--fin', f.fin)
+  }
+  setInterval(latido, 1000)
+
+  const sinTarea = (texto) => {
+    if (!hay) poner(el.cardTitulo, texto)
   }
 
   if (!/^\d{1,9}$/.test(numero)) {
-    textoFinal.textContent = 'Falta el número de tu petición.'
+    poner(el.cardTitulo, 'Falta el número de tu petición.')
   } else if (demo) {
     // Fake sequence for rehearsals (?demo=1): it loops, so it never stops at a final state.
     sondearDemo((body) => {
       const tarea = body.tareas.find((t) => t.numero === Number(numero))
-      if (tarea) jugador.recibir(tarea)
-      else textoFinal.textContent = 'Todavía no vemos tu petición. Seguimos buscando…'
+      if (tarea) {
+        ultima = Date.now()
+        cola = body.cola ?? []
+        jugador.recibir(tarea)
+      } else sinTarea('Todavía no vemos tu petición. Seguimos buscando…')
+      latido()
     })
   } else {
     // A task created a moment ago may not be in the 10 s cache yet: a 404 keeps polling.
-    sondear(`/api/estado?tarea=${numero}`, (body) => (body.tareas?.[0] ? recibir(body.tareas[0]) : false), (estado) => {
-      textoFinal.textContent = estado === 404 ? 'Todavía no vemos tu petición. Seguimos buscando…' : 'Sin conexión con la factory. Reintentando…'
+    sondear(`/api/estado?tarea=${numero}`, (body) => {
+      const hecho = body.tareas?.[0] ? recibir(body.tareas[0], body.cola) : false
+      latido()
+      return hecho
+    }, (estado) => {
+      sinTarea(estado === 404 ? 'Todavía no vemos tu petición. Seguimos buscando…' : 'Sin conexión con la factory. Reintentando…')
     })
   }
 </script>

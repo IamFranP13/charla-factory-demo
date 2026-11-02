@@ -7,7 +7,6 @@ import { spawnSync } from 'node:child_process'
 import { MAX_LENGTH } from '../lib/intake.js'
 import { STATIONS, STATION_LABELS, MENSAJES } from '../lib/estado.js'
 import { NAV } from '../src/lib/nav.js'
-import { PASOS, REVISORES } from '../src/lib/diagrama.js'
 import { cargarEstado } from '../lib/estado-node.js'
 import { checkEstilo } from '../lib/estilo.js'
 import { ESTACIONES, QUIEN, RECORRIDO } from '../src/lib/explica.js'
@@ -156,33 +155,46 @@ needsSandbox('/factory/ lists "Tus peticiones" from localStorage, with a link to
   assert.ok(bundle.includes('/tarea/?n='))
 })
 
-// /tarea/ draws the stations of the factory as the public sees them: a dial and a list, in the styles of the rest of the site.
-const ESTACIONES_TAREA = [['entrada', 'Entrada'], ['spec', 'Spec writer'], ['build', 'Builder'], ['revision', 'Revisión'], ['approver', 'Approver'], ['puerta', 'Puerta'], ['produccion', 'Producción']]
+// /tarea/ (artboard 02, "ahora y tira"): a strip of seven segments, one big "ahora" card, the four reviewers as separate items
+// and the final messages; mobile first, in the styles of the rest of the site.
+const SEGMENTOS_TAREA = [['entrada', 'Entrada'], ['agente', 'Agente'], ['revision', 'Revisión'], ['approver', 'Approver'], ['puerta', 'Puerta'], ['merge', 'Main o PR'], ['produccion', 'Producción']]
 
-needsSandbox('/tarea/ draws the stations as a dial and a list and polls the status API for one task', () => {
+needsSandbox('/tarea/ is the "ahora" card over a strip of seven segments and polls the status API for one task', () => {
   const bundle = clientCode(pages.tarea)
   const html = pages.tarea
-  for (const [id, label] of ESTACIONES_TAREA) {
-    assert.ok(PASOS.some((p) => p.id === id), `${id} is a step of the factory`)
-    assert.match(html, new RegExp(`data-paso="${id}"`), `list: ${id}`)
-    assert.match(html, new RegExp(`data-seg="${id}"`), `dial: ${id}`)
-    assert.ok(html.includes(`<h3>${label}</h3>`), `label ${label}`)
+  const tira = html.match(/<ol[^>]*data-tira[^>]*>[\s\S]*?<\/ol>/)?.[0] ?? ''
+  assert.ok(tira, 'the strip')
+  assert.equal([...tira.matchAll(/<li[^>]*data-seg="/g)].length, 7, 'seven segments')
+  for (const [id, label] of SEGMENTOS_TAREA) {
+    assert.match(tira, new RegExp(`data-seg="${id}"`), `strip: ${id}`)
+    assert.ok(bundle.includes(label), `label ${label}`)
   }
-  assert.match(html, /<svg[^>]*data-dial/)
-  for (const id of REVISORES) assert.ok(html.includes(`data-revisor="${id}"`), `reviewer ${id}`)
-  assert.match(html, /Brain/, 'the note that points to the Brain')
+  assert.ok(html.indexOf('data-seg="entrada"') < html.indexOf('data-seg="produccion"'))
+  assert.match(html, /<section[^>]*data-ahora[^>]*role="status"/, 'the card announces its changes')
+  assert.match(html, /<ul[^>]*data-acciones/, 'the agent\'s last actions')
+  assert.match(html, /<ul[^>]*data-revisores/, 'the four reviewers')
+  assert.match(html, /<details[^>]*data-todos/, 'the seven steps, folded')
+  assert.match(html, /data-vivo/, 'the live light and the age of the last read')
   assert.match(html, /class="cabecera"/, 'the site header')
   assert.match(html, /<a class="marca"/, 'the LIMONIA brand')
   assert.doesNotMatch(html, /tema-charla|Chivo/, 'not the talk theme')
   assert.match(html, /href="\/factory\/"/)
+  assert.match(html, /viewport/)
   assert.ok(bundle.includes('/api/estado?tarea='))
-  assert.match(bundle, /5e3|5000/)
+  assert.match(bundle, /5e3|5000/, 'the polling budget')
   for (const message of Object.values(MENSAJES)) assert.ok(bundle.includes(message) || html.includes(message), message)
   for (const status of ['pendiente', 'en_curso', 'ok', 'rechazada', 'error']) assert.ok(bundle.includes(status), status)
-  for (const label of ['NO HACE FALTA', 'ESPERANDO A UNA PERSONA']) assert.ok(bundle.includes(label) || html.includes(label), label)
-  assert.match(html, /viewport/)
+  for (const text of ['La puerta revisa qué toca el cambio', 'Fusionando en main', 'Publicando en la web', 'Sin conexión con la factory', 'Terminada']) assert.ok(bundle.includes(text), text)
+})
+
+needsSandbox('/tarea/ paints what the factory wrote as text only, and its markers are drawn on the server (no external asset)', () => {
+  const bundle = clientCode(pages.tarea)
   assert.match(bundle, /textContent|replaceChildren/)
-  assert.doesNotMatch(bundle, /innerHTML/)
+  assert.doesNotMatch(bundle, /innerHTML|insertAdjacentHTML|outerHTML|document\.write|createContextualFragment/)
+  for (const tipo of ['lee', 'edita', 'escribe', 'busca', 'comando', 'empieza']) assert.match(pages.tarea, new RegExp(`data-icono="${tipo}"`), `icon: ${tipo}`)
+  for (const id of ['seguridad', 'ux', 'ui', 'codigo']) assert.match(pages.tarea, new RegExp(`data-revisor="${id}"`), `reviewer ${id}`)
+  const page = pages.tarea.replace(/<script[\s\S]*?<\/script>/g, '')
+  assert.doesNotMatch(page, /<(img|link|iframe|object|embed)\b[^>]*(src|href)="https?:/i, 'no external asset')
 })
 
 const ESTACIONES_TABLERO = ['Entrada', 'Spec writer', 'Builder', 'Seguridad', 'UX', 'UI', 'Código', 'Approver', '¿Humano?', 'Main o PR', 'Producción']

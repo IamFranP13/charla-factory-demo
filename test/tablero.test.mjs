@@ -8,6 +8,7 @@ import {
 } from '../src/lib/tablero.js'
 import { geometria, slotsDe, envuelve, CARACTERES_POR_PX, NODOS, IDS_NODOS, REVISORES, TOKEN, cx, cy } from '../src/lib/geometria.js'
 import { ESTACIONES } from '../src/lib/explica.js'
+import { vistaAhora, frescura } from '../src/lib/ahora.js'
 
 // A task as /api/estado returns it, every station pending unless told otherwise.
 function tarea({ ok = [], estaciones = {}, ...resto } = {}) {
@@ -439,4 +440,148 @@ test('S4: the board shows the activity line only for a task in progress, as shor
   assert.equal(actividadViva({ ...viva, actividad: 42 }), '')
   const largo = actividadViva({ ...viva, actividad: 'x'.repeat(500) })
   assert.ok(Array.from(largo).length <= 160)
+})
+
+// --- /tarea/: the strip, the "ahora" card and its text per phase (S5) ---
+
+const ESTADOS = (t) => vistaAhora(t).segmentos.map((s) => s.estado)
+const ACCS = [{ tipo: 'edita', texto: 'Edita data/precios.json' }, { tipo: 'busca', texto: 'Busca en el repositorio' }, { tipo: 'lee', texto: 'Lee data/precios.json' }, { tipo: 'comando', texto: 'Ejecuta un comando' }]
+
+test('the strip has the seven segments of the artboard, in order, and shows each phase', () => {
+  const v = vistaAhora(tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' }, estacion: 'build' }))
+  assert.deepEqual(v.segmentos.map((s) => s.nombre), ['Entrada', 'Agente', 'Revisión', 'Approver', 'Puerta', 'Main o PR', 'Producción'])
+  assert.deepEqual(ESTADOS(tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' } })), ['ok', 'en_curso', 'pendiente', 'pendiente', 'pendiente', 'pendiente', 'pendiente'])
+  assert.equal(v.donde, 'Paso 2 de 7: Agente')
+  assert.deepEqual(ESTADOS(tarea({ ok: HASTA_REVISION, estaciones: { ux: 'en_curso', seguridad: 'ok' } })), ['ok', 'ok', 'en_curso', 'pendiente', 'pendiente', 'pendiente', 'pendiente'])
+  assert.deepEqual(ESTADOS(tarea({ ok: HASTA_APPROVER, estaciones: { puerta: 'en_curso' } })), ['ok', 'ok', 'ok', 'ok', 'en_curso', 'pendiente', 'pendiente'])
+  assert.deepEqual(ESTADOS(tarea({ ok: [...HASTA_APPROVER, 'puerta'], ruta: 'auto', estaciones: { merge: 'en_curso' } })).slice(4), ['ok', 'en_curso', 'pendiente'])
+  assert.deepEqual(ESTADOS(tarea({ ok: [...HASTA_APPROVER, 'puerta', 'merge'], ruta: 'auto' })).slice(4), ['ok', 'ok', 'en_curso'], 'merged, waiting for the deploy')
+  assert.equal(v.segmentos[1].palabra, 'En curso')
+})
+
+test('waiting for a person: the gate is "espera" and Main o PR has not started', () => {
+  const t = tarea({ ok: HASTA_APPROVER, ruta: 'human', pr: 42, resultadoFinal: 'esperando_persona', estacion: 'puerta' })
+  const v = vistaAhora(t, { cola: [{ pr: 42, url: 'https://github.com/o/r/pull/42' }] })
+  assert.deepEqual(v.segmentos.map((s) => s.estado), ['ok', 'ok', 'ok', 'ok', 'espera', 'pendiente', 'pendiente'])
+  assert.equal(v.segmentos[4].palabra, 'Espera a una persona')
+  assert.equal(v.donde, 'Paso 5 de 7: Puerta')
+  assert.equal(v.final, 'esperando_persona')
+  assert.equal(v.titulo, 'Tu petición espera a una persona que la revise')
+  assert.match(v.detalle, /PR #42 abierto/)
+  assert.deepEqual(v.enlace, { texto: 'Ver el PR #42', href: 'https://github.com/o/r/pull/42' })
+  assert.equal(v.linea, '')
+  assert.equal(vistaAhora(t, { cola: [{ pr: 42, url: 'https://evil.example/x' }] }).enlace, null, 'only GitHub addresses')
+  assert.equal(vistaAhora(t).enlace, null)
+})
+
+test('the phase text is computed from the state: every phase says its own thing', () => {
+  const linea = (t) => vistaAhora(t).linea
+  assert.equal(linea(tarea({})), 'Tu petición está en la cola')
+  assert.equal(linea(tarea({ ok: ['entrada'], estaciones: { spec: 'en_curso' } })), 'El agente lee tu petición')
+  assert.equal(linea(tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' } })), 'El agente está escribiendo el cambio')
+  assert.match(linea(tarea({ ok: ['entrada', 'spec'], vueltas: 1, estaciones: { build: 'en_curso' } })), /otra vuelta/)
+  assert.equal(linea(tarea({ ok: HASTA_REVISION, estaciones: { ux: 'en_curso' } })), 'UX mira las capturas de la web con tu cambio')
+  assert.equal(linea(tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'en_curso', codigo: 'en_curso' } })), 'Trabajando: Seguridad y Código')
+  assert.equal(linea(tarea({ ok: [...HASTA_REVISION, 'seguridad', 'ux', 'ui', 'codigo'] })), 'El approver pesa las cuatro opiniones')
+  assert.equal(linea(tarea({ ok: HASTA_APPROVER, estaciones: { approver: 'en_curso' } })), 'El approver pesa las cuatro opiniones')
+  assert.equal(linea(tarea({ ok: HASTA_APPROVER })), 'La puerta revisa qué toca el cambio')
+  assert.equal(linea(tarea({ ok: [...HASTA_APPROVER, 'puerta'], ruta: 'auto', estaciones: { merge: 'en_curso' } })), 'Fusionando en main')
+  assert.equal(linea(tarea({ ok: [...HASTA_APPROVER, 'puerta', 'merge'], ruta: 'auto' })), 'Publicando en la web')
+})
+
+test('the stored activity line never reaches the phase text: a stale line cannot be shown in another phase', () => {
+  for (const t of [tarea({ ok: HASTA_APPROVER, actividad: 'Cambio enviado: ahora decide la puerta' }), tarea({ ok: [...HASTA_APPROVER, 'puerta', 'merge'], ruta: 'auto', actividad: 'Edita src/a.js' }), tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' }, actividad: 'Pruebas y build ok' })]) {
+    const v = vistaAhora(t)
+    assert.ok(!/Cambio enviado|Edita src|Pruebas y build/.test(JSON.stringify(v)), JSON.stringify(v))
+  }
+})
+
+test('the agent phase shows its last 3 actions with a known kind; no other phase shows any, finals neither', () => {
+  const agente = tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' }, acciones: ACCS })
+  const v = vistaAhora(agente)
+  assert.equal(v.acciones.length, 3)
+  assert.deepEqual(v.acciones[0], { tipo: 'edita', verbo: 'Edita', resto: 'data/precios.json' })
+  assert.deepEqual(v.acciones[1], { tipo: 'busca', verbo: 'Busca', resto: 'en el repositorio' })
+  assert.deepEqual(vistaAhora(tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' } })).acciones, [], 'an old state without them')
+  assert.deepEqual(vistaAhora({ ...agente, acciones: [{ tipo: 'hackea', texto: 'x' }, { tipo: 'lee' }, null, 'Lee x', { tipo: 'lee', texto: 'Lee src/a.js' }] }).acciones, [{ tipo: 'lee', verbo: 'Lee', resto: 'src/a.js' }])
+  assert.deepEqual(vistaAhora({ ...agente, acciones: 'Lee x' }).acciones, [])
+  for (const t of [tarea({ ok: HASTA_REVISION, estaciones: { ux: 'en_curso' }, acciones: ACCS }), tarea({ ok: HASTA_APPROVER, acciones: ACCS }), tarea({ ok: STATIONS, resultadoFinal: 'desplegada', acciones: ACCS }), tarea({ ok: ['entrada'], resultadoFinal: 'fallida', estaciones: { spec: 'error' }, acciones: ACCS })]) {
+    assert.deepEqual(vistaAhora(t).acciones, [])
+  }
+})
+
+test('the four reviewers finish on their own: each item has its state, word and own reason', () => {
+  const t = tarea({
+    ok: HASTA_REVISION, estaciones: { seguridad: 'ok', ux: 'en_curso', ui: 'ok', codigo: 'ok' },
+    motivos: { seguridad: 'Solo toca data/precios.json', ui: 'No cambia la vista', codigo: 'Pruebas y build ok', ux: 'texto viejo de una ronda anterior' },
+  })
+  const { revisores } = vistaAhora(t)
+  assert.deepEqual(revisores.map((r) => r.nombre), ['Seguridad', 'UX', 'UI', 'Código'])
+  assert.deepEqual(revisores.map((r) => r.estado), ['ok', 'en_curso', 'ok', 'ok'])
+  assert.deepEqual(revisores.map((r) => r.palabra), ['Aprueba', 'Trabajando', 'Aprueba', 'Aprueba'])
+  assert.equal(revisores[0].texto, 'Solo toca data/precios.json')
+  assert.equal(revisores[1].texto, 'Mira las capturas de la web…', 'a working reviewer has no reason yet: a reason of an old round is not shown')
+  assert.equal(revisores[3].texto, 'Pruebas y build ok')
+  const pend = vistaAhora(tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'en_curso', ux: 'en_curso', ui: 'en_curso', codigo: 'en_curso' } })).revisores
+  assert.deepEqual(pend.map((r) => r.palabra), ['Trabajando', 'Trabajando', 'Trabajando', 'Trabajando'])
+  assert.equal(vistaAhora(tarea({ ok: ['entrada', 'spec'], estaciones: { build: 'en_curso' } })).revisores, null, 'only while reviewing (and on a refusal)')
+  assert.equal(vistaAhora(tarea({ ok: HASTA_APPROVER })).revisores, null)
+})
+
+test('a refusal ends with the stop, the reason and the four reviewers; nothing is invented', () => {
+  const t = tarea({
+    ok: HASTA_REVISION, estaciones: { seguridad: 'rechazada', ux: 'ok', ui: 'ok', codigo: 'ok' }, resultadoFinal: 'rechazada', estacion: 'seguridad', resultado: 'rejected',
+    motivo: 'Toca también data/transporte.json', motivos: { seguridad: 'Toca también data/transporte.json', ux: 'Se lee bien' },
+  })
+  const v = vistaAhora(t)
+  assert.equal(v.titulo, 'La factory ha rechazado tu petición')
+  assert.equal(v.detalle, 'Se detuvo en: Seguridad. Motivo: Toca también data/transporte.json. Nadie ha tocado la web.')
+  assert.deepEqual(v.segmentos.map((s) => s.estado), ['ok', 'ok', 'rechazada', 'pendiente', 'pendiente', 'pendiente', 'pendiente'])
+  assert.equal(v.donde, 'Se detuvo en el paso 3 de 7: Revisión')
+  assert.deepEqual(v.revisores.map((r) => r.palabra), ['Rechaza', 'Aprueba', 'Aprueba', 'Aprueba'])
+  assert.equal(v.revisores[2].texto, '', 'no reason stored: nothing is made up')
+  assert.equal(v.linea, '')
+  assert.equal(v.enlace, null)
+})
+
+test('the other finals: deployed with its link, failed, blocked by the tests, closed, unchanged; none has an activity line', () => {
+  const desplegada = vistaAhora(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', estacion: 'produccion', perfil: 'negocio', enlace: '/presupuesto/' }))
+  assert.equal(desplegada.titulo, 'Ya está en la web')
+  assert.deepEqual(desplegada.enlace, { texto: 'Ver el cambio en la web', href: '/presupuesto/' })
+  assert.equal(desplegada.donde, 'Los 7 pasos, hechos')
+  assert.ok(desplegada.segmentos.every((s) => s.estado === 'ok'))
+  assert.equal(vistaAhora(tarea({ ok: STATIONS, resultadoFinal: 'desplegada', enlace: '//evil.example' })).enlace.href, '/', 'only addresses of the site')
+  const fallida = vistaAhora(tarea({ ok: ['entrada'], estaciones: { spec: 'error' }, resultadoFinal: 'fallida', estacion: 'spec', motivo: 'el agente no ha terminado a tiempo' }))
+  assert.equal(fallida.titulo, 'La factory no ha podido con tu petición')
+  assert.equal(fallida.detalle, 'Se detuvo en: Agente. Motivo: el agente no ha terminado a tiempo. Nadie ha tocado la web.')
+  assert.deepEqual(fallida.segmentos.map((s) => s.estado).slice(0, 3), ['ok', 'error', 'pendiente'])
+  assert.equal(fallida.revisores, null)
+  const tests = vistaAhora(tarea({ ok: [...HASTA_APPROVER, 'puerta'], estaciones: { merge: 'rechazada' }, ruta: 'auto', pr: 5, resultadoFinal: 'bloqueada_tests', estacion: 'merge', motivo: 'Los tests automáticos (CI) han fallado' }))
+  assert.equal(tests.titulo, 'Los tests automáticos han bloqueado tu cambio')
+  assert.equal(tests.detalle, 'Se detuvo en: Main o PR. Motivo: Los tests automáticos (CI) han fallado')
+  assert.equal(tests.donde, 'Se detuvo en el paso 6 de 7: Main o PR')
+  assert.equal(vistaAhora(tarea({ ok: HASTA_APPROVER, estaciones: { puerta: 'rechazada' }, resultadoFinal: 'cerrada', estacion: 'puerta' })).titulo, 'Una persona ha cerrado el cambio sin publicarlo')
+  assert.equal(vistaAhora(tarea({ ok: HASTA_REVISION, resultadoFinal: 'sin_cambios', estacion: 'build' })).titulo, 'No hacía falta cambiar nada: la web ya era así')
+  for (const r of ['desplegada', 'rechazada', 'fallida', 'bloqueada_tests', 'cerrada', 'sin_cambios', 'esperando_persona']) assert.equal(vistaAhora(tarea({ ok: STATIONS, resultadoFinal: r, actividad: 'Edita src/a.js' })).linea, '', r)
+})
+
+test('model-derived text is returned as plain strings; control and bidi characters are gone; an odd or empty task does not break', () => {
+  const v = vistaAhora(tarea({ ok: HASTA_REVISION, estaciones: { seguridad: 'ok' }, motivos: { seguridad: 'Bien‮\u0007<b>x</b>'.padEnd(400, 'y') }, resultadoFinal: 'rechazada', estacion: 'seguridad', motivo: '<img src=x>‮mal' }))
+  assert.ok(!/[‮\u0007<>]/.test(JSON.stringify(v.revisores) + v.detalle))
+  assert.ok(v.revisores.every((r) => Array.from(r.texto).length <= 160))
+  assert.doesNotThrow(() => vistaAhora({}))
+  assert.doesNotThrow(() => vistaAhora(null))
+  assert.equal(vistaAhora({}).final, 'en_curso')
+})
+
+test('the live light: "actualizado hace n s", then "Terminada", and no connection after 20 s without a read', () => {
+  assert.deepEqual(frescura({ ultima: 1000, ahora: 4000, terminada: false }), { texto: 'En vivo · actualizado hace 3 s', luz: true, fin: false })
+  assert.equal(frescura({ ultima: 0, ahora: 0, terminada: false }).texto, 'En vivo · actualizado hace 0 s')
+  assert.equal(frescura({ ultima: 0, ahora: 125_000, terminada: false }).texto, 'Sin conexión con la factory. Reintentando…')
+  assert.equal(frescura({ ultima: 0, ahora: 125_000, terminada: false }).luz, false)
+  assert.equal(frescura({ ultima: 0, ahora: 20_000, terminada: false }).luz, true, '20 s exactly is still live')
+  assert.equal(frescura({ ultima: 0, ahora: 21_000, terminada: false }).luz, false)
+  assert.deepEqual(frescura({ ultima: 0, ahora: 40_000, terminada: true }), { texto: 'Terminada · última lectura hace 40 s', luz: false, fin: true })
+  assert.equal(frescura({ ultima: 0, ahora: 180_000, terminada: true }).texto, 'Terminada · última lectura hace 3 min')
+  assert.equal(frescura({ ultima: null, ahora: 5000, terminada: false }).texto, 'Buscando tu petición…')
 })

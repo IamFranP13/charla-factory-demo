@@ -386,3 +386,19 @@ test('/api/estado exposes the activity line as safe text; a task without it gets
   assert.ok(!/[<>\u202e]/.test(by[3].actividad ?? '') && Array.from(by[3].actividad ?? '').length <= 160)
   assert.ok(!JSON.stringify(body).includes('<script>'))
 })
+
+test('/api/estado exposes the agent actions and the reviewers\' reasons; an old state gets [] and {}', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const acciones = [{ tipo: 'edita', texto: 'Edita src/x.js' }, { tipo: 'lee', texto: 'Lee src/x.js' }]
+  const live = setActividad(withState('marketing', { fase: 'build', estaciones: { spec: 'ok', build: 'en_curso' } }), 'Edita src/x.js', NOW, acciones)
+  const reviewed = applyEvent(withState('negocio', { fase: 'seguridad', estaciones: { spec: 'ok', build: 'ok' } }), { station: 'seguridad', status: 'ok', motivo: 'Todo bien' }, NOW)
+  const old = withState('producto', { fase: 'build', estaciones: { spec: 'ok', build: 'en_curso' } })
+  const { body } = await call(fakeFetch({ issues: [issue(1, 'marketing', live), issue(2, 'negocio', reviewed), issue(3, 'producto', old)] }))
+  const by = Object.fromEntries(body.tareas.map((t) => [t.numero, t]))
+  assert.deepEqual(by[1].acciones, acciones)
+  assert.deepEqual(by[1].motivos, {})
+  assert.deepEqual(by[2].motivos, { seguridad: 'Todo bien' })
+  assert.deepEqual(by[2].acciones, [])
+  assert.deepEqual(by[3].acciones, [])
+  assert.deepEqual(by[3].motivos, {})
+})

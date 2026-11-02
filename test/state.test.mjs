@@ -247,3 +247,104 @@ test('S4: every format character is removed and the marker cannot be closed from
   const marker = renderState(state)
   assert.equal(marker.indexOf('-->'), marker.length - 3, 'the only --> closes the marker')
 })
+
+// --- acciones: the agent's last 3 actions, for the follow-up page (S5) ---
+
+const ACC = (tipo, texto) => ({ tipo, texto })
+
+test('acciones: at most 3, newest first as given, each with a known kind and a text cleaned like the activity line', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const base = initialState('marketing', NOW)
+  const five = [ACC('edita', 'Edita src/a.js'), ACC('lee', 'Lee src/b.js'), ACC('busca', 'Busca en el repositorio'), ACC('comando', 'Ejecuta un comando'), ACC('empieza', 'Empieza a trabajar')]
+  const state = setActividad(base, 'Edita src/a.js', NOW, five)
+  assert.deepEqual(state.acciones, five.slice(0, 3))
+  const dirty = setActividad(base, 'x', NOW, [ACC('lee', '  Lee\u202E <b>src/x.js</b>\n\u0007 '), ACC('inventada', 'Hace algo'), ACC('escribe', 'y'.repeat(500)), ACC('lee', '  '), 'texto', null, ACC('lee', 42)])
+  assert.deepEqual(dirty.acciones.map((a) => a.tipo), ['lee', 'escribe'])
+  assert.equal(dirty.acciones[0].texto, 'Lee b src/x.js /b')
+  assert.equal(Array.from(dirty.acciones[1].texto).length, 160)
+  assert.ok(!/[<>\u202e\u0007\n]/.test(JSON.stringify(dirty.acciones)))
+  assert.equal('acciones' in setActividad(base, 'x', NOW, []), false, 'an empty list is no field')
+  assert.equal('acciones' in setActividad(base, 'x', NOW, 'Lee'), false)
+})
+
+test('acciones: same line and same list is no change (same object, no write); a new list is a change; a finished task is not touched', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const a = setActividad(initialState('marketing', NOW), 'Lee src/a.js', NOW, [ACC('lee', 'Lee src/a.js')])
+  assert.equal(setActividad(a, 'Lee src/a.js', NOW, [ACC('lee', 'Lee src/a.js')]), a)
+  assert.equal(setActividad(a, 'Lee src/a.js', NOW), a, 'no list given: the list stays')
+  const b = setActividad(a, 'Lee src/a.js', NOW, [ACC('edita', 'Edita src/a.js'), ACC('lee', 'Lee src/a.js')])
+  assert.notEqual(b, a)
+  assert.equal(b.acciones.length, 2)
+  const done = finishState(b, 'ok', NOW)
+  assert.equal('acciones' in done, false, 'finishing clears them')
+  assert.equal(setActividad(done, 'Lee x', NOW, [ACC('lee', 'Lee x')]), done)
+})
+
+test('acciones survive the marker round trip, are cleaned again on read and old markers without them still parse', () => {
+  const body = replaceState(requestBlock('x'), { ...initialState('marketing', NOW), acciones: [ACC('edita', 'Edita src/a.js'), ACC('lee', 'Lee src/a.js')] })
+  assert.deepEqual(parseState(body).acciones, [ACC('edita', 'Edita src/a.js'), ACC('lee', 'Lee src/a.js')])
+  const many = Array.from({ length: 8 }, (_, i) => ACC('lee', `Lee f${i}.js`))
+  const forged = body.replace(/"acciones":\[.*?\]/, `"acciones":${JSON.stringify([...many, ACC('lee', 'Hola\u202E<img src=x>')])}`)
+  assert.equal(parseState(forged).acciones.length, 3)
+  const evil = body.replace(/"acciones":\[.*?\]/, `"acciones":${JSON.stringify([ACC('lee', 'Hola\u202E<img src=x>' + 'y'.repeat(300)), ACC('rm', 'x'), { tipo: 'lee' }])}`)
+  const [first, ...rest] = parseState(evil).acciones
+  assert.ok(!/[<>\u202e]/.test(first.texto) && Array.from(first.texto).length <= 160)
+  assert.equal(rest.length, 0)
+  assert.equal('acciones' in parseState(body.replace(/"acciones":\[.*?\]/, '"acciones":{"a":1}')), false)
+  const old = replaceState(requestBlock('x'), initialState('marketing', NOW))
+  assert.equal('acciones' in parseState(old), false)
+})
+
+test('acciones: a station event keeps them; a reset and a new agent round (the approver sends it back) drop them', async () => {
+  const { setActividad, resetState } = await import('../lib/estado.js')
+  const a = setActividad(initialState('marketing', NOW), 'Lee src/a.js', NOW, [ACC('lee', 'Lee src/a.js')])
+  assert.deepEqual(applyEvent(a, { station: 'spec', status: 'en_curso' }, NOW).acciones, [ACC('lee', 'Lee src/a.js')])
+  assert.equal('acciones' in resetState(a, NOW), false)
+  assert.equal('acciones' in applyEvent(a, { station: 'approver', status: 'retry' }, NOW), false)
+})
+
+// --- motivos: each reviewer's own one-line reason (S5) ---
+
+test('motivos: a reviewer or re-check event carries its reason in the same change as its station; plain text like the activity line', () => {
+  const base = initialState('marketing', NOW)
+  const seg = applyEvent(base, { station: 'seguridad', status: 'ok', motivo: '  Solo toca <b>data/precios.json</b>\n‮\u0007 ' }, NOW)
+  assert.equal(seg.estaciones.seguridad, 'ok')
+  assert.equal(seg.motivos.seguridad, 'Solo toca b data/precios.json /b')
+  const both = applyEvent(applyEvent(seg, { station: 'ux', status: 'rejected', motivo: 'x'.repeat(500) }, NOW), { station: 'codigo', status: 'error', motivo: 'Pruebas y build fallan' }, NOW)
+  assert.deepEqual(Object.keys(both.motivos).sort(), ['codigo', 'seguridad', 'ux'])
+  assert.equal(Array.from(both.motivos.ux).length, 160)
+  assert.equal(both.motivos.codigo, 'Pruebas y build fallan')
+  // Other stations and empty reasons never write one.
+  assert.equal('motivos' in applyEvent(base, { station: 'build', status: 'ok', motivo: 'algo' }, NOW), false)
+  assert.equal('motivos' in applyEvent(base, { station: 'ui', status: 'ok', motivo: '  ‮ ' }, NOW), false)
+  assert.equal('motivos' in applyEvent(base, { station: 'ui', status: 'ok', motivo: 42 }, NOW), false)
+})
+
+test('motivos: a reviewer that starts again loses its old reason; a retry round, a reset clear them; finishing keeps them (the refusal is shown)', async () => {
+  const { resetState } = await import('../lib/estado.js')
+  let s = applyEvent(initialState('marketing', NOW), { station: 'ux', status: 'rejected', motivo: 'No me gusta' }, NOW)
+  s = applyEvent(s, { station: 'ui', status: 'ok', motivo: 'Bien' }, NOW)
+  assert.deepEqual(applyEvent(s, { station: 'ux', status: 'en_curso' }, NOW).motivos, { ui: 'Bien' })
+  assert.equal('motivos' in applyEvent(s, { station: 'approver', status: 'retry' }, NOW), false)
+  assert.equal('motivos' in resetState(s, NOW), false)
+  assert.deepEqual(finishState(s, 'rejected', NOW, 'ux no').motivos, { ux: 'No me gusta', ui: 'Bien' })
+})
+
+test('motivos survive the marker round trip, are cleaned again on read (only the four reviewers, text only) and old markers parse', () => {
+  const state = { ...initialState('marketing', NOW), motivos: { seguridad: 'Bien', ux: 'Mal', ui: 'Ok', codigo: 'Pruebas y build ok' } }
+  const body = replaceState(requestBlock('x'), state)
+  assert.deepEqual(parseState(body).motivos, state.motivos)
+  const forged = body.replace(/"motivos":\{.*?\}/, `"motivos":${JSON.stringify({ seguridad: 'Hola‮<img src=x>' + 'y'.repeat(300), build: 'no', ux: 42, ui: '  ', __proto__: 'x', codigo: 'ok' })}`)
+  const read = parseState(forged).motivos
+  assert.deepEqual(Object.keys(read).sort(), ['codigo', 'seguridad'])
+  assert.ok(!/[<>‮]/.test(read.seguridad) && Array.from(read.seguridad).length <= 160)
+  assert.equal('motivos' in parseState(body.replace(/"motivos":\{.*?\}/, '"motivos":[1]')), false)
+  assert.equal('motivos' in parseState(replaceState(requestBlock('x'), initialState('marketing', NOW))), false)
+})
+
+test('acciones: the agent finishing its turn (build ok, error) drops them', async () => {
+  const { setActividad } = await import('../lib/estado.js')
+  const a = setActividad(initialState('marketing', NOW), 'Lee src/a.js', NOW, [ACC('lee', 'Lee src/a.js')])
+  for (const status of ['ok', 'error']) assert.equal('acciones' in applyEvent(a, { station: 'build', status }, NOW), false, status)
+  assert.equal('acciones' in applyEvent(a, { station: 'build', status: 'en_curso' }, NOW), true)
+})
