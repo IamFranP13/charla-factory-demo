@@ -120,3 +120,18 @@ test('reset after the fix and an opened default gives back the policy byte for b
   resetFiles(root)
   assert.equal(readFileSync(join(root, 'policy/risk.yaml'), 'utf8'), readFileSync(join(repo, 'policy/risk.yaml'), 'utf8'))
 })
+
+const REPO_ROOT = new URL('..', import.meta.url).pathname
+test('the seed stylesheet defines every class the pages the reset never touches use (else the reset would strip their styles)', async () => {
+  const { readdirSync } = await import('node:fs')
+  const seed = readFileSync(join(REPO_ROOT, 'factory/seed/src/styles/global.css'), 'utf8')
+  const defined = new Set([...seed.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((m) => m[1]))
+  const missing = []
+  for (const page of readdirSync(join(REPO_ROOT, 'src/pages')).filter((f) => f.endsWith('.astro'))) {
+    const text = readFileSync(join(REPO_ROOT, 'src/pages', page), 'utf8')
+    for (const [, list] of text.matchAll(/class="([^"{}]+)"/g)) {
+      for (const name of list.split(/\s+/).filter(Boolean)) if (!defined.has(name)) missing.push(`${page}: .${name}`)
+    }
+  }
+  assert.deepEqual([...new Set(missing)], [])
+})
