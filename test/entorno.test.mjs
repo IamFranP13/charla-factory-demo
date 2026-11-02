@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { comprobaciones, formatear, passed, runtimeDir } from '../lib/entorno.js'
+import { comprobaciones, debounced, formatear, passed, runtimeDir } from '../lib/entorno.js'
 
 const uid = process.getuid()
 const TOKEN = 'sk-ant-oat01-SECRETSECRETSECRET'
@@ -136,10 +136,10 @@ test('credential: missing, loose mode, several lines, spaces, empty and wrong pr
   const cases = [
     [{ credential: null }, /No existe el fichero de credencial/, /claude setup-token/],
     [{ mode: 0o644 }, /permisos 644; debe ser 600/, /chmod 600 /],
-    [{ credential: `${TOKEN}\nsegunda\n` }, /una sola línea/, /claude setup-token/],
-    [{ credential: `${TOKEN} extra\n` }, /una sola línea, sin espacios/, /claude setup-token/],
-    [{ credential: '\n' }, /una sola línea/, /claude setup-token/],
-    [{ credential: 'ghp_notAnthropic\n' }, /no empieza por sk-ant-oat… ni sk-ant-api…/, /claude setup-token/],
+    [{ credential: `${TOKEN}\nsegunda\n` }, /una sola línea/, /instalar-wsl\.sh.*reemplazar/],
+    [{ credential: `${TOKEN} extra\n` }, /una sola línea, sin espacios/, /instalar-wsl\.sh.*reemplazar/],
+    [{ credential: '\n' }, /una sola línea/, /instalar-wsl\.sh.*reemplazar/],
+    [{ credential: 'ghp_notAnthropic\n' }, /no empieza por sk-ant-oat… ni sk-ant-api…/, /instalar-wsl\.sh.*reemplazar/],
   ]
   for (const [options, mensaje, arreglo] of cases) {
     const w = world(options)
@@ -280,4 +280,14 @@ test('the runtime check reports the fallback it uses, and a refusal as a failure
 test('formatear: a failing required check prints ✗ and its fix on the next line', () => {
   const lines = formatear([{ id: 'x', required: true, ok: false, mensaje: 'mal', arreglo: 'haz esto' }, { id: 'y', required: true, ok: true, mensaje: 'bien', arreglo: null }])
   assert.deepEqual(lines, ['✗ mal', '    → haz esto', '✓ bien'])
+})
+
+test('debounced: a repeat within the window is ignored, one after it goes through (injected clock)', () => {
+  let t = 0
+  const calls = []
+  const handler = debounced((signal) => calls.push(signal), { now: () => t, windowMs: 500 })
+  handler('SIGINT'); t += 10; handler('SIGINT')
+  assert.deepEqual(calls, ['SIGINT'])
+  t += 600; handler('SIGINT')
+  assert.deepEqual(calls, ['SIGINT', 'SIGINT'])
 })

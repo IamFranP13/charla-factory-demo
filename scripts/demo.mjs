@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Runs the whole factory with one command: the checks, the model proxy, then the factory. Ctrl+C once: the factory stops
 // taking tasks and lets the running ones finish; when it exits the proxy stops. Ctrl+C again: forwarded, so the factory
-// kills its agents and returns their tasks to the queue, and then the proxy stops.
+// kills its agents and returns their tasks to the queue, and then the proxy stops. Closing the terminal (SIGHUP) or SIGTERM
+// does the second one at once. One Ctrl+C arriving twice in the same instant (npm forwards it) counts once.
 //
 //   npm run demo -- [options of npm run fabrica, e.g. --origen web]
 //
@@ -11,7 +12,7 @@
 import { spawn as realSpawn, spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import { join } from 'node:path'
-import { comprobaciones, formatear, passed, runtimeDir } from '../lib/entorno.js'
+import { comprobaciones, debounced, formatear, passed, runtimeDir } from '../lib/entorno.js'
 import { proxyNode } from '../lib/fabrica.js'
 import { depsReales } from './comprobar.mjs'
 
@@ -39,18 +40,27 @@ export async function run(argv, deps) {
   let factory = null
   let stopping = false
   let wake = () => {}
-  const off = signals.on(() => {
+  const startedProxy = !(await alive())
+  const proxyAfter = startedProxy ? 'Después se para el proxy.' : 'El proxy sigue en marcha.'
+  // Ctrl+C (SIGINT) escalates; SIGHUP (terminal closed) and SIGTERM abort at once: the factory kills its agents and releases
+  // their tasks (its SIGTERM), and when it exits the proxy demo started stops.
+  const onSignal = debounced((signal = 'SIGINT') => {
     interrupts++
-    if (factory) {
+    if (signal !== 'SIGINT') {
+      if (factory) {
+        factory.kill('SIGTERM')
+        out(`${signal}: la fábrica cancela los agentes y devuelve las tareas a la cola…`)
+      } else out(`${signal}: paro antes de empezar.`)
+    } else if (factory) {
       factory.kill('SIGINT')
       out(interrupts === 1
-        ? 'Ctrl+C: la fábrica deja de coger tareas y termina las que lleva. Otro Ctrl+C las cancela. Después se para el proxy.'
+        ? `Ctrl+C: la fábrica deja de coger tareas y termina las que lleva. Otro Ctrl+C las cancela. ${proxyAfter}`
         : 'Ctrl+C otra vez: la fábrica cancela los agentes y devuelve las tareas a la cola…')
     } else out('Ctrl+C: paro antes de empezar.')
     wake()
-  })
+  }, { now: deps.now ?? Date.now })
+  const off = signals.on(onSignal)
 
-  const startedProxy = !(await alive())
   let proxy = null
   let proxyExit = null // { code, signal } once it has exited
   const shutdown = () => {
@@ -124,9 +134,10 @@ export function depsReal() {
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     signals: {
       on(fn) {
-        process.on('SIGINT', fn)
-        process.on('SIGTERM', fn)
-        return () => { process.off('SIGINT', fn); process.off('SIGTERM', fn) }
+        const names = ['SIGINT', 'SIGTERM', 'SIGHUP']
+        const handlers = names.map((name) => [name, () => fn(name)])
+        for (const [name, handler] of handlers) process.on(name, handler)
+        return () => { for (const [name, handler] of handlers) process.off(name, handler) }
       },
     },
     out: console.log,

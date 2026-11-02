@@ -63,10 +63,50 @@ paso "6. Red de los agentes"
 npm run proxy:red
 
 paso "7. Credencial de Claude"
-if [ -f "$credencial" ] && [ -s "$credencial" ]; then
+# Same rules as lib/entorno.js: one line, no spaces, starts with sk-ant-oat or sk-ant-api. Never prints the token.
+credencial_valida() {
+  [ -f "$1" ] && [ -s "$1" ] || return 1
+  [ "$(grep -c '' "$1")" -le 1 ] || return 1
+  local valor
+  valor="$(tr -d '\r' < "$1" | head -n 1)"
+  case "$valor" in
+    sk-ant-oat*|sk-ant-api*) ;;
+    *) return 1 ;;
+  esac
+  case "$valor" in *[[:space:]]*) return 1 ;; esac
+  return 0
+}
+# Writes the token to a new file created with mode 600 in the same directory and moves it into place: never into an
+# existing file. Only a missing directory is created (mode 700); an existing one is left as it is.
+guardar_credencial() {
+  local destino="$1" token="$2" dir tmp
+  dir="$(dirname "$destino")"
+  [ -d "$dir" ] || install -d -m 700 "$dir"
+  tmp="$(umask 077 && mktemp "$dir/.credencial.XXXXXX")"
+  if ! printf '%s\n' "$token" > "$tmp" || ! chmod 600 "$tmp" || ! mv -f "$tmp" "$destino"; then
+    rm -f "$tmp"
+    falla "No se pudo guardar la credencial en $destino"
+  fi
+}
+reemplazar=0
+if credencial_valida "$credencial"; then
   chmod 600 "$credencial"
   printf '✓ Ya existe %s (no la toco)\n' "$credencial"
+elif [ -e "$credencial" ] && [ -s "$credencial" ]; then
+  printf 'Ya existe %s pero está mal formada (debe ser una sola línea, sin espacios, que empiece por sk-ant-oat o sk-ant-api).\n' "$credencial"
+  if [ -t 0 ]; then
+    read -r -p "¿La reemplazo por un token nuevo? [y/N] " respuesta
+    case "$respuesta" in
+      y|Y|s|S|si|sí|SI|Sí) reemplazar=1 ;;
+      *) printf 'No la toco. Arréglala a mano y vuelve a ejecutar este script.\n' ;;
+    esac
+  else
+    printf 'Sin terminal interactiva: ejecuta este script a mano para reemplazarla.\n'
+  fi
 else
+  reemplazar=1
+fi
+if [ "$reemplazar" = 1 ]; then
   cat <<MSG
 Falta la credencial de Claude. Se crea con «claude setup-token» (necesita una suscripción de Claude y abrir un enlace en el navegador).
 Para no instalar nada más, puedo ejecutarlo dentro de la imagen del agente:
@@ -76,7 +116,7 @@ MSG
   if [ -t 0 ]; then
     read -r -p "¿Ejecuto «claude setup-token» ahora? [s/N] " respuesta
     case "$respuesta" in
-      s|S|si|sí|SI|Sí) docker run --rm -it "$imagen" claude setup-token || true ;;
+      s|S|si|sí|SI|Sí|y|Y) docker run --rm -it "$imagen" claude setup-token || true ;;
     esac
     read -r -s -p "Pega el token y pulsa Intro (vacío para saltar): " token
     printf '\n'
@@ -86,11 +126,7 @@ MSG
         sk-ant-oat*|sk-ant-api*) ;;
         *) falla "Eso no parece un token (debe empezar por sk-ant-oat o sk-ant-api). No se ha guardado nada." ;;
       esac
-      umask 077
-      mkdir -p "$(dirname "$credencial")"
-      chmod 700 "$(dirname "$credencial")"
-      printf '%s\n' "$token" > "$credencial"
-      chmod 600 "$credencial"
+      guardar_credencial "$credencial" "$token"
       unset token
       printf '✓ Guardado en %s (modo 600)\n' "$credencial"
     else

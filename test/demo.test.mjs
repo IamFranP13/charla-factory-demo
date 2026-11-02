@@ -24,6 +24,7 @@ function harness({ checks = { ok: true, lines: ['✓ todo'] }, alive = [false, f
   const spawned = []
   const handlers = []
   const answers = [...alive]
+  const clock = { t: 1_000_000 }
   const find = (name) => spawned.find((s) => s.name === name)
   const deps = {
     env: { XDG_RUNTIME_DIR: tmp, ...env },
@@ -44,11 +45,12 @@ function harness({ checks = { ok: true, lines: ['✓ todo'] }, alive = [false, f
     sleep: () => new Promise((resolve) => setImmediate(resolve)), // yields, so a test can act between two looks
     signals: { on: (fn) => { handlers.push(fn); return () => handlers.splice(handlers.indexOf(fn), 1) } },
     waitMs,
+    now: () => clock.t,
     out: (l) => out.push(l),
     err: (l) => err.push(l),
   }
   const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((resolve) => setImmediate(resolve)) }
-  return { deps, log, out, err, spawned, handlers, find, settle, cleanup: () => rmSync(tmp, { recursive: true, force: true }) }
+  return { deps, log, out, err, spawned, handlers, clock, find, settle, cleanup: () => rmSync(tmp, { recursive: true, force: true }) }
 }
 
 test('demo refuses to start when a required check fails, and starts nothing', async () => {
@@ -156,6 +158,7 @@ test('Ctrl+C twice: the second one is forwarded so the factory kills its agents,
     await h.settle()
     const factory = h.find('factory').child
     h.handlers[0]()
+    h.clock.t += 2000
     h.handlers[0]()
     assert.deepEqual(factory.kills, ['SIGINT', 'SIGINT'])
     assert.ok(!h.log.includes('stopProxy'))
@@ -212,4 +215,89 @@ test('the proxy dying while the factory runs sends the factory a SIGINT and says
     h.find('factory').child.finish(0)
     await done
   } finally { h.cleanup() }
+})
+
+test('one Ctrl+C that arrives twice at once (npm forwards it and the tty sends it) counts as one', async () => {
+  const h = harness()
+  try {
+    const done = run([], h.deps)
+    await h.settle()
+    const factory = h.find('factory').child
+    h.handlers[0]()
+    h.clock.t += 50
+    h.handlers[0]()
+    assert.deepEqual(factory.kills, ['SIGINT'])
+    h.clock.t += 2000 // a later one is the real second Ctrl+C
+    h.handlers[0]()
+    assert.deepEqual(factory.kills, ['SIGINT', 'SIGINT'])
+    factory.finish(0)
+    await done
+  } finally { h.cleanup() }
+})
+
+test('closing the terminal (SIGHUP) aborts the factory, then stops the proxy demo started, then exits', async () => {
+  const h = harness()
+  try {
+    const done = run([], h.deps)
+    await h.settle()
+    const factory = h.find('factory').child
+    h.handlers[0]('SIGHUP')
+    assert.deepEqual(factory.kills, ['SIGTERM']) // the factory's abort: kill agents, release claims
+    assert.ok(!h.log.includes('stopProxy'))
+    factory.finish(0)
+    assert.equal(await done, 0)
+    assert.equal(h.log.at(-1), 'stopProxy')
+    assert.equal(h.handlers.length, 0)
+  } finally { h.cleanup() }
+})
+
+test('SIGHUP with a reused proxy aborts the factory and leaves the proxy running', async () => {
+  const h = harness({ alive: [true] })
+  try {
+    const done = run([], h.deps)
+    await h.settle()
+    h.handlers[0]('SIGHUP')
+    assert.deepEqual(h.find('factory').child.kills, ['SIGTERM'])
+    h.find('factory').child.finish(0)
+    await done
+    assert.ok(!h.log.includes('stopProxy'))
+  } finally { h.cleanup() }
+})
+
+test('SIGTERM aborts the factory like SIGHUP; SIGHUP while waiting for the proxy stops before the factory', async () => {
+  const h = harness()
+  try {
+    const done = run([], h.deps)
+    await h.settle()
+    h.handlers[0]('SIGTERM')
+    assert.deepEqual(h.find('factory').child.kills, ['SIGTERM'])
+    h.find('factory').child.finish(0)
+    await done
+  } finally { h.cleanup() }
+  const w = harness({ alive: [false] })
+  try {
+    const done = run([], w.deps)
+    await w.settle()
+    w.handlers[0]('SIGHUP')
+    assert.equal(await done, 130)
+    assert.equal(w.find('factory'), undefined)
+    assert.ok(w.log.includes('stopProxy'))
+  } finally { w.cleanup() }
+})
+
+test('the Ctrl+C message says the proxy stops only when demo started it', async () => {
+  const started = harness()
+  const reused = harness({ alive: [true] })
+  try {
+    for (const [h, expected] of [[started, /Después se para el proxy/], [reused, /proxy.*(sigue|seguirá) en marcha/]]) {
+      const done = run([], h.deps)
+      await h.settle()
+      h.handlers[0]()
+      const text = h.out.filter((l) => l.startsWith('Ctrl+C')).join('\n')
+      assert.match(text, expected)
+      if (h === reused) assert.doesNotMatch(text, /Después se para/)
+      h.find('factory').child.finish(0)
+      await done
+    }
+  } finally { started.cleanup(); reused.cleanup() }
 })

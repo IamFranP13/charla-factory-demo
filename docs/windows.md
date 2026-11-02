@@ -9,11 +9,11 @@ Todo lo que sigue se escribe en una terminal de **Ubuntu (WSL)**, salvo los paso
 - Windows 10 (22H2) o Windows 11, con la virtualización activada en la BIOS (casi siempre lo está).
 - Unos 15 GB libres y conexión a internet.
 - Una cuenta de GitHub que sea **dueña del repositorio** (la misma con la que harás `gh auth login`).
-- Una suscripción de Claude (para el token del paso 5).
+- Una suscripción de Claude (para el token del paso 4.1).
 
 ## 1. Activa WSL2 con Ubuntu (una vez, en Windows)
 
-1. Abre **PowerShell como administrador** (botón derecho en Inicio → «Terminal (administrador)»).
+1. Abre una terminal **como administrador**: en Windows 11, botón derecho en Inicio → «Terminal (administrador)»; en Windows 10, botón derecho en Inicio → «Windows PowerShell (administrador)».
 2. Ejecuta:
 
    ```powershell
@@ -49,7 +49,7 @@ git clone https://github.com/<dueño>/charla-factory-demo.git
 cd charla-factory-demo
 ```
 
-(sustituye `<dueño>` por la cuenta dueña del repositorio).
+(sustituye `<dueño>` por la cuenta dueña del repositorio). El repositorio es **público**: el clon por HTTPS no pide usuario ni contraseña.
 
 ## 4. Ejecuta el instalador
 
@@ -67,7 +67,7 @@ Es seguro repetirlo: cada paso mira primero si ya está hecho. El instalador:
 6. Comprueba `gh` y, si hace falta, lanza `gh auth login`.
 7. Termina con `npm run comprobar`.
 
-### 5. El token de Claude
+### 4.1. El token de Claude
 
 Si no hay credencial, el instalador te ofrece ejecutar `claude setup-token` **dentro de la imagen del agente** (no hay que instalar nada más):
 
@@ -75,9 +75,9 @@ Si no hay credencial, el instalador te ofrece ejecutar `claude setup-token` **de
 docker run --rm -it limonia-agente:dev claude setup-token
 ```
 
-Abre el enlace que te muestra en el navegador de Windows, acepta, y copia el token (empieza por `sk-ant-oat…`). El instalador te lo pide sin mostrarlo al teclear («Pega el token») y lo guarda en `~/.config/limonia/claude-credencial` con permisos 600, una sola copia. **Nunca** lo pegues en el repositorio, en un chat ni en una issue.
+Abre el enlace que te muestra en el navegador de Windows, acepta, y copia el token (empieza por `sk-ant-oat…`). El instalador te lo pide sin mostrarlo al teclear («Pega el token») y lo guarda en `~/.config/limonia/claude-credencial` con permisos 600, una sola copia. **Nunca** lo pegues en el repositorio, en un chat ni en una issue. Si ya hay un fichero de credencial mal formado (dos líneas, espacios, otro prefijo), el instalador lo dice y te pregunta si lo reemplaza (`y/N`).
 
-### 6. `gh`
+### 4.2. `gh`
 
 Si falta: `sudo apt update && sudo apt install -y gh`. Inicia sesión con `gh auth login` (GitHub.com → HTTPS → «Login with a web browser»). La cuenta debe ser la dueña del repositorio; `npm run comprobar` lo verifica.
 
@@ -97,7 +97,9 @@ npm run demo
 
 Hace tres cosas: repite las comprobaciones (y no arranca si alguna falla), arranca el proxy del modelo y, cuando responde, arranca la fábrica (`npm run fabrica`). Por defecto coge solo las peticiones **de prueba** (las que creas tú con `npm run tarea`).
 
-**Para parar**: pulsa `Ctrl+C` **una vez**. La fábrica deja de coger tareas y termina las que lleva; cuando acaba, se para el proxy. Si no quieres esperar, pulsa `Ctrl+C` otra vez: la fábrica cancela los agentes, devuelve las tareas a la cola y después se para el proxy.
+**Para parar**: pulsa `Ctrl+C` **una vez**. La fábrica deja de coger tareas y termina las que lleva; cuando acaba, se para el proxy. Si no quieres esperar, pulsa `Ctrl+C` otra vez: la fábrica cancela los agentes, devuelve las tareas a la cola y después se para el proxy (si el proxy ya estaba en marcha antes de `demo`, se queda en marcha).
+
+**Si cierras la ventana de la terminal, se para todo**: `demo` cancela los agentes, devuelve las tareas a la cola y para el proxy que arrancó. No cierres la ventana durante la charla.
 
 ### Prueba una petición
 

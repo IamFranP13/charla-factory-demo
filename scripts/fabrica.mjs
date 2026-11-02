@@ -13,6 +13,7 @@
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { debounced } from '../lib/entorno.js'
 import {
   acquireLock, createFabrica, dockerNode, filesNode, githubNode, gitNode, parseArgs, proxyNode,
 } from '../lib/fabrica.js'
@@ -70,7 +71,12 @@ try {
     },
     log: (line) => console.log(`${new Date().toTimeString().slice(0, 8)} ${line}`),
   }, options)
-  process.on('SIGINT', () => fabrica.interrupt())
+  // One Ctrl+C can arrive twice at once (npm forwards it, the tty sends it): that is still the first. SIGTERM (from `demo`)
+  // and SIGHUP (the terminal closed) are the second Ctrl+C: kill the agents and release their tasks.
+  process.on('SIGINT', debounced(() => fabrica.interrupt()))
+  const abort = () => { fabrica.interrupt(); fabrica.interrupt() }
+  process.on('SIGTERM', abort)
+  process.on('SIGHUP', abort)
   await fabrica.start()
 } catch (error) {
   console.error(`fabrica: ${error.message}`)
