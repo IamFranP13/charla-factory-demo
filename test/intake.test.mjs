@@ -47,7 +47,7 @@ test('creates the issue and answers 201 with its number', async () => {
   const issue = JSON.parse(create.init.body)
   assert.equal(issue.title, '[Marketing] Pon un cohete en el muro')
   assert.deepEqual(issue.labels, ['entrada', 'perfil:marketing', 'origen:web'])
-  assert.equal(issue.body, 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"Pon un cohete en el muro"}\n```\n')
+  assert.equal(issue.body, issueFor('marketing', 'Pon un cohete en el muro', 'web').body)
 })
 
 test('the issue body is one line that the reader finds, even with newlines and backticks', async () => {
@@ -235,12 +235,13 @@ test('the web always files origen:web: a body that tries to set an origin or ext
   assert.equal(response.status, 201)
   const issue = JSON.parse(calls[2].init.body)
   assert.deepEqual(issue.labels, ['entrada', 'perfil:marketing', 'origen:web'])
-  assert.equal(issue.body, 'Petición desde la web.\n\n```json\n{"perfil":"marketing","peticion":"Pon un cohete en el muro"}\n```\n')
+  assert.equal(issue.body, issueFor('marketing', 'Pon un cohete en el muro', 'web').body)
 })
 
-test('issueFor: origin defaults to web and can be prueba; the body is the same', () => {
+test('issueFor: origin defaults to web and can be prueba; the body names the real origin', () => {
   assert.deepEqual(issueFor('marketing', 'hola').labels, ['entrada', 'perfil:marketing', 'origen:web'])
   const prueba = issueFor('negocio', 'hola', 'prueba')
   assert.deepEqual(prueba.labels, ['entrada', 'perfil:negocio', 'origen:prueba'])
-  assert.equal(prueba.body, issueFor('negocio', 'hola').body)
+  assert.match(prueba.body, /\*\*Origen:\*\* prueba del mantenedor/)
+  assert.match(issueFor('negocio', 'hola').body, /\*\*Origen:\*\* formulario web/)
 })

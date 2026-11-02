@@ -77,6 +77,8 @@ case "$*" in
     printf '%s\\n' "$payload" >> "${dir}/patches"
     printf '%s' "$payload" | node -e 'const fs=require("fs");const f=process.argv[1];const i=JSON.parse(fs.readFileSync(f,"utf8"));i.body=JSON.parse(fs.readFileSync(0,"utf8")).body;fs.writeFileSync(f,JSON.stringify(i))' "${dir}/issue.json"
     echo '{}' ;;
+  "api -X POST repos/o/r/issues/5/comments --input -") cat >> "${dir}/comments"; echo >> "${dir}/comments"; echo '{}' ;;
+  "api --paginate --slurp repos/o/r/issues/5/comments?per_page=100") node -e 'const fs=require("fs");let t="";try{t=fs.readFileSync(process.argv[1],"utf8")}catch{};console.log(JSON.stringify([t.split("\\n").filter(Boolean).map((l)=>JSON.parse(l))]))' "${dir}/comments" ;;
   *) echo "unexpected gh call: $*" >&2; exit 1 ;;
 esac
 `)
@@ -296,5 +298,61 @@ test('--closed: a task whose state has no pull request yet, or this very one, re
     const env = fakeGh({ files: [{ filename: 'data/precios.json' }], reviews: [], merged: false, issueBody: stateBody({ pr }) })
     assert.equal(run(['--closed', '7'], env).status, 0)
     assert.equal(issueState(env).estaciones.puerta, 'rechazada')
+  }
+})
+
+// --- S2: the comment on the issue when the gate puts the task in a person's hands or the pull request ends ---
+
+const commentsOf = (env) => {
+  try { return readFileSync(join(env.dir, 'comments'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).body) } catch { return [] }
+}
+const afterRun = (env) => ({ ...env, GITHUB_OUTPUT: join(env.dir, 'out2') })
+
+test('S2: a human route comments once that it waits for a person; the same PR judged again says nothing', () => {
+  const env = fakeGh({ files: [{ filename: 'data/precios.json' }], reviews: [] })
+  assert.equal(run(['--pr', '7'], env).status, 1)
+  assert.deepEqual(commentsOf(env), ['⏳ Espera a una persona: PR #7, ruta human.'])
+  assert.equal(run(['--pr', '7'], afterRun(env)).status, 1)
+  assert.equal(commentsOf(env).length, 1)
+})
+
+test('S2: an auto route and an approved human route do not comment while judging', () => {
+  const auto = fakeGh({ files: [{ filename: 'content/campanas/a.json' }], reviews: [] })
+  assert.equal(run(['--pr', '7'], auto).status, 0)
+  assert.deepEqual(commentsOf(auto), [])
+  const approved = fakeGh({ files: [{ filename: 'data/precios.json' }], reviews: [{ user: { login: 'IamFranP13' }, state: 'APPROVED', commit_id: 'head' }] })
+  assert.equal(run(['--pr', '7'], approved).status, 0)
+  assert.deepEqual(commentsOf(approved), [])
+})
+
+test('S2: --closed merged comments the merge once, with the route and the PR; a repeated run is silent', () => {
+  const env = fakeGh({ files: [], reviews: [], merged: true, issueBody: stateBody({ pr: 7, ruta: 'auto' }) })
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.deepEqual(commentsOf(env), ['✅ Mergeada en main por la puerta (ruta auto, PR #7). Se publica en la web en unos minutos.'])
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.equal(commentsOf(env).length, 1)
+})
+
+test('S2: --closed unmerged comments that it was closed without publishing, once', () => {
+  const ok = { ...initialState('marketing').estaciones, puerta: 'ok', merge: 'en_curso' }
+  const env = fakeGh({ files: [], reviews: [], merged: false, issueBody: stateBody({ pr: 7, estaciones: ok }) })
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.deepEqual(commentsOf(env), ['🚫 Cerrada sin publicar (PR #7).'])
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.equal(commentsOf(env).length, 1)
+})
+
+test('S2: the old pull request of a rebuilt task comments nothing', () => {
+  const env = fakeGh({ files: [], reviews: [], merged: false, issueBody: stateBody({ pr: 20, reconstruida: true }) })
+  assert.equal(run(['--closed', '7'], env).status, 0)
+  assert.deepEqual(commentsOf(env), [])
+})
+
+test('S2: --closed unmerged before the gate passed comments once; a repeated run is silent', () => {
+  for (const puerta of ['en_curso', 'rechazada', 'pendiente']) {
+    const env = fakeGh({ files: [], reviews: [], merged: false, issueBody: stateBody({ pr: 7, ruta: 'human', estaciones: { ...initialState('marketing').estaciones, puerta } }) })
+    assert.equal(run(['--closed', '7'], env).status, 0)
+    assert.equal(run(['--closed', '7'], env).status, 0)
+    assert.deepEqual(commentsOf(env), ['🚫 Cerrada sin publicar (PR #7).'], puerta)
   }
 })

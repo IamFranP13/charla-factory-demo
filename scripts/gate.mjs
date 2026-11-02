@@ -13,7 +13,8 @@
 import { readFileSync, appendFileSync } from 'node:fs'
 import { parsePolicy, routeFor, verdict, originAllowsAuto } from '../lib/policy.js'
 import { pullRequest, pullRequestFiles, pullRequestReviews, approvalsAtHead, repoSlug } from '../lib/github.js'
-import { updateIssueState } from '../lib/issue-state.js'
+import { updateIssueState, commentIssue } from '../lib/issue-state.js'
+import { comentarioFinal } from '../lib/issue-texto.js'
 
 const args = process.argv.slice(2)
 const take = (flag) => {
@@ -75,8 +76,14 @@ function judgePullRequest(policy, number) {
     fase: decision.pass ? 'merge' : 'puerta',
     estaciones: { ...state.estaciones, puerta, ...(decision.pass && state.estaciones.merge !== 'ok' && { merge: 'en_curso' }) },
     actualizado: new Date().toISOString(),
-  }))
+  }), (before, after) => (!waiting(before) && waiting(after) ? comentarioFinal({ tipo: 'espera', pr: after.pr, ruta: after.ruta }) : null))
   process.exit(decision.pass ? 0 : 1)
+}
+
+// Waiting for a person: a human route whose gate has not passed. The comment is written when the stored state changes
+// into this, so a run repeated on the same pull request (synchronize, re-run) says nothing twice.
+function waiting(state) {
+  return state.ruta === 'human' && state.pr !== null && state.estaciones.puerta !== 'ok'
 }
 
 // The pull request was closed: merged → the change is in main (production deploys it next; the merge commit lets
@@ -93,6 +100,11 @@ function markClosed(number) {
     }
     estaciones[estaciones.puerta === 'ok' ? 'merge' : 'puerta'] = 'rechazada'
     return { ...state, estaciones, actualizado: new Date().toISOString() }
+  }, (before, after) => {
+    if (pr.merged) return before.estaciones.merge !== 'ok' && after.estaciones.merge === 'ok' ? comentarioFinal({ tipo: 'mergeada', pr: Number(number), ruta: after.ruta }) : null
+    // A merge already refused is the same outcome. A gate refused before (changes requested) is not: the state cannot tell
+    // it from a re-run of this closing, so commentIssue skips a text that is already on the issue.
+    return before.estaciones.merge !== 'rechazada' ? comentarioFinal({ tipo: 'cerrada', pr: Number(number) }) : null
   })
 }
 
@@ -106,13 +118,25 @@ function changesRequested(reviews, approvers) {
 
 // The factory's pull request is tarea/<n> in this very repository; n is the task's issue.
 // Anything else (a fork, another branch name) is not a task and touches no issue.
-function markTask(pr, change) {
+// `comentar(before, after)` returns the text of the comment the change deserves (or null): asked only when a write
+// happened, and a comment that fails never changes what the gate decided.
+function markTask(pr, change, comentar = () => null) {
   const issue = /^tarea\/(\d+)$/.exec(pr.head?.ref ?? '')?.[1]
   if (!issue || pr.head?.repo?.full_name?.toLowerCase() !== repoSlug().toLowerCase()) return
+  let before = null
+  let after = null
   try {
-    updateIssueState(issue, change)
+    after = updateIssueState(issue, (state) => change((before = state)))
   } catch (error) {
     console.error(`warning: could not update the state of issue #${issue}: ${error.stderr?.toString().trim() || error.message}`)
+    return
+  }
+  const text = after && after !== before ? comentar(before, after) : null
+  if (!text) return
+  try {
+    commentIssue(issue, text)
+  } catch (error) {
+    console.error(`warning: could not comment on issue #${issue}: ${error.stderr?.toString().trim() || error.message}`)
   }
 }
 

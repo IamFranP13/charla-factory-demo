@@ -38,7 +38,7 @@ async function until(condition, what = 'condition') {
 }
 
 // Everything the orchestrator touches, faked, with one shared ordered event log.
-function world({ issues = [], proxyAlive = true, behavior, options = {}, resultados = {}, tomar, verif, publicar, failClaim = false, review, cambios, fotos = [], fotosExit = 0 } = {}) {
+function world({ issues = [], proxyAlive = true, behavior, options = {}, resultados = {}, tomar, verif, publicar, failClaim = false, commentFails = false, review, cambios, fotos = [], fotosExit = 0 } = {}) {
   const events = []
   const runs = []
   const reviews = []
@@ -54,6 +54,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
   const released = []
   const activities = [] // every distinct activity line the state carried, in order
   const writes = [] // every state written: [acciones, motivos] as JSON, in order
+  const comments = [] // every comment written on an issue: [number, text]
   const violations = [] // writes that broke "the approver is never ok before codigo is"
   const deps = {
     owner: OWNER,
@@ -81,6 +82,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
         }
         return next
       },
+      comment: async (n, text) => { if (commentFails) throw new Error('comment denied'); comments.push([n, text]) },
     },
     proxy: {
       alive: async () => proxyAlive,
@@ -155,7 +157,7 @@ function world({ issues = [], proxyAlive = true, behavior, options = {}, resulta
     log: (line) => logs.push(line),
   }
   const fabrica = createFabrica(deps, { paralelo: 3, modelo: 'claude-haiku-4-5', tiempoMin: 10, turnos: 30, conservar: false, unaVez: true, sondeoS: 10, ...options })
-  const w = { fabrica, activities, writes, violations, events, runs, reviews, fotosRuns, rechecks, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
+  const w = { fabrica, comments, activities, writes, violations, events, runs, reviews, fotosRuns, rechecks, logs, states, timers, kills, tokens, released, deps, live, stateOf: (n) => parseState(states.get(n).body) }
   return w
 }
 const ok = (resumen = 'Hecho') => JSON.stringify({ estado: 'ok', resumen })
@@ -1344,4 +1346,59 @@ test('the proxy client never reuses a kept-alive connection (the proxy closes id
     await new Promise((resolve) => server.close(resolve))
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+// --- S2: the one comment on the issue when the factory ends a task ---
+
+test('S2: a refusal by the agent comments ❌ Rechazada with the escaped reason, once', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': JSON.stringify({ estado: 'rechazada', resumen: '@ana mira [x](https://evil) ```x```' }) }, behavior: () => 0 })
+  await w.fabrica.start()
+  assert.deepEqual(w.comments, [[1, '❌ Rechazada: @\u2060ana mira &#91;x&#93;(https&#58;//evil) &#96;&#96;&#96;x&#96;&#96;&#96;']])
+})
+
+test('S2: a change outside the profile comments ❌ Rechazada with the public reason', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok('Precio') }, behavior: () => 0, tomar: async ({ numero }) => ({ clone: `/copias/t${numero}.limpio`, files: ['data/precios.json'], added: [] }) })
+  await w.fabrica.start()
+  assert.deepEqual(w.comments, [[1, '❌ Rechazada: Marketing no puede cambiar precios: pídelo como Negocio.']])
+})
+
+test('S2: an agent that fails, a failing re-check and a failed publication comment ⚠️ Fallida with their fixed reason', async () => {
+  const cases = [
+    [{ behavior: () => 3 }, /^⚠️ Fallida: /],
+    [{ behavior: () => 0, verif: () => 1 }, /^⚠️ Fallida: las pruebas o la compilación fallaron fuera del agente$/],
+    [{ behavior: () => 0, publicar: async () => { throw new Error('gho_SECRET denied') } }, /^⚠️ Fallida: no se pudo publicar la rama$/],
+  ]
+  for (const [extra, expected] of cases) {
+    const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, ...extra })
+    await w.fabrica.start()
+    assert.equal(w.comments.length, 1, String(expected))
+    assert.match(w.comments[0][1], expected)
+    assert.equal(w.comments[0][0], 1)
+    assert.doesNotMatch(w.comments[0][1], /SECRET/)
+  }
+})
+
+test('S2: the approver refusing twice comments ❌ Rechazada with the motives, and only then', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0, review: (nombre) => (nombre === 'ux' ? JSON.stringify(verdict(false, 'No se entiende el texto')) : undefined) })
+  await w.fabrica.start()
+  assert.equal(w.comments.length, 1)
+  assert.match(w.comments[0][1], /^❌ Rechazada: .*UX: No se entiende el texto/)
+})
+
+test('S2: a task that is published (or goes back to the agent) comments nothing: the gate speaks next', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 0 })
+  await w.fabrica.start()
+  assert.equal(w.stateOf(1).pr, 41)
+  assert.deepEqual(w.comments, [])
+})
+
+test('S2: a task that already ended is never commented again, and a failing comment does not change the outcome', async () => {
+  const w = world({ issues: [issue(1)], resultados: { '/copias/t1': ok() }, behavior: () => 3, commentFails: true })
+  await w.fabrica.start()
+  assert.equal(w.stateOf(1).resultado, 'failed')
+  assert.ok(w.logs.some((l) => /no se pudo comentar/.test(l)), w.logs.join('\n'))
+  // The same ending written again over an ended state is not a transition: nothing to say.
+  const again = world({ issues: [issue(1, { state: { ...initialState('marketing', NOW), resultado: 'failed', motivo: 'ya' } })], resultados: {}, behavior: () => 3 })
+  await again.fabrica.start()
+  assert.deepEqual(again.comments, [])
 })
