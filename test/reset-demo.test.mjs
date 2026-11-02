@@ -125,12 +125,15 @@ const REPO_ROOT = new URL('..', import.meta.url).pathname
 test('the seed stylesheet defines every class the pages the reset never touches use (else the reset would strip their styles)', async () => {
   const { readdirSync } = await import('node:fs')
   const seed = readFileSync(join(REPO_ROOT, 'factory/seed/src/styles/global.css'), 'utf8')
-  const defined = new Set([...seed.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((m) => m[1]))
+  const classes = (css) => new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map((m) => m[1]))
+  const defined = classes(seed)
+  // Only classes the live stylesheet styles: a class used as a hook for scripts has no rule anywhere.
+  const styled = classes(readFileSync(join(REPO_ROOT, 'src/styles/global.css'), 'utf8'))
   const missing = []
   for (const page of readdirSync(join(REPO_ROOT, 'src/pages')).filter((f) => f.endsWith('.astro'))) {
     const text = readFileSync(join(REPO_ROOT, 'src/pages', page), 'utf8')
     for (const [, list] of text.matchAll(/class="([^"{}]+)"/g)) {
-      for (const name of list.split(/\s+/).filter(Boolean)) if (!defined.has(name)) missing.push(`${page}: .${name}`)
+      for (const name of list.split(/\s+/).filter(Boolean)) if (styled.has(name) && !defined.has(name)) missing.push(`${page}: .${name}`)
     }
   }
   assert.deepEqual([...new Set(missing)], [])
