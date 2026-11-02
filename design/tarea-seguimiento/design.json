@@ -1,0 +1,28 @@
+{
+  "title": "Seguimiento de una petición (/tarea/?n=N)",
+  "brief": "Lo que ve en el móvil (390 px primero, también a 1024 px) una persona del público mientras su petición recorre la factory de agentes: dónde está ahora, qué ocurre en este momento y cómo acabó. Estaciones en el orden de la charla: Entrada → Agente → Revisión en paralelo (Seguridad · UX · UI · Código) → Approver → Puerta → Main o PR → Producción. Cada artboard enseña la misma petición (Negocio: «Sube el precio del kilo de limón Fino a 1,35 €») en nueve momentos: el agente escribe, en revisión con UX trabajando, la puerta decide, espera a una persona, publicando, desplegada, rechazada, bloqueada por los tests y fallida. Corrige los cuatro hallazgos: (a) cada fase tiene su texto de actividad, (b) los cuatro revisores terminan por separado, (c) el agente muestra sus tres últimas acciones con icono, (d) «actualizado hace n s» y una luz de en vivo. Solo tokens de design/system.md.",
+  "feature": "odd/tasks/fabrica-visible.md",
+  "artboards": [
+    {
+      "file": "01-linea-vertical.html",
+      "title": "Línea vertical",
+      "tradeoff": "Es lo más fácil de entender: las siete estaciones en orden, la actual se abre con su detalle (tres últimas acciones del agente, cuatro revisores en filas) y se ve cuánto queda; pero en el móvil la página es larga (las estaciones pendientes ocupan sitio) y el mensaje final queda por encima de la línea.",
+      "width": 1400,
+      "height": 7000
+    },
+    {
+      "file": "02-ahora-y-tira.html",
+      "title": "Tarjeta «ahora» y tira",
+      "tradeoff": "Responde a las tres preguntas sin hacer scroll: una tira de siete tramos dice dónde va, una tarjeta enorme qué pasa ahora y, al acabar, se convierte en el resultado; los siete pasos quedan plegados. Pierde el relato completo (lo ya hecho se ve solo como tramo) y los revisores caben en una cuadrícula 2×2 muy apretada.",
+      "width": 1400,
+      "height": 5600
+    },
+    {
+      "file": "03-chat-de-eventos.html",
+      "title": "Chat de eventos",
+      "tradeoff": "La factory «habla» y cada revisor escribe cuando acaba, con «escribiendo…» mientras trabaja: es lo que mejor cuenta que van en paralelo y por separado, y da honestidad con la hora de cada hecho; pero la página crece con cada evento, hay que leer de arriba abajo y el estado final queda al fondo (la barra fija de arriba lo compensa).",
+      "width": 1400,
+      "height": 7600
+    }
+  ]
+}
