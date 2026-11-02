@@ -8,7 +8,7 @@ import { onRequestGet } from '../functions/api/acceso.js'
 const KEY = 'k'.repeat(20) + 'ensayo-de-la-charla-2026'
 const CLOSED = { TURNSTILE_SECRET: 's3cret', INTAKE_OPEN: '0', INTAKE_TEST_KEY: KEY, GITHUB_TOKEN: 'ghp_TOKEN', GITHUB_REPO: 'me/repo' }
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status })
-const valid = { peticion: 'Pon un cohete en el muro', turnstile: 'tok' }
+const valid = { perfil: 'marketing', peticion: 'Pon un cohete en el muro', turnstile: 'tok' }
 
 function network({ turnstile = { success: true }, existing = 0 } = {}) {
   const calls = []
@@ -26,7 +26,7 @@ const post = (cookie) => new Request('https://x.test/api/peticion', {
   body: JSON.stringify(valid),
   headers: cookie ? { cookie } : {},
 })
-const intake = (request, env, fetchImpl) => handleIntake(request, env, fetchImpl, () => 0)
+const intake = (request, env, fetchImpl) => handleIntake(request, env, fetchImpl)
 const access = (query, env = CLOSED) => handleAccess(new Request(`https://x.test/api/acceso${query}`), env)
 
 async function expectError(response, status, error) {
@@ -149,7 +149,7 @@ test('closed form: a pass never skips the 503 checks or a missing Turnstile toke
     assert.equal(calls.length, 0)
   }
   const { calls, fetchImpl } = network()
-  const request = new Request('https://x.test/api/peticion', { method: 'POST', body: JSON.stringify({ peticion: 'hola mundo' }), headers: { cookie } })
+  const request = new Request('https://x.test/api/peticion', { method: 'POST', body: JSON.stringify({ perfil: 'marketing', peticion: 'hola mundo' }), headers: { cookie } })
   await expectError(await intake(request, CLOSED, fetchImpl), 403, 'No hemos podido verificar que eres una persona.')
   assert.equal(calls.length, 0)
 })

@@ -7,9 +7,8 @@ import { onRequestPost } from '../functions/api/peticion.js'
 const ENV = { TURNSTILE_SECRET: 's3cret', INTAKE_OPEN: '1', GITHUB_TOKEN: 'ghp_TOKEN', GITHUB_REPO: 'me/repo' }
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status })
 const post = (body, raw = false) => new Request('https://x.test/api/peticion', { method: 'POST', body: raw ? body : JSON.stringify(body) })
-const valid = { peticion: 'Pon un cohete en el muro', turnstile: 'tok' }
-// The profile is drawn at random by the server; tests pin the draw (0 → marketing).
-const intake = (request, env, fetchImpl, random = () => 0) => handleIntake(request, env, fetchImpl, random)
+const valid = { perfil: 'marketing', peticion: 'Pon un cohete en el muro', turnstile: 'tok' }
+const intake = (request, env, fetchImpl) => handleIntake(request, env, fetchImpl)
 
 // Fake network: records calls, answers Turnstile, the issue list and issue creation.
 function network({ turnstile = { success: true }, existing = 0, list, create } = {}) {
@@ -54,7 +53,7 @@ test('creates the issue and answers 201 with its number', async () => {
 test('the issue body is one line that the reader finds, even with newlines and backticks', async () => {
   const peticion = 'Línea uno\nlínea "dos" con ```código```'
   const { calls, fetchImpl } = network()
-  await intake(post({ ...valid, peticion }), ENV, fetchImpl, () => 0.99)
+  await intake(post({ ...valid, perfil: 'negocio', peticion }), ENV, fetchImpl)
   const issue = JSON.parse(calls[2].init.body)
   assert.equal(issue.title, '[Negocio] Línea uno línea "dos" con ```código```')
   assert.deepEqual(parseIssueBody(issue.body), { profile: 'negocio', request: peticion })
@@ -81,15 +80,24 @@ test('rejects bodies that are not a JSON object with 400', async () => {
   assert.equal(calls.length, 0)
 })
 
-test('the server assigns the profile at random, in equal parts; the client cannot choose it', async () => {
-  for (const [draw, perfil, label] of [[0, 'marketing', 'Marketing'], [0.34, 'producto', 'Producto'], [0.67, 'negocio', 'Negocio'], [0.999, 'negocio', 'Negocio']]) {
+test('the requester chooses the profile; it is filed as chosen', async () => {
+  for (const [perfil, label] of [['marketing', 'Marketing'], ['producto', 'Producto'], ['negocio', 'Negocio']]) {
     const { calls, fetchImpl } = network()
-    const response = await intake(post({ ...valid, perfil: 'marketing' }), ENV, fetchImpl, () => draw)
+    const response = await intake(post({ ...valid, perfil }), ENV, fetchImpl)
+    assert.equal(response.status, 201)
     assert.deepEqual(await response.json(), { tarea: 42, perfil })
     const issue = JSON.parse(calls[2].init.body)
     assert.deepEqual(issue.labels, ['entrada', `perfil:${perfil}`, 'origen:web'])
     assert.match(issue.title, new RegExp(`^\\[${label}\\] `))
   }
+})
+
+test('a missing or unknown profile is refused before anything is checked or filed', async () => {
+  const { calls, fetchImpl } = network()
+  for (const perfil of [undefined, null, '', 'Marketing', 'admin', 'constructor', '__proto__', 'toString', 42, ['marketing'], { marketing: 1 }]) {
+    await expectError(await intake(post({ ...valid, perfil }), ENV, fetchImpl), 400, 'Elige con qué perfil haces la petición.')
+  }
+  assert.equal(calls.length, 0)
 })
 
 test('rejects requests shorter than 3 or longer than 150 characters after trim', async () => {
