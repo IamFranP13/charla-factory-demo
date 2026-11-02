@@ -1,0 +1,32 @@
+# Visible factory, follow-up design and the Windows package
+
+Make what the agent factory does visible and honest on the web (`/tarea/` and the board), redesign `/tarea/`, and package the
+factory for a Windows PC (WSL2) to test with real users. Commits go straight to `main`.
+Builds on `odd/tasks/fabrica-agentes.md` (the agent factory, `npm run fabrica`).
+
+## Specs
+
+- **S1** User (verbatim): "antes de llevarnoslo al otro ordenador tendremos que probar que funciona y se ve en la web, ahora mismo lo que necesito es: Poder hacer pruebas y que se vean en la web las estadciones y comprobar que funcionan bien las modificaciones / terminar de diseñar la factory y web que aún está muy verde / empaquetar la factory en docker y llevarnosla al otro ordenador para hacer pruebas reales con usuarios". Answers: what is green: "El seguimiento /tarea/", "Lo que hace la factory"; the other PC: "Windows"; order: "Sí, en ese orden (recomendado)" (1 visibility and order, 2 design of /tarea/, 3 Windows/WSL2 package, 4 real rounds).
+- **S2** Order of the stations is the one of the talk's diagram: `seguridad`, `ux`, `ui` and `codigo` (the outside re-check: `npm test && npm run build`) run **in parallel** after the build, and the `approver` decides only after the four have finished: 4/4 ok → publish; a reviewer refusal → one more agent round as today (vueltas 1), and that round runs the four again; `codigo` error → the task ends `fallida` with today's fixed reason (no extra round). The approver is never `ok` while `codigo` is `pendiente` or `en_curso`.
+- **S3** Every station a task goes through is seen `en curso` on `/tarea/?n=N` and on `/factory/`, even when it lasted less than the polling interval: a station that jumped from `pendiente` to `ok`/`rechazada`/`error` between two reads is shown in progress for a short moment (about 1.5 s) before its final state, in order. The factory is never slowed down for this.
+- **S4** "What is happening now": the task state carries one short activity line, updated while the task runs, shown on `/tarea/` (and as a tooltip or line on the board token):
+  - agent steps derived from the tool call, never the raw command or model text: read → "Lee `<ruta>`", edit/write → "Edita/Escribe `<ruta>`", search → "Busca en el repositorio", shell → "Ejecuta un comando", start → "Empieza a trabajar", end → the agent's one-line summary (already shown today as the result);
+  - each reviewer's verdict with its one-line reason ("seguridad ✓ …", "ux ✗ …"), and "Pruebas y build ok/fallan";
+  - untrusted text rules: plain text only, control and bidi characters removed (as the public motive today), at most 160 characters each, rendered as text (never HTML); paths only inside the repository; at most one state write per task every ~3 s (coalesced), so the GitHub API stays well under its limits with several tasks at once.
+- **S5** Design of `/tarea/` (later task): directions are drawn as artboards with the gentle-design skill and the user chooses before any code; content: the request, who asked (profile), the stations in the diagram's order with their state, the activity line, the final message (deployed with a link / waiting for a person / rejected with the reason / failed), mobile first.
+- **S6** Windows package (later task): runs inside WSL2 (Ubuntu) with Docker Desktop; an install script checks Docker, builds the agent image, creates the network, asks for the Claude token (`claude setup-token`, stored mode 600, one copy) and `gh auth login`; `npm run demo` starts the proxy and the factory together and stops both with Ctrl+C; a step-by-step guide in Spanish.
+
+## Tasks
+
+| ID | Specs | What | Route | Commit |
+|----|-------|------|-------|--------|
+| T1 | S2-S4 | Station order, visible `en curso`, activity line | worker + independent verify (Risk 2: model text on the public web; 3: the task state read by the board) | |
+| T2 | S1 | Real rehearsal after T1: one request per kind of change, watched on the web | parent | |
+| T3 | S5 | Design directions for `/tarea/`, user choice, implementation | parent (gentle-design) + worker | |
+| T4 | S6 | WSL2 package, install script, `npm run demo`, guide | worker | |
+| T5 | S1 | Real rounds: this PC, then the Windows PC with several people | parent + user | |
+
+## Log
+
+- **L1** User request: see S1.
+- **L2** Evidence (rehearsal #113, 2026-11-02, Sonnet low, `--una-vez`): picked up 11:42:46, agent 10 s (3 turns), reviewers 5/7/9 s, approver 11:43:12, re-check 23 s (ok 11:43:40), PR #114 at 79 s, merged, deployed 11:45:43 (about 3 min end to end). Polling `/api/estado` every 5 s, the web showed `seguridad`/`ux`/`ui` jump from `pendiente` to `ok` (never `en_curso`) and `approver: ok` while `codigo: en_curso`. The presenter's terminal shows the agent's steps and the reviewers' reasons; the web shows none of it.
